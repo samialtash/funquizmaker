@@ -258,7 +258,7 @@ let currentLang = "en";
 let currentQuizForEdit = null;
 let currentQuestionEditIndex = -1;
 let fromCreateQuizPage = false;
-let showManualQuestionsChips = false;
+let lastAddedQuestionIndex = -1;
 
 const FORMAT_EXAMPLE_PLACEHOLDER = `1) What is 2 + 2?
 A) 3
@@ -429,41 +429,36 @@ function renderPrepareQuestionsChips() {
   const wrap = document.getElementById("prepare-questions-recent-wrap");
   const list = document.getElementById("prepare-questions-recent-list");
   if (!wrap || !list) return;
-  if (!showManualQuestionsChips) {
-    wrap.classList.add("hidden");
-    list.innerHTML = "";
-    return;
-  }
   const quizId = editingQuizId || currentQuizForEdit;
   const quiz = quizId ? quizzes.find((q) => q.id === quizId) : null;
   const questions = quiz && quiz.questions ? quiz.questions : [];
-  if (questions.length === 0) {
+  if (lastAddedQuestionIndex < 0 || lastAddedQuestionIndex >= questions.length) {
     wrap.classList.add("hidden");
     list.innerHTML = "";
     return;
   }
+  const q = questions[lastAddedQuestionIndex];
   wrap.classList.remove("hidden");
   list.innerHTML = "";
-  questions.forEach((q, idx) => {
-    const chip = document.createElement("div");
-    chip.className = "manual-question-chip";
-    const text = (q.text || "").trim() || "(No text)";
-    const short = text.length > 48 ? text.slice(0, 45) + "…" : text;
-    chip.innerHTML = `<span class="manual-question-chip-text">${escapeHtml(short)}</span><button type="button" class="manual-question-chip-remove" aria-label="${escapeHtml(t("delete"))}">×</button>`;
-    const removeBtn = chip.querySelector(".manual-question-chip-remove");
-    const indexToRemove = idx;
-    removeBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const qz = quizzes.find((qu) => qu.id === quizId);
-      if (qz && qz.questions && indexToRemove >= 0 && indexToRemove < qz.questions.length) {
-        qz.questions.splice(indexToRemove, 1);
-        saveQuizzes();
-        renderPrepareQuestionsChips();
-      }
-    });
-    list.appendChild(chip);
+  const chip = document.createElement("div");
+  chip.className = "manual-question-chip";
+  const text = (q.text || "").trim() || "(No text)";
+  const short = text.length > 48 ? text.slice(0, 45) + "…" : text;
+  chip.innerHTML = `<span class="manual-question-chip-text">${escapeHtml(short)}</span><button type="button" class="manual-question-chip-remove" aria-label="${escapeHtml(t("delete"))}">×</button>`;
+  const removeBtn = chip.querySelector(".manual-question-chip-remove");
+  const indexToRemove = lastAddedQuestionIndex;
+  removeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const qz = quizzes.find((qu) => qu.id === quizId);
+    if (qz && qz.questions && indexToRemove >= 0 && indexToRemove < qz.questions.length) {
+      qz.questions.splice(indexToRemove, 1);
+      saveQuizzes();
+      lastAddedQuestionIndex = -1;
+      renderPrepareQuestionsChips();
+    }
   });
+  list.appendChild(chip);
 }
 
 // Load / save quizzes
@@ -1789,7 +1784,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     if (!views[targetViewKey]) targetViewKey = "mainMenu";
     if (targetViewKey === "createQuiz") {
       fromCreateQuizPage = false;
-      showManualQuestionsChips = false;
+      lastAddedQuestionIndex = -1;
     }
     showView(targetViewKey, "back");
     if (targetViewKey === "quizQuestionsList") renderQuestionsList();
@@ -1909,7 +1904,9 @@ if (saveSingleQuestionBtn) {
     saveQuizzes();
     if (fromCreateQuizPage) {
       fromCreateQuizPage = false;
-      showManualQuestionsChips = true;
+      lastAddedQuestionIndex = currentQuestionEditIndex >= 0 && quiz.questions[currentQuestionEditIndex] !== undefined
+        ? currentQuestionEditIndex
+        : quiz.questions.length - 1;
       showView("quizEditQuestions");
       requestAnimationFrame(() => renderPrepareQuestionsChips());
     } else {
@@ -2159,7 +2156,7 @@ if (newQuizBtn && newQuizNameModal && newQuizNameInput && newQuizNameOk && newQu
     selectedEditQuizId = newQuiz.id;
     renderEditQuizList(editQuizListCurrentPage);
     updateEditQuestionsBtn();
-    showManualQuestionsChips = false;
+    lastAddedQuestionIndex = -1;
     showView("quizEditQuestions");
     renderPrepareQuestionsChips();
   });
