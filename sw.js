@@ -1,4 +1,4 @@
-const CACHE_NAME = "quiz-app-v1";
+const CACHE_NAME = "quiz-app-v2";
 const urlsToCache = ["index.html", "style.css", "script.js"];
 
 self.addEventListener("install", (event) => {
@@ -9,6 +9,12 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const url = event.request.url || "";
+  const isScriptOrStyle = /\.(js|css)(\?|$)/i.test(url);
+  if (isScriptOrStyle) {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then((response) => response || fetch(event.request))
   );

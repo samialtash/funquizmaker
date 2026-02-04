@@ -91,6 +91,8 @@ const translations = {
     chooseImage: "Choose image",
     addOptionRow: "Add option",
     duplicateQuizName: "A quiz with this name already exists. Please use a different name.",
+    saveQuizNoQuestions: "Add at least one question (manually or via bulk paste) before saving.",
+    saveQuizSuccess: "Quiz saved with {count} question(s).",
   },
   tr: {
     mainTitle: "Quiz Oyunu",
@@ -160,7 +162,7 @@ const translations = {
     noQuestionsInQuiz: "Henüz soru yok. Aşağıdan ekleyin.",
     saveQuestion: "Soruyu kaydet",
     addManualQuestion: "Manuel soru ekle",
-    manualAddHint: "Önce bir quiz seçip Yükle'ye tıklayın, ardından manuel soru ekleyin.",
+    manualAddHint: "Yukarıdan bir quiz seçin veya yeni quiz oluşturun, ardından ilk sorunuzu buradan ekleyin.",
     giveQuizName: "Quiz'e bir isim verin",
     newQuizBtn: "Yeni quiz",
     loadSelected: "Quiz'i düzenle",
@@ -177,6 +179,8 @@ const translations = {
     chooseImage: "Dosya seç",
     addOptionRow: "Şık ekle",
     duplicateQuizName: "Bu isimde bir quiz zaten var. Lütfen farklı bir isim kullanın.",
+    saveQuizNoQuestions: "Kaydetmeden önce en az bir soru ekleyin (manuel veya toplu yapıştırma ile).",
+    saveQuizSuccess: "Quiz {count} soru ile kaydedildi.",
   },
 };
 
@@ -396,11 +400,11 @@ function showView(name, direction) {
     current.offsetHeight;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        target.classList.add("view-slide-in");
+        setTimeout(() => target.classList.add("view-slide-in"), 20);
       });
     });
     current.addEventListener("transitionend", onDone);
-    setTimeout(onDone, 380);
+    setTimeout(onDone, 400);
   } else {
     if (current) {
       current.classList.remove("view-exit-left", "view-exit-right");
@@ -670,13 +674,15 @@ function renderQuizSelectList(page, direction) {
     quizSelectListEl.offsetHeight;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        quizSelectListEl.classList.add("quiz-list-slide-in");
-        const onEnd = () => {
-          quizSelectListEl.removeEventListener("transitionend", onEnd);
-          quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
-        };
-        quizSelectListEl.addEventListener("transitionend", onEnd);
-        setTimeout(onEnd, 400);
+        setTimeout(() => {
+          quizSelectListEl.classList.add("quiz-list-slide-in");
+          const onEnd = () => {
+            quizSelectListEl.removeEventListener("transitionend", onEnd);
+            quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
+          };
+          quizSelectListEl.addEventListener("transitionend", onEnd);
+          setTimeout(onEnd, 450);
+        }, 20);
       });
     });
   }
@@ -1040,13 +1046,15 @@ function renderEditQuizList(page, direction) {
     editQuizListEl.offsetHeight;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        editQuizListEl.classList.add("quiz-list-slide-in");
-        const onEnd = () => {
-          editQuizListEl.removeEventListener("transitionend", onEnd);
-          editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
-        };
-        editQuizListEl.addEventListener("transitionend", onEnd);
-        setTimeout(onEnd, 400);
+        setTimeout(() => {
+          editQuizListEl.classList.add("quiz-list-slide-in");
+          const onEnd = () => {
+            editQuizListEl.removeEventListener("transitionend", onEnd);
+            editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
+          };
+          editQuizListEl.addEventListener("transitionend", onEnd);
+          setTimeout(onEnd, 450);
+        }, 20);
       });
     });
   }
@@ -1639,8 +1647,15 @@ function handleSaveQuiz() {
     alert(t("duplicateQuizName"));
     return;
   }
+
+  if (editingQuizId) {
+    const existing = quizzes.find((q) => q.id === editingQuizId);
+    if (existing && existing.questions && existing.questions.length) {
+      draftQuestions = existing.questions.slice();
+    }
+  }
   if (!draftQuestions.length) {
-    alert("You have not added any questions yet. Parse questions from the big box first.");
+    alert(t("saveQuizNoQuestions"));
     return;
   }
 
@@ -1664,7 +1679,9 @@ function handleSaveQuiz() {
   refreshQuizSelect();
   refreshEditQuizSelect();
 
-  alert(`Quiz "${name}" saved with ${draftQuestions.length} questions.`);
+  const count = draftQuestions.length;
+  const msg = (t("saveQuizSuccess") || "Quiz saved with {count} question(s).").replace("{count}", String(count));
+  alert(msg);
   resetCreateQuizForm();
   showView("createQuiz");
 }
@@ -1989,6 +2006,7 @@ if (loadEditQuizBtn) {
     const quiz = quizzes.find((q) => q.id === id);
     if (!quiz) return;
     editingQuizId = quiz.id;
+    currentQuizForEdit = quiz.id;
     quizNameInput.value = quiz.name;
     quizDescriptionInput.value = quiz.description || "";
     draftQuestions = quiz.questions.slice();
