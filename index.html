@@ -65,7 +65,9 @@
       <div id="quiz-select-view" class="view">
         <button id="back-btn-select" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="quiz-select-title">Select Quiz</h1>
-        <div id="quiz-select-list" class="quiz-list"></div>
+        <div class="quiz-list-slide-wrap">
+          <div id="quiz-select-list" class="quiz-list"></div>
+        </div>
         <div id="quiz-select-pagination" class="pagination-row hidden"></div>
         <div class="field inline-row space-between" style="margin-top: 16px;">
           <button id="start-quiz-btn" class="primary-btn">Start Quiz (Full Screen)</button>
@@ -110,75 +112,13 @@
             <button type="button" id="single-question-image-remove" class="secondary-btn small-btn image-remove-btn">Remove image</button>
           </div>
         </div>
-        <div class="field option-with-photo">
-          <div class="option-row">
-            <label id="option-a-label" for="single-option-a">A</label>
-            <input type="text" id="single-option-a" placeholder="Option A" class="option-text-input" />
-            <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="a">Add photo</button>
-          </div>
-          <div id="single-option-image-wrap-a" class="option-image-wrap hidden">
-            <input type="file" id="single-option-image-a" accept="image/jpeg,image/png,image/webp" class="image-input small" />
-            <div id="single-option-image-preview-a" class="image-preview small"></div>
-            <button type="button" class="option-image-remove secondary-btn small-btn" data-option="a">Remove</button>
-          </div>
-        </div>
-        <div class="field option-with-photo">
-          <div class="option-row">
-            <label id="option-b-label" for="single-option-b">B</label>
-            <input type="text" id="single-option-b" placeholder="Option B" class="option-text-input" />
-            <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="b">Add photo</button>
-          </div>
-          <div id="single-option-image-wrap-b" class="option-image-wrap hidden">
-            <input type="file" id="single-option-image-b" accept="image/jpeg,image/png,image/webp" class="image-input small" />
-            <div id="single-option-image-preview-b" class="image-preview small"></div>
-            <button type="button" class="option-image-remove secondary-btn small-btn" data-option="b">Remove</button>
-          </div>
-        </div>
-        <div class="field option-with-photo">
-          <div class="option-row">
-            <label id="option-c-label" for="single-option-c">C</label>
-            <input type="text" id="single-option-c" placeholder="Option C" class="option-text-input" />
-            <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="c">Add photo</button>
-          </div>
-          <div id="single-option-image-wrap-c" class="option-image-wrap hidden">
-            <input type="file" id="single-option-image-c" accept="image/jpeg,image/png,image/webp" class="image-input small" />
-            <div id="single-option-image-preview-c" class="image-preview small"></div>
-            <button type="button" class="option-image-remove secondary-btn small-btn" data-option="c">Remove</button>
-          </div>
-        </div>
-        <div class="field option-with-photo">
-          <div class="option-row">
-            <label id="option-d-label" for="single-option-d">D</label>
-            <input type="text" id="single-option-d" placeholder="Option D" class="option-text-input" />
-            <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="d">Add photo</button>
-          </div>
-          <div id="single-option-image-wrap-d" class="option-image-wrap hidden">
-            <input type="file" id="single-option-image-d" accept="image/jpeg,image/png,image/webp" class="image-input small" />
-            <div id="single-option-image-preview-d" class="image-preview small"></div>
-            <button type="button" class="option-image-remove secondary-btn small-btn" data-option="d">Remove</button>
-          </div>
-        </div>
-        <div class="field option-with-photo">
-          <div class="option-row">
-            <label id="option-e-label" for="single-option-e">E</label>
-            <input type="text" id="single-option-e" placeholder="Option E" class="option-text-input" />
-            <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="e">Add photo</button>
-          </div>
-          <div id="single-option-image-wrap-e" class="option-image-wrap hidden">
-            <input type="file" id="single-option-image-e" accept="image/jpeg,image/png,image/webp" class="image-input small" />
-            <div id="single-option-image-preview-e" class="image-preview small"></div>
-            <button type="button" class="option-image-remove secondary-btn small-btn" data-option="e">Remove</button>
-          </div>
+        <div id="option-rows-container" class="option-rows-container"></div>
+        <div class="field add-option-row-wrap">
+          <button type="button" id="add-option-row-btn" class="secondary-btn small-btn hidden">Add option</button>
         </div>
         <div class="field">
           <label id="correct-answer-label" for="single-correct-answer">Correct answer</label>
-          <select id="single-correct-answer">
-            <option value="0">A</option>
-            <option value="1">B</option>
-            <option value="2">C</option>
-            <option value="3">D</option>
-            <option value="4">E</option>
-          </select>
+          <select id="single-correct-answer"></select>
         </div>
         <div class="field inline-row create-quiz-actions">
           <button id="save-single-question-btn" class="primary-btn">Save Quiz</button>
@@ -274,7 +214,9 @@
 
         <div class="field">
           <label id="edit-existing-label">Existing quizzes (select to edit)</label>
-          <div id="edit-quiz-list" class="quiz-list"></div>
+          <div class="quiz-list-slide-wrap">
+            <div id="edit-quiz-list" class="quiz-list"></div>
+          </div>
           <div id="edit-quiz-pagination" class="pagination-row hidden"></div>
           <div class="inline-row edit-existing-row" style="margin-top: 8px; gap: 8px;">
             <button id="load-edit-quiz-btn" class="secondary-btn small-btn">Edit quiz</button>

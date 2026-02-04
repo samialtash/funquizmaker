@@ -108,10 +108,34 @@ body.standalone #app .view.active {
   padding: 24px 28px 32px;
   min-height: 560px;
   position: relative;
+  transition: transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .view.active {
   display: block;
+}
+
+/* Slide transition: exit */
+.view.view-exit-left {
+  transform: translateX(-100%);
+}
+
+.view.view-exit-right {
+  transform: translateX(100%);
+}
+
+/* Slide transition: enter */
+.view.view-enter-from-right {
+  transform: translateX(100%);
+}
+
+.view.view-enter-from-left {
+  transform: translateX(-100%);
+}
+
+.view.view-enter-from-right.view-slide-in,
+.view.view-enter-from-left.view-slide-in {
+  transform: translateX(0);
 }
 
 /* Ana menü logosu (ana ekrana alınca gizlenir, üstte fullscreen logo kullanılır) */
@@ -1036,6 +1060,42 @@ pre.format-example {
   border-color: rgba(99, 102, 241, 0.5);
 }
 
+.question-drag-handle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--muted);
+  font-size: 0.9rem;
+  letter-spacing: -0.08em;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  border-radius: 6px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.question-drag-handle:active {
+  cursor: grabbing;
+}
+
+.question-drag-handle.pressing {
+  transform: scale(1.2);
+  color: var(--text);
+}
+
+.question-list-item.dragging {
+  opacity: 0.6;
+}
+
+.question-list-item.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+}
+
 .question-list-text {
   flex: 1;
   min-width: 0;
@@ -1063,7 +1123,50 @@ pre.format-example {
   margin-top: 8px;
 }
 
-/* Quiz list (select / edit): 10 per page */
+/* Quiz list slide wrap: fixed height, blur empty area, slide animation */
+.quiz-list-slide-wrap {
+  position: relative;
+  min-height: 340px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  margin-bottom: 12px;
+}
+
+.quiz-list-slide-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100px;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.9), transparent 60%);
+}
+
+.quiz-list-slide-wrap .quiz-list {
+  width: 100%;
+  min-width: 100%;
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+.quiz-list-slide-wrap .quiz-list.quiz-list-slide-from-next {
+  transform: translateX(100%);
+}
+
+.quiz-list-slide-wrap .quiz-list.quiz-list-slide-from-prev {
+  transform: translateX(-100%);
+}
+
+.quiz-list-slide-wrap .quiz-list.quiz-list-slide-in {
+  transform: translateX(0);
+}
+
+/* Quiz list (select / edit): 5 per page */
 .quiz-list {
   display: flex;
   flex-direction: column;
@@ -1261,6 +1364,22 @@ pre.format-example {
 
 .option-with-photo .option-photo-btn {
   flex-shrink: 0;
+}
+
+.option-row-field .remove-option-row-btn {
+  margin-left: auto;
+  min-width: 32px;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 6px 10px;
+}
+
+.add-option-row-wrap {
+  margin-top: 8px;
+}
+
+.option-rows-container .option-row-field {
+  margin-bottom: 4px;
 }
 
 /* Quiz ekranında soru / şık fotoğrafı */

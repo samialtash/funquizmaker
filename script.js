@@ -89,6 +89,8 @@ const translations = {
     removeImage: "Remove image",
     addPhoto: "Add photo",
     chooseImage: "Choose image",
+    addOptionRow: "Add option",
+    duplicateQuizName: "A quiz with this name already exists. Please use a different name.",
   },
   tr: {
     mainTitle: "Quiz Oyunu",
@@ -173,6 +175,8 @@ const translations = {
     removeImage: "Fotoğrafı kaldır",
     addPhoto: "Fotoğraf ekle",
     chooseImage: "Dosya seç",
+    addOptionRow: "Şık ekle",
+    duplicateQuizName: "Bu isimde bir quiz zaten var. Lütfen farklı bir isim kullanın.",
   },
 };
 
@@ -230,8 +234,12 @@ function resizeImageToDataUrl(file) {
   });
 }
 
+const OPTION_LETTERS = ["a", "b", "c", "d", "e"];
+const MIN_OPTIONS = 2;
+const MAX_OPTIONS = 5;
+
 let editFormQuestionImage = null;
-let editFormOptionImages = [null, null, null, null, null];
+let editFormOptionImages = [null, null];
 
 let quizzes = [];
 let currentQuiz = null;
@@ -327,11 +335,88 @@ const editQuizStatusEl = document.getElementById("edit-quiz-status");
 const soundToggleBtn = document.getElementById("sound-toggle");
 const shuffleToggleBtn = document.getElementById("shuffle-toggle");
 
-// Utility: view switching
-function showView(name) {
-  Object.values(views).forEach((v) => v.classList.remove("active"));
+function isQuizNameDuplicate(name, excludeQuizId) {
+  const n = (name || "").trim().toLowerCase();
+  if (!n) return false;
+  return quizzes.some((q) => q.id !== excludeQuizId && (q.name || "").trim().toLowerCase() === n);
+}
+
+// Utility: view switching (horizontal slide – forward = new from right, back = new from left)
+function showView(name, direction) {
   const target = views[name];
-  if (target) target.classList.add("active");
+  if (!target) return;
+  const current = document.querySelector(".view.active");
+  const isBack = direction === "back";
+  if (current && current !== target) {
+    const app = document.getElementById("app");
+    const appHeight = app ? app.offsetHeight : 560;
+    if (app) {
+      app.style.overflow = "hidden";
+      app.style.minHeight = appHeight + "px";
+    }
+    current.classList.remove("view-exit-left", "view-exit-right");
+    current.classList.add(isBack ? "view-exit-right" : "view-exit-left");
+    current.style.position = "absolute";
+    current.style.top = "0";
+    current.style.left = "0";
+    current.style.width = "100%";
+    current.style.right = "";
+
+    target.style.display = "block";
+    target.style.position = "absolute";
+    target.style.top = "0";
+    target.style.left = "0";
+    target.style.width = "100%";
+    target.classList.add("active");
+    target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in");
+    target.classList.add(isBack ? "view-enter-from-left" : "view-enter-from-right");
+
+    let done = false;
+    const onDone = () => {
+      if (done) return;
+      done = true;
+      current.removeEventListener("transitionend", onDone);
+      current.style.position = "";
+      current.style.top = "";
+      current.style.left = "";
+      current.style.width = "";
+      current.classList.remove("active", "view-exit-left", "view-exit-right");
+      current.style.display = "none";
+      target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in");
+      target.style.position = "";
+      target.style.top = "";
+      target.style.left = "";
+      target.style.width = "";
+      if (app) {
+        app.style.overflow = "";
+        app.style.minHeight = "";
+      }
+    };
+
+    current.offsetHeight;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        target.classList.add("view-slide-in");
+      });
+    });
+    current.addEventListener("transitionend", onDone);
+    setTimeout(onDone, 380);
+  } else {
+    if (current) {
+      current.classList.remove("view-exit-left", "view-exit-right");
+      current.style.position = "";
+      current.style.top = "";
+      current.style.left = "";
+      current.style.width = "";
+    }
+    target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in");
+    target.classList.add("active");
+    target.style.display = "block";
+    target.style.position = "";
+    target.style.top = "";
+    target.style.left = "";
+    target.style.width = "";
+  }
 }
 
 // Load / save quizzes
@@ -525,6 +610,8 @@ function applyTranslations() {
   });
   const chooseImageLabel = document.getElementById("single-question-choose-image-label");
   if (chooseImageLabel) chooseImageLabel.textContent = t("chooseImage");
+  const addOptionRowBtnTr = document.getElementById("add-option-row-btn");
+  if (addOptionRowBtnTr) addOptionRowBtnTr.textContent = t("addOptionRow");
   const sectionLabel = document.querySelector(".two-options-section .section-label");
   if (sectionLabel) sectionLabel.textContent = t("addQuestionsBoth");
   const backQuestionsList = document.getElementById("back-btn-questions-list");
@@ -546,8 +633,9 @@ function applyTranslations() {
   updateFullscreenBtnText();
 }
 
-function renderQuizSelectList(page) {
+function renderQuizSelectList(page, direction) {
   if (!quizSelectListEl) return;
+  quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
   quizSelectListEl.innerHTML = "";
   if (!quizzes.length) {
     noQuizMsg.classList.remove("hidden");
@@ -576,6 +664,22 @@ function renderQuizSelectList(page) {
     renderQuizSelectPagination();
   }
   startQuizBtn.disabled = !selectedPlayQuizId;
+
+  if (direction === 1 || direction === -1) {
+    quizSelectListEl.classList.add(direction === 1 ? "quiz-list-slide-from-next" : "quiz-list-slide-from-prev");
+    quizSelectListEl.offsetHeight;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        quizSelectListEl.classList.add("quiz-list-slide-in");
+        const onEnd = () => {
+          quizSelectListEl.removeEventListener("transitionend", onEnd);
+          quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
+        };
+        quizSelectListEl.addEventListener("transitionend", onEnd);
+        setTimeout(onEnd, 400);
+      });
+    });
+  }
 }
 
 function renderQuizSelectPagination() {
@@ -588,7 +692,7 @@ function renderQuizSelectPagination() {
   prevBtn.className = "secondary-btn small-btn";
   prevBtn.textContent = "←";
   prevBtn.disabled = page === 0;
-  prevBtn.addEventListener("click", () => { quizSelectCurrentPage = Math.max(0, page - 1); renderQuizSelectList(quizSelectCurrentPage); renderQuizSelectPagination(); });
+  prevBtn.addEventListener("click", () => { quizSelectCurrentPage = Math.max(0, page - 1); renderQuizSelectList(quizSelectCurrentPage, -1); renderQuizSelectPagination(); });
   const info = document.createElement("span");
   info.className = "pagination-info";
   info.textContent = `${page + 1} / ${totalPages}`;
@@ -597,7 +701,7 @@ function renderQuizSelectPagination() {
   nextBtn.className = "secondary-btn small-btn";
   nextBtn.textContent = "→";
   nextBtn.disabled = page >= totalPages - 1;
-  nextBtn.addEventListener("click", () => { quizSelectCurrentPage = Math.min(totalPages - 1, page + 1); renderQuizSelectList(quizSelectCurrentPage); renderQuizSelectPagination(); });
+  nextBtn.addEventListener("click", () => { quizSelectCurrentPage = Math.min(totalPages - 1, page + 1); renderQuizSelectList(quizSelectCurrentPage, 1); renderQuizSelectPagination(); });
   quizSelectPaginationEl.appendChild(prevBtn);
   quizSelectPaginationEl.appendChild(info);
   quizSelectPaginationEl.appendChild(nextBtn);
@@ -652,6 +756,47 @@ function renderQuestionsList() {
       const li = document.createElement("li");
       li.className = "question-list-item";
       li.dataset.index = String(idx);
+      li.draggable = false;
+
+      const handle = document.createElement("span");
+      handle.className = "question-drag-handle";
+      handle.setAttribute("aria-label", "Reorder");
+      handle.innerHTML = "⋮⋮";
+      handle.draggable = true;
+      handle.addEventListener("mousedown", () => { handle.classList.add("pressing"); });
+      handle.addEventListener("mouseup", () => { handle.classList.remove("pressing"); });
+      handle.addEventListener("mouseleave", () => { handle.classList.remove("pressing"); });
+      handle.addEventListener("touchstart", () => { handle.classList.add("pressing"); }, { passive: true });
+      handle.addEventListener("touchend", () => { handle.classList.remove("pressing"); }, { passive: true });
+      handle.addEventListener("touchcancel", () => { handle.classList.remove("pressing"); }, { passive: true });
+      handle.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", String(idx));
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setDragImage(li, 0, 0);
+        li.classList.add("dragging");
+      });
+      handle.addEventListener("dragend", () => li.classList.remove("dragging"));
+
+      li.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        const fromIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        if (!isNaN(fromIdx) && fromIdx !== parseInt(li.dataset.index, 10)) li.classList.add("drag-over");
+      });
+      li.addEventListener("dragleave", () => li.classList.remove("drag-over"));
+      li.addEventListener("drop", (e) => {
+        e.preventDefault();
+        li.classList.remove("drag-over");
+        const fromIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        const toIdx = parseInt(li.dataset.index, 10);
+        if (fromIdx === toIdx || isNaN(fromIdx)) return;
+        const arr = quiz.questions;
+        const [moved] = arr.splice(fromIdx, 1);
+        arr.splice(toIdx, 0, moved);
+        saveQuizzes();
+        renderQuestionsList();
+      });
+
       const textSpan = document.createElement("span");
       textSpan.className = "question-list-text";
       textSpan.textContent = q.text || "";
@@ -660,6 +805,7 @@ function renderQuestionsList() {
       delBtn.className = "secondary-btn small-btn question-delete-btn";
       delBtn.textContent = t("delete");
       delBtn.setAttribute("aria-label", t("delete"));
+      li.appendChild(handle);
       li.appendChild(textSpan);
       li.appendChild(delBtn);
       listEl.appendChild(li);
@@ -676,22 +822,135 @@ function getOptionImage(opt) {
   return typeof opt === "object" && opt && opt.image ? opt.image : null;
 }
 
+function updateCorrectAnswerSelect() {
+  const correctEl = document.getElementById("single-correct-answer");
+  if (!correctEl) return;
+  const n = editFormOptionImages.length;
+  const prevVal = correctEl.value;
+  correctEl.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = String.fromCharCode(65 + i);
+    correctEl.appendChild(opt);
+  }
+  const val = Math.min(Number(prevVal) || 0, n - 1);
+  correctEl.value = String(Math.max(0, val));
+}
+
+function renderOptionRows() {
+  const container = document.getElementById("option-rows-container");
+  const addBtn = document.getElementById("add-option-row-btn");
+  if (!container) return;
+  container.innerHTML = "";
+  const n = editFormOptionImages.length;
+  for (let i = 0; i < n; i++) {
+    const letter = OPTION_LETTERS[i];
+    const letterLabel = String.fromCharCode(65 + i);
+    const field = document.createElement("div");
+    field.className = "field option-with-photo option-row-field";
+    field.dataset.optionIndex = String(i);
+    field.innerHTML = `
+      <div class="option-row">
+        <label for="single-option-${letter}">${letterLabel}</label>
+        <input type="text" id="single-option-${letter}" placeholder="${letterLabel}" class="option-text-input" />
+        <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="${letter}" data-index="${i}">${t("addPhoto")}</button>
+        ${n > MIN_OPTIONS ? `<button type="button" class="secondary-btn small-btn remove-option-row-btn" data-index="${i}" title="${t("delete")}">×</button>` : ""}
+      </div>
+      <div id="single-option-image-wrap-${letter}" class="option-image-wrap hidden">
+        <input type="file" id="single-option-image-${letter}" accept="image/jpeg,image/png,image/webp" class="image-input small" />
+        <div id="single-option-image-preview-${letter}" class="image-preview small"></div>
+        <button type="button" class="option-image-remove secondary-btn small-btn" data-option="${letter}" data-index="${i}">${t("removeImage")}</button>
+      </div>
+    `;
+    container.appendChild(field);
+
+    const addPhotoBtn = field.querySelector(".option-photo-btn");
+    const wrap = field.querySelector(`#single-option-image-wrap-${letter}`);
+    const fileInput = field.querySelector(`#single-option-image-${letter}`);
+    const preview = field.querySelector(`#single-option-image-preview-${letter}`);
+    const removeImgBtn = field.querySelector(".option-image-remove");
+    const removeRowBtn = field.querySelector(".remove-option-row-btn");
+
+    if (addPhotoBtn && wrap) {
+      addPhotoBtn.addEventListener("click", () => {
+        wrap.classList.remove("hidden");
+        addPhotoBtn.classList.add("hidden");
+      });
+    }
+    if (fileInput) {
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file || !file.type.startsWith("image/")) return;
+        resizeImageToDataUrl(file).then((dataUrl) => {
+          editFormOptionImages[i] = dataUrl;
+          updateOptionImagePreview(i);
+        }).catch(() => {});
+      });
+    }
+    if (removeImgBtn) {
+      removeImgBtn.addEventListener("click", () => {
+        editFormOptionImages[i] = null;
+        updateOptionImagePreview(i);
+      });
+    }
+    if (removeRowBtn) {
+      removeRowBtn.addEventListener("click", () => removeOptionRow(i));
+    }
+  }
+  updateOptionImagePreviewsAll();
+  updateCorrectAnswerSelect();
+  const addBtnEl = document.getElementById("add-option-row-btn");
+  if (addBtnEl) addBtnEl.classList.toggle("hidden", editFormOptionImages.length >= MAX_OPTIONS);
+}
+
+function updateOptionImagePreviewsAll() {
+  for (let i = 0; i < editFormOptionImages.length; i++) {
+    updateOptionImagePreview(i);
+  }
+}
+
+function addOptionRow() {
+  if (editFormOptionImages.length >= MAX_OPTIONS) return;
+  editFormOptionImages.push(null);
+  renderOptionRows();
+}
+
+function removeOptionRow(index) {
+  if (editFormOptionImages.length <= MIN_OPTIONS) return;
+  const correctEl = document.getElementById("single-correct-answer");
+  const oldVal = correctEl ? parseInt(correctEl.value, 10) || 0 : 0;
+  editFormOptionImages.splice(index, 1);
+  let newVal = oldVal > index ? oldVal - 1 : (oldVal === index ? Math.min(index, editFormOptionImages.length - 1) : oldVal);
+  newVal = Math.max(0, Math.min(editFormOptionImages.length - 1, newVal));
+  if (correctEl) correctEl.value = String(newVal);
+  renderOptionRows();
+}
+
 function loadQuestionIntoForm(index) {
   const quiz = quizzes.find((q) => q.id === currentQuizForEdit);
   if (!quiz || !quiz.questions[index]) return;
   const q = quiz.questions[index];
   const textEl = document.getElementById("single-question-text");
-  const opts = ["single-option-a", "single-option-b", "single-option-c", "single-option-d", "single-option-e"];
   const correctEl = document.getElementById("single-correct-answer");
   if (textEl) textEl.value = q.text || "";
-  opts.forEach((id, i) => {
-    const el = document.getElementById(id);
-    const opt = q.options && q.options[i];
+  const opts = q.options || [];
+  const count = Math.max(MIN_OPTIONS, Math.min(MAX_OPTIONS, opts.length));
+  editFormOptionImages = [];
+  for (let i = 0; i < count; i++) {
+    const opt = opts[i];
+    editFormOptionImages.push(getOptionImage(opt) || null);
+  }
+  if (editFormOptionImages.length < MIN_OPTIONS) {
+    while (editFormOptionImages.length < MIN_OPTIONS) editFormOptionImages.push(null);
+  }
+  renderOptionRows();
+  opts.forEach((opt, i) => {
+    const letter = OPTION_LETTERS[i];
+    const el = document.getElementById(`single-option-${letter}`);
     if (el) el.value = getOptionText(opt) || "";
-    editFormOptionImages[i] = getOptionImage(opt) || null;
-    updateOptionImagePreview(i);
   });
-  if (correctEl) correctEl.value = String(q.correctIndex ?? 0);
+  if (correctEl) correctEl.value = String(Math.min(q.correctIndex ?? 0, editFormOptionImages.length - 1));
   editFormQuestionImage = q.image || null;
   updateQuestionImagePreview();
 }
@@ -740,22 +999,18 @@ function updateOptionImagePreview(optionIndex) {
 
 function clearQuestionForm() {
   const textEl = document.getElementById("single-question-text");
-  const opts = ["single-option-a", "single-option-b", "single-option-c", "single-option-d", "single-option-e"];
   const correctEl = document.getElementById("single-correct-answer");
   if (textEl) textEl.value = "";
-  opts.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-  if (correctEl) correctEl.value = "0";
   editFormQuestionImage = null;
-  editFormOptionImages = [null, null, null, null, null];
+  editFormOptionImages = [null, null];
   updateQuestionImagePreview();
-  [0, 1, 2, 3, 4].forEach(updateOptionImagePreview);
+  renderOptionRows();
+  if (correctEl) correctEl.value = "0";
 }
 
-function renderEditQuizList(page) {
+function renderEditQuizList(page, direction) {
   if (!editQuizListEl) return;
+  editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
   editQuizListEl.innerHTML = "";
   const start = page * QUIZ_PER_PAGE;
   const slice = quizzes.slice(start, start + QUIZ_PER_PAGE);
@@ -779,6 +1034,22 @@ function renderEditQuizList(page) {
   }
   const deleteWrapEdit = document.getElementById("delete-quiz-wrap-edit");
   if (deleteWrapEdit) deleteWrapEdit.classList.toggle("hidden", !selectedEditQuizId);
+
+  if (direction === 1 || direction === -1) {
+    editQuizListEl.classList.add(direction === 1 ? "quiz-list-slide-from-next" : "quiz-list-slide-from-prev");
+    editQuizListEl.offsetHeight;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        editQuizListEl.classList.add("quiz-list-slide-in");
+        const onEnd = () => {
+          editQuizListEl.removeEventListener("transitionend", onEnd);
+          editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
+        };
+        editQuizListEl.addEventListener("transitionend", onEnd);
+        setTimeout(onEnd, 400);
+      });
+    });
+  }
 }
 
 function renderEditQuizPagination() {
@@ -791,7 +1062,7 @@ function renderEditQuizPagination() {
   prevBtn.className = "secondary-btn small-btn";
   prevBtn.textContent = "←";
   prevBtn.disabled = page === 0;
-  prevBtn.addEventListener("click", () => { editQuizListCurrentPage = Math.max(0, page - 1); renderEditQuizList(editQuizListCurrentPage); renderEditQuizPagination(); });
+  prevBtn.addEventListener("click", () => { editQuizListCurrentPage = Math.max(0, page - 1); renderEditQuizList(editQuizListCurrentPage, -1); renderEditQuizPagination(); });
   const info = document.createElement("span");
   info.className = "pagination-info";
   info.textContent = `${page + 1} / ${totalPages}`;
@@ -800,7 +1071,7 @@ function renderEditQuizPagination() {
   nextBtn.className = "secondary-btn small-btn";
   nextBtn.textContent = "→";
   nextBtn.disabled = page >= totalPages - 1;
-  nextBtn.addEventListener("click", () => { editQuizListCurrentPage = Math.min(totalPages - 1, page + 1); renderEditQuizList(editQuizListCurrentPage); renderEditQuizPagination(); });
+  nextBtn.addEventListener("click", () => { editQuizListCurrentPage = Math.min(totalPages - 1, page + 1); renderEditQuizList(editQuizListCurrentPage, 1); renderEditQuizPagination(); });
   editQuizPaginationEl.appendChild(prevBtn);
   editQuizPaginationEl.appendChild(info);
   editQuizPaginationEl.appendChild(nextBtn);
@@ -1364,6 +1635,10 @@ function handleSaveQuiz() {
     alert("Please enter a quiz name.");
     return;
   }
+  if (isQuizNameDuplicate(name, editingQuizId || undefined)) {
+    alert(t("duplicateQuizName"));
+    return;
+  }
   if (!draftQuestions.length) {
     alert("You have not added any questions yet. Parse questions from the big box first.");
     return;
@@ -1453,7 +1728,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     if (rawTarget === "quiz-question-edit") targetViewKey = "quizQuestionEdit";
     if (!views[targetViewKey]) targetViewKey = "mainMenu";
     if (targetViewKey === "createQuiz") fromCreateQuizPage = false;
-    showView(targetViewKey);
+    showView(targetViewKey, "back");
     if (targetViewKey === "quizQuestionsList") renderQuestionsList();
   });
 });
@@ -1480,6 +1755,7 @@ if (questionsListEl) {
   questionsListEl.addEventListener("click", (e) => {
     const li = e.target.closest(".question-list-item");
     if (!li) return;
+    if (e.target.closest(".question-drag-handle")) return;
     if (e.target.closest(".question-delete-btn")) {
       e.preventDefault();
       e.stopPropagation();
@@ -1545,16 +1821,20 @@ const cancelQuestionEditBtn = document.getElementById("cancel-question-edit-btn"
 if (saveSingleQuestionBtn) {
   saveSingleQuestionBtn.addEventListener("click", () => {
     const textEl = document.getElementById("single-question-text");
-    const opts = ["single-option-a", "single-option-b", "single-option-c", "single-option-d", "single-option-e"];
     const correctEl = document.getElementById("single-correct-answer");
     const text = (textEl && textEl.value.trim()) || "";
-    const options = opts.map((id, i) => {
-      const el = document.getElementById(id);
+    const n = editFormOptionImages.length;
+    const options = [];
+    for (let i = 0; i < n; i++) {
+      const letter = OPTION_LETTERS[i];
+      const el = document.getElementById(`single-option-${letter}`);
       const optionText = (el && el.value.trim()) || "";
-      return { text: optionText, image: editFormOptionImages[i] || undefined };
-    });
+      options.push({ text: optionText, image: editFormOptionImages[i] || undefined });
+    }
     const correctIndex = correctEl ? parseInt(correctEl.value, 10) : 0;
-    if (!text || options.some((o) => !o.text)) return;
+    if (!text) return;
+    if (options.length < MIN_OPTIONS || options.length > MAX_OPTIONS) return;
+    if (options.some((o) => !(o.text && o.text.trim()) && !o.image)) return;
     const quiz = quizzes.find((q) => q.id === currentQuizForEdit);
     if (!quiz) return;
     const q = { text, image: editFormQuestionImage || undefined, options, correctIndex };
@@ -1612,34 +1892,10 @@ if (singleQuestionImageRemove) {
   });
 }
 
-["a", "b", "c", "d", "e"].forEach((letter, i) => {
-  const addBtn = document.querySelector(`.option-photo-btn[data-option="${letter}"]`);
-  const wrap = document.getElementById(`single-option-image-wrap-${letter}`);
-  const input = document.getElementById(`single-option-image-${letter}`);
-  const removeBtn = document.querySelector(`.option-image-remove[data-option="${letter}"]`);
-  if (addBtn && wrap) {
-    addBtn.addEventListener("click", () => {
-      wrap.classList.remove("hidden");
-      addBtn.classList.add("hidden");
-    });
-  }
-  if (input) {
-    input.addEventListener("change", (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file || !file.type.startsWith("image/")) return;
-      resizeImageToDataUrl(file).then((dataUrl) => {
-        editFormOptionImages[i] = dataUrl;
-        updateOptionImagePreview(i);
-      }).catch(() => {});
-    });
-  }
-  if (removeBtn) {
-    removeBtn.addEventListener("click", () => {
-      editFormOptionImages[i] = null;
-      updateOptionImagePreview(i);
-    });
-  }
-});
+const addOptionRowBtn = document.getElementById("add-option-row-btn");
+if (addOptionRowBtn) {
+  addOptionRowBtn.addEventListener("click", addOptionRow);
+}
 
 nextQuestionBtn.addEventListener("click", () => {
   nextQuestion();
@@ -1808,6 +2064,10 @@ if (newQuizBtn && newQuizNameModal && newQuizNameInput && newQuizNameOk && newQu
   newQuizNameOk.addEventListener("click", () => {
     const name = newQuizNameInput.value.trim();
     if (!name) return;
+    if (isQuizNameDuplicate(name, undefined)) {
+      alert(t("duplicateQuizName"));
+      return;
+    }
     newQuizNameModal.classList.add("hidden");
     const newQuiz = {
       id: `quiz_${Date.now()}`,
