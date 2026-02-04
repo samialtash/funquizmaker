@@ -400,11 +400,12 @@ function showView(name, direction) {
     current.offsetHeight;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        setTimeout(() => target.classList.add("view-slide-in"), 20);
+        setTimeout(() => target.classList.add("view-slide-in"), 80);
       });
     });
     current.addEventListener("transitionend", onDone);
-    setTimeout(onDone, 400);
+    target.addEventListener("transitionend", onDone);
+    setTimeout(onDone, 500);
   } else {
     if (current) {
       current.classList.remove("view-exit-left", "view-exit-right");
@@ -681,8 +682,8 @@ function renderQuizSelectList(page, direction) {
             quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
           };
           quizSelectListEl.addEventListener("transitionend", onEnd);
-          setTimeout(onEnd, 450);
-        }, 20);
+          setTimeout(onEnd, 500);
+        }, 80);
       });
     });
   }
@@ -1053,8 +1054,8 @@ function renderEditQuizList(page, direction) {
             editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
           };
           editQuizListEl.addEventListener("transitionend", onEnd);
-          setTimeout(onEnd, 450);
-        }, 20);
+          setTimeout(onEnd, 500);
+        }, 80);
       });
     });
   }
