@@ -65,8 +65,8 @@
       <div id="quiz-select-view" class="view">
         <button id="back-btn-select" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="quiz-select-title">Select Quiz</h1>
-        <div class="quiz-list-slide-wrap">
-          <div id="quiz-select-list" class="quiz-list"></div>
+        <div id="quiz-select-wrap" class="quiz-list-slide-wrap">
+          <div id="quiz-select-strip" class="quiz-list-strip"></div>
         </div>
         <div id="quiz-select-pagination" class="pagination-row hidden"></div>
         <div class="field inline-row space-between" style="margin-top: 16px;">
@@ -212,28 +212,28 @@
         <button id="back-btn-create" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="edit-quiz-title">Create / Edit Quiz</h1>
 
+        <div class="field create-quiz-divider">
+          <button id="new-quiz-btn" class="primary-btn">New quiz</button>
+        </div>
+
         <div class="field">
           <label id="edit-existing-label">Existing quizzes (select to edit)</label>
-          <div class="quiz-list-slide-wrap">
-            <div id="edit-quiz-list" class="quiz-list"></div>
+          <div id="edit-quiz-wrap" class="quiz-list-slide-wrap">
+            <div id="edit-quiz-strip" class="quiz-list-strip"></div>
           </div>
           <div id="edit-quiz-pagination" class="pagination-row hidden"></div>
           <div class="inline-row edit-existing-row" style="margin-top: 8px; gap: 8px;">
-            <button id="load-edit-quiz-btn" class="secondary-btn small-btn">Edit quiz</button>
-            <button id="edit-questions-btn" class="secondary-btn small-btn" type="button" title="Edit questions of this quiz">Edit questions</button>
+            <button id="load-edit-quiz-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true">Edit quiz</button>
+            <button id="edit-questions-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true" title="Edit questions of this quiz">Edit questions</button>
             <button id="clear-edit-quiz-btn" class="secondary-btn small-btn">Clear</button>
           </div>
           <div id="delete-quiz-wrap-edit" class="field delete-quiz-wrap hidden">
             <button type="button" id="delete-quiz-btn-edit" class="danger-btn">Delete quiz</button>
           </div>
           <p id="edit-quiz-hint" class="hint">
-            Select an existing quiz to edit, or create a new one below.
+            Select an existing quiz to edit.
           </p>
           <p id="edit-quiz-status" class="hint"></p>
-        </div>
-
-        <div class="field create-quiz-divider">
-          <button id="new-quiz-btn" class="primary-btn">New quiz</button>
         </div>
       </div>
 

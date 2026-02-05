@@ -1125,9 +1125,10 @@ pre.format-example {
   margin-top: 8px;
 }
 
-/* Quiz list slide wrap: fixed height, blur empty area, slide animation */
+/* Quiz list carousel: wrap = viewport (tek sayfa görünür), strip = kaydırılan satır, slide = 5 quiz */
 .quiz-list-slide-wrap {
   position: relative;
+  width: 100%;
   min-height: 340px;
   overflow: hidden;
   border-radius: var(--radius-md);
@@ -1136,6 +1137,9 @@ pre.format-example {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(148, 163, 184, 0.25);
   margin-bottom: 12px;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .quiz-list-slide-wrap::after {
@@ -1149,28 +1153,48 @@ pre.format-example {
   background: linear-gradient(to top, rgba(2, 6, 23, 0.9), transparent 60%);
 }
 
-.quiz-list-slide-wrap .quiz-list {
-  width: 100%;
-  min-width: 100%;
-  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+.quiz-list-strip {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-height: 340px;
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  cursor: grab;
 }
 
-.quiz-list-slide-wrap .quiz-list.quiz-list-slide-from-next {
-  transform: translateX(100%) translateZ(0);
+.quiz-list-strip:active {
+  cursor: grabbing;
 }
 
-.quiz-list-slide-wrap .quiz-list.quiz-list-slide-from-prev {
-  transform: translateX(-100%) translateZ(0);
+.quiz-list-strip.quiz-list-no-drag {
+  cursor: default;
 }
 
-.quiz-list-slide-wrap .quiz-list.quiz-list-slide-in {
-  transform: translateX(0) translateZ(0);
+.quiz-list-slide {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  min-height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* Genişlik JS'te px veriliyor; burada büyümesin */
+  min-width: 0;
 }
 
-/* Quiz list (select / edit): 5 per page */
+/* Tek sayfa veya boş liste için strip içinde tek slide */
+.quiz-list-slide .quiz-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Quiz list (select / edit): 5 per page – items inside each slide */
 .quiz-list {
   display: flex;
   flex-direction: column;
@@ -1199,15 +1223,64 @@ pre.format-example {
   box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.5);
 }
 
+/* Boş slot: her sayfada her zaman 5 satır */
+.quiz-list-item-empty {
+  cursor: default;
+  pointer-events: none;
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.quiz-list-item-empty:hover {
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.quiz-list-name-empty {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.quiz-list-item .quiz-list-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .quiz-list-item .quiz-list-name {
   flex: 1;
   font-weight: 600;
   font-size: 1rem;
+  min-width: 0;
 }
 
 .quiz-list-item .quiz-list-meta {
   font-size: 0.88rem;
   color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* Seçili satırda sağda: Quiz'i düzenle, Soruları düzenle (sadece edit listesinde) */
+.quiz-list-item-actions {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.quiz-list-item.selected .quiz-list-item-actions {
+  display: flex;
+}
+
+.quiz-list-item-actions .secondary-btn {
+  white-space: nowrap;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+/* Alttaki Edit quiz / Edit questions artık satırda; bu butonları gizle */
+.hidden-if-row-actions {
+  display: none !important;
 }
 
 .pagination-row {

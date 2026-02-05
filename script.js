@@ -34,7 +34,7 @@ const translations = {
     newQuiz: "New quiz",
     load: "Load",
     clear: "Clear",
-    editQuizHint: "Select an existing quiz to add more questions. If empty, a new quiz will be created.",
+    editQuizHint: "Select an existing quiz below to edit.",
     quizName: "Quiz Name",
     description: "Description (optional)",
     pasteQuestions: "Paste your questions here (supports many questions in one go)",
@@ -122,7 +122,7 @@ const translations = {
     newQuiz: "Yeni quiz",
     load: "Yükle",
     clear: "Temizle",
-    editQuizHint: "Daha fazla soru eklemek için mevcut bir quiz seçin. Boş bırakırsanız yeni quiz oluşturulur.",
+    editQuizHint: "Düzenlemek için aşağıdan mevcut bir quiz seçin.",
     quizName: "Quiz Adı",
     description: "Açıklama (isteğe bağlı)",
     pasteQuestions: "Sorularınızı buraya yapıştırın (çok sayıda soru desteklenir)",
@@ -297,7 +297,8 @@ let editQuizListCurrentPage = 0;
 let selectedPlayQuizId = "";
 let selectedEditQuizId = "";
 
-const quizSelectListEl = document.getElementById("quiz-select-list");
+const quizSelectWrapEl = document.getElementById("quiz-select-wrap");
+const quizSelectStripEl = document.getElementById("quiz-select-strip");
 const quizSelectPaginationEl = document.getElementById("quiz-select-pagination");
 const startQuizBtn = document.getElementById("start-quiz-btn");
 const noQuizMsg = document.getElementById("no-quiz-msg");
@@ -327,7 +328,8 @@ const parsedQuestionsSummaryEl = document.getElementById(
   "parsed-questions-summary"
 );
 const saveQuizBtn = document.getElementById("save-quiz-btn");
-const editQuizListEl = document.getElementById("edit-quiz-list");
+const editQuizWrapEl = document.getElementById("edit-quiz-wrap");
+const editQuizStripEl = document.getElementById("edit-quiz-strip");
 const editQuizPaginationEl = document.getElementById("edit-quiz-pagination");
 const loadEditQuizBtn = document.getElementById("load-edit-quiz-btn");
 const newQuizBtn = document.getElementById("new-quiz-btn");
@@ -675,54 +677,136 @@ function applyTranslations() {
   updateFullscreenBtnText();
 }
 
-function renderQuizSelectList(page, direction) {
-  if (!quizSelectListEl) return;
-  quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
-  quizSelectListEl.innerHTML = "";
-  if (!quizzes.length) {
-    noQuizMsg.classList.remove("hidden");
-    startQuizBtn.disabled = true;
-    if (quizSelectPaginationEl) quizSelectPaginationEl.classList.add("hidden");
-    return;
+function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, setCurrentPage, onPageChange) {
+  if (!wrapEl || !stripEl) return;
+  const DURATION_MS = 350;
+  const THRESHOLD_RATIO = 0.25;
+
+  function applyTransform(pageIndex, dragPx, withTransition) {
+    if (!wrapEl.offsetWidth) return;
+    const w = wrapEl.offsetWidth;
+    stripEl.style.transition = withTransition ? `transform ${DURATION_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : "none";
+    stripEl.style.transform = `translateX(${-pageIndex * w + (dragPx || 0)}px)`;
   }
-  noQuizMsg.classList.add("hidden");
-  const start = page * QUIZ_PER_PAGE;
-  const slice = quizzes.slice(start, start + QUIZ_PER_PAGE);
-  slice.forEach((quiz) => {
-    const item = document.createElement("div");
-    item.className = "quiz-list-item" + (selectedPlayQuizId === quiz.id ? " selected" : "");
-    item.dataset.quizId = quiz.id;
-    item.innerHTML = `<span class="quiz-list-name">${escapeHtml(quiz.name)}</span><span class="quiz-list-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}</span>`;
-    item.addEventListener("click", () => {
-      selectedPlayQuizId = quiz.id;
-      renderQuizSelectList(quizSelectCurrentPage);
-      startQuizBtn.disabled = false;
-    });
-    quizSelectListEl.appendChild(item);
-  });
-  const totalPages = Math.ceil(quizzes.length / QUIZ_PER_PAGE);
+
+  let startX = 0;
+  let startPage = 0;
+  let wrapWidth = 0;
+  let lastDelta = 0;
+  let dragging = false;
+
+  function onPointerDown(e) {
+    if (getTotalPages() <= 1) return;
+    startX = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    startPage = getCurrentPage();
+    wrapWidth = wrapEl.offsetWidth;
+    lastDelta = 0;
+    dragging = true;
+    stripEl.classList.remove("quiz-list-no-drag");
+    stripEl.style.transition = "none";
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const x = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : startX);
+    let delta = x - startX;
+    const totalPages = getTotalPages();
+    if (startPage === 0 && delta > 0) delta = delta * 0.4;
+    if (startPage === totalPages - 1 && delta < 0) delta = delta * 0.4;
+    lastDelta = delta;
+    applyTransform(startPage, delta, false);
+  }
+
+  function onPointerUp(e) {
+    if (!dragging) return;
+    dragging = false;
+    stripEl.classList.add("quiz-list-no-drag");
+    const totalPages = getTotalPages();
+    const threshold = wrapWidth * THRESHOLD_RATIO;
+    let nextPage = startPage;
+    if (lastDelta < -threshold && startPage < totalPages - 1) nextPage = startPage + 1;
+    else if (lastDelta > threshold && startPage > 0) nextPage = startPage - 1;
+    setCurrentPage(nextPage);
+    applyTransform(nextPage, 0, true);
+    onPageChange();
+  }
+
+  wrapEl.addEventListener("pointerdown", onPointerDown, { passive: true });
+  wrapEl.addEventListener("pointermove", onPointerMove, { passive: true });
+  wrapEl.addEventListener("pointerup", onPointerUp, { passive: true });
+  wrapEl.addEventListener("pointerleave", onPointerUp, { passive: true });
+  wrapEl.addEventListener("touchstart", (e) => { if (e.touches.length === 1) onPointerDown(e); }, { passive: true });
+  wrapEl.addEventListener("touchmove", (e) => {
+    onPointerMove(e);
+    if (dragging && e.cancelable) e.preventDefault();
+  }, { passive: false });
+  wrapEl.addEventListener("touchend", (e) => { if (e.changedTouches.length) onPointerUp(e); }, { passive: true });
+}
+
+function renderQuizSelectList(page, _direction) {
+  if (!quizSelectStripEl || !quizSelectWrapEl) return;
+  quizSelectStripEl.innerHTML = "";
+  noQuizMsg.classList.toggle("hidden", !!quizzes.length);
+  startQuizBtn.disabled = !selectedPlayQuizId;
+  // Her sayfada tam 5 quiz: sayfa sayısı = ceil(quiz sayısı / 5), en az 1 sayfa
+  const totalPages = quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE);
+  const wrapWidth = Math.max(quizSelectWrapEl.offsetWidth || 320, 280);
+
+  for (let p = 0; p < totalPages; p++) {
+    const slide = document.createElement("div");
+    slide.className = "quiz-list-slide";
+    slide.style.width = wrapWidth + "px";
+    slide.style.minWidth = wrapWidth + "px";
+    slide.style.maxWidth = wrapWidth + "px";
+    const start = p * QUIZ_PER_PAGE;
+    const slice = quizzes.slice(start, start + QUIZ_PER_PAGE);
+    for (let i = 0; i < QUIZ_PER_PAGE; i++) {
+      const quiz = slice[i];
+      if (quiz) {
+        const item = document.createElement("div");
+        item.className = "quiz-list-item" + (selectedPlayQuizId === quiz.id ? " selected" : "");
+        item.dataset.quizId = quiz.id;
+        item.innerHTML = `<span class="quiz-list-name">${escapeHtml(quiz.name)}</span><span class="quiz-list-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}</span>`;
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedPlayQuizId = quiz.id;
+          renderQuizSelectList(quizSelectCurrentPage);
+          startQuizBtn.disabled = false;
+        });
+        slide.appendChild(item);
+      } else {
+        const empty = document.createElement("div");
+        empty.className = "quiz-list-item quiz-list-item-empty";
+        empty.innerHTML = `<span class="quiz-list-name quiz-list-name-empty">—</span>`;
+        empty.setAttribute("aria-hidden", "true");
+        slide.appendChild(empty);
+      }
+    }
+    quizSelectStripEl.appendChild(slide);
+  }
+
+  quizSelectStripEl.style.width = wrapWidth * totalPages + "px";
+  quizSelectStripEl.style.transition = "none";
+  quizSelectStripEl.style.transform = `translateX(${-Math.min(page, totalPages - 1) * wrapWidth}px)`;
+  quizSelectStripEl.classList.toggle("quiz-list-no-drag", totalPages <= 1);
+  requestAnimationFrame(() => { quizSelectStripEl.style.transition = `transform 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`; });
+
   if (quizSelectPaginationEl) {
     quizSelectPaginationEl.classList.toggle("hidden", totalPages <= 1);
     renderQuizSelectPagination();
   }
   startQuizBtn.disabled = !selectedPlayQuizId;
 
-  if (direction === 1 || direction === -1) {
-    quizSelectListEl.classList.add(direction === 1 ? "quiz-list-slide-from-next" : "quiz-list-slide-from-prev");
-    quizSelectListEl.offsetHeight;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          quizSelectListEl.classList.add("quiz-list-slide-in");
-          const onEnd = () => {
-            quizSelectListEl.removeEventListener("transitionend", onEnd);
-            quizSelectListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
-          };
-          quizSelectListEl.addEventListener("transitionend", onEnd);
-          setTimeout(onEnd, 500);
-        }, 80);
-      });
-    });
+  if (totalPages > 1 && !quizSelectWrapEl.dataset.carouselSetup) {
+    quizSelectWrapEl.dataset.carouselSetup = "1";
+    setupQuizListCarousel(
+      quizSelectWrapEl,
+      quizSelectStripEl,
+      () => (quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE)),
+      () => quizSelectCurrentPage,
+      (n) => { quizSelectCurrentPage = n; },
+      () => { renderQuizSelectPagination(); }
+    );
   }
 }
 
@@ -731,12 +815,24 @@ function renderQuizSelectPagination() {
   if (!quizSelectPaginationEl || totalPages <= 1) return;
   quizSelectPaginationEl.innerHTML = "";
   const page = quizSelectCurrentPage;
+
+  function applySelectTransform(p, withTransition) {
+    if (!quizSelectStripEl || !quizSelectWrapEl) return;
+    quizSelectStripEl.style.transition = withTransition ? "transform 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none";
+    quizSelectStripEl.style.transform = `translateX(${-p * quizSelectWrapEl.offsetWidth}px)`;
+  }
+
   const prevBtn = document.createElement("button");
   prevBtn.type = "button";
   prevBtn.className = "secondary-btn small-btn";
   prevBtn.textContent = "←";
   prevBtn.disabled = page === 0;
-  prevBtn.addEventListener("click", () => { quizSelectCurrentPage = Math.max(0, page - 1); renderQuizSelectList(quizSelectCurrentPage, -1); renderQuizSelectPagination(); });
+  prevBtn.addEventListener("click", () => {
+    if (page <= 0) return;
+    quizSelectCurrentPage = page - 1;
+    applySelectTransform(quizSelectCurrentPage, true);
+    renderQuizSelectPagination();
+  });
   const info = document.createElement("span");
   info.className = "pagination-info";
   info.textContent = `${page + 1} / ${totalPages}`;
@@ -745,7 +841,12 @@ function renderQuizSelectPagination() {
   nextBtn.className = "secondary-btn small-btn";
   nextBtn.textContent = "→";
   nextBtn.disabled = page >= totalPages - 1;
-  nextBtn.addEventListener("click", () => { quizSelectCurrentPage = Math.min(totalPages - 1, page + 1); renderQuizSelectList(quizSelectCurrentPage, 1); renderQuizSelectPagination(); });
+  nextBtn.addEventListener("click", () => {
+    if (page >= totalPages - 1) return;
+    quizSelectCurrentPage = page + 1;
+    applySelectTransform(quizSelectCurrentPage, true);
+    renderQuizSelectPagination();
+  });
   quizSelectPaginationEl.appendChild(prevBtn);
   quizSelectPaginationEl.appendChild(info);
   quizSelectPaginationEl.appendChild(nextBtn);
@@ -954,14 +1055,36 @@ function updateOptionImagePreviewsAll() {
   }
 }
 
+function getCurrentOptionTexts() {
+  const texts = [];
+  for (let i = 0; i < editFormOptionImages.length; i++) {
+    const letter = OPTION_LETTERS[i];
+    const el = document.getElementById(`single-option-${letter}`);
+    texts.push(el ? el.value : "");
+  }
+  return texts;
+}
+
+function setOptionTexts(texts) {
+  for (let i = 0; i < texts.length && i < editFormOptionImages.length; i++) {
+    const letter = OPTION_LETTERS[i];
+    const el = document.getElementById(`single-option-${letter}`);
+    if (el) el.value = texts[i];
+  }
+}
+
 function addOptionRow() {
   if (editFormOptionImages.length >= MAX_OPTIONS) return;
+  const savedTexts = getCurrentOptionTexts();
   editFormOptionImages.push(null);
   renderOptionRows();
+  setOptionTexts(savedTexts);
 }
 
 function removeOptionRow(index) {
   if (editFormOptionImages.length <= MIN_OPTIONS) return;
+  const savedTexts = getCurrentOptionTexts();
+  savedTexts.splice(index, 1);
   const correctEl = document.getElementById("single-correct-answer");
   const oldVal = correctEl ? parseInt(correctEl.value, 10) || 0 : 0;
   editFormOptionImages.splice(index, 1);
@@ -969,6 +1092,7 @@ function removeOptionRow(index) {
   newVal = Math.max(0, Math.min(editFormOptionImages.length - 1, newVal));
   if (correctEl) correctEl.value = String(newVal);
   renderOptionRows();
+  setOptionTexts(savedTexts);
 }
 
 function loadQuestionIntoForm(index) {
@@ -1052,26 +1176,79 @@ function clearQuestionForm() {
   if (correctEl) correctEl.value = "0";
 }
 
-function renderEditQuizList(page, direction) {
-  if (!editQuizListEl) return;
-  editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
-  editQuizListEl.innerHTML = "";
-  const start = page * QUIZ_PER_PAGE;
-  const slice = quizzes.slice(start, start + QUIZ_PER_PAGE);
-  slice.forEach((quiz) => {
-    const item = document.createElement("div");
-    item.className = "quiz-list-item" + (selectedEditQuizId === quiz.id ? " selected" : "");
-    item.dataset.quizId = quiz.id;
-    item.innerHTML = `<span class="quiz-list-name">${escapeHtml(quiz.name)}</span><span class="quiz-list-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}</span>`;
-    item.addEventListener("click", () => {
-      selectedEditQuizId = quiz.id;
-      renderEditQuizList(editQuizListCurrentPage);
-      renderEditQuizPagination();
-      updateEditQuestionsBtn();
-    });
-    editQuizListEl.appendChild(item);
-  });
-  const totalPages = Math.ceil(quizzes.length / QUIZ_PER_PAGE);
+function renderEditQuizList(page, _direction) {
+  if (!editQuizStripEl || !editQuizWrapEl) return;
+  editQuizStripEl.innerHTML = "";
+  // Her sayfada tam 5 quiz: sayfa sayısı = ceil(quiz sayısı / 5), en az 1 sayfa
+  const totalPages = quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE);
+  const wrapWidth = Math.max(editQuizWrapEl.offsetWidth || 320, 280);
+
+  for (let p = 0; p < totalPages; p++) {
+    const slide = document.createElement("div");
+    slide.className = "quiz-list-slide";
+    slide.style.width = wrapWidth + "px";
+    slide.style.minWidth = wrapWidth + "px";
+    slide.style.maxWidth = wrapWidth + "px";
+    const start = p * QUIZ_PER_PAGE;
+    const slice = quizzes.slice(start, start + QUIZ_PER_PAGE);
+    for (let i = 0; i < QUIZ_PER_PAGE; i++) {
+      const quiz = slice[i];
+      if (quiz) {
+        const item = document.createElement("div");
+        item.className = "quiz-list-item" + (selectedEditQuizId === quiz.id ? " selected" : "");
+        item.dataset.quizId = quiz.id;
+        const textDiv = document.createElement("div");
+        textDiv.className = "quiz-list-item-text";
+        textDiv.innerHTML = `<span class="quiz-list-name">${escapeHtml(quiz.name)}</span><span class="quiz-list-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}</span>`;
+        textDiv.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedEditQuizId = quiz.id;
+          renderEditQuizList(editQuizListCurrentPage);
+          renderEditQuizPagination();
+          updateEditQuestionsBtn();
+        });
+        const actions = document.createElement("div");
+        actions.className = "quiz-list-item-actions";
+        const btnEdit = document.createElement("button");
+        btnEdit.type = "button";
+        btnEdit.className = "secondary-btn small-btn";
+        btnEdit.textContent = t("loadSelected");
+        btnEdit.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedEditQuizId = quiz.id;
+          doLoadEditQuiz(quiz.id);
+        });
+        const btnQuestions = document.createElement("button");
+        btnQuestions.type = "button";
+        btnQuestions.className = "secondary-btn small-btn";
+        btnQuestions.textContent = t("editQuestions");
+        btnQuestions.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedEditQuizId = quiz.id;
+          doEditQuestions(quiz.id);
+        });
+        actions.appendChild(btnEdit);
+        actions.appendChild(btnQuestions);
+        item.appendChild(textDiv);
+        item.appendChild(actions);
+        slide.appendChild(item);
+      } else {
+        const empty = document.createElement("div");
+        empty.className = "quiz-list-item quiz-list-item-empty";
+        empty.innerHTML = `<span class="quiz-list-name quiz-list-name-empty">—</span>`;
+        empty.setAttribute("aria-hidden", "true");
+        slide.appendChild(empty);
+      }
+    }
+    editQuizStripEl.appendChild(slide);
+  }
+
+  editQuizStripEl.style.width = wrapWidth * totalPages + "px";
+  editQuizStripEl.style.transition = "none";
+  editQuizStripEl.style.transform = `translateX(${-Math.min(page, totalPages - 1) * wrapWidth}px)`;
+  editQuizStripEl.classList.toggle("quiz-list-no-drag", totalPages <= 1);
+  requestAnimationFrame(() => { editQuizStripEl.style.transition = `transform 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`; });
+
   if (editQuizPaginationEl) {
     editQuizPaginationEl.classList.toggle("hidden", totalPages <= 1);
     renderEditQuizPagination();
@@ -1079,22 +1256,16 @@ function renderEditQuizList(page, direction) {
   const deleteWrapEdit = document.getElementById("delete-quiz-wrap-edit");
   if (deleteWrapEdit) deleteWrapEdit.classList.toggle("hidden", !selectedEditQuizId);
 
-  if (direction === 1 || direction === -1) {
-    editQuizListEl.classList.add(direction === 1 ? "quiz-list-slide-from-next" : "quiz-list-slide-from-prev");
-    editQuizListEl.offsetHeight;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          editQuizListEl.classList.add("quiz-list-slide-in");
-          const onEnd = () => {
-            editQuizListEl.removeEventListener("transitionend", onEnd);
-            editQuizListEl.classList.remove("quiz-list-slide-from-next", "quiz-list-slide-from-prev", "quiz-list-slide-in");
-          };
-          editQuizListEl.addEventListener("transitionend", onEnd);
-          setTimeout(onEnd, 500);
-        }, 80);
-      });
-    });
+  if (totalPages > 1 && !editQuizWrapEl.dataset.carouselSetup) {
+    editQuizWrapEl.dataset.carouselSetup = "1";
+    setupQuizListCarousel(
+      editQuizWrapEl,
+      editQuizStripEl,
+      () => (quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE)),
+      () => editQuizListCurrentPage,
+      (n) => { editQuizListCurrentPage = n; },
+      () => { renderEditQuizPagination(); updateEditQuestionsBtn(); }
+    );
   }
 }
 
@@ -1103,12 +1274,24 @@ function renderEditQuizPagination() {
   if (!editQuizPaginationEl || totalPages <= 1) return;
   editQuizPaginationEl.innerHTML = "";
   const page = editQuizListCurrentPage;
+
+  function applyEditTransform(p, withTransition) {
+    if (!editQuizStripEl || !editQuizWrapEl) return;
+    editQuizStripEl.style.transition = withTransition ? "transform 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none";
+    editQuizStripEl.style.transform = `translateX(${-p * editQuizWrapEl.offsetWidth}px)`;
+  }
+
   const prevBtn = document.createElement("button");
   prevBtn.type = "button";
   prevBtn.className = "secondary-btn small-btn";
   prevBtn.textContent = "←";
   prevBtn.disabled = page === 0;
-  prevBtn.addEventListener("click", () => { editQuizListCurrentPage = Math.max(0, page - 1); renderEditQuizList(editQuizListCurrentPage, -1); renderEditQuizPagination(); });
+  prevBtn.addEventListener("click", () => {
+    if (page <= 0) return;
+    editQuizListCurrentPage = page - 1;
+    applyEditTransform(editQuizListCurrentPage, true);
+    renderEditQuizPagination();
+  });
   const info = document.createElement("span");
   info.className = "pagination-info";
   info.textContent = `${page + 1} / ${totalPages}`;
@@ -1117,7 +1300,12 @@ function renderEditQuizPagination() {
   nextBtn.className = "secondary-btn small-btn";
   nextBtn.textContent = "→";
   nextBtn.disabled = page >= totalPages - 1;
-  nextBtn.addEventListener("click", () => { editQuizListCurrentPage = Math.min(totalPages - 1, page + 1); renderEditQuizList(editQuizListCurrentPage, 1); renderEditQuizPagination(); });
+  nextBtn.addEventListener("click", () => {
+    if (page >= totalPages - 1) return;
+    editQuizListCurrentPage = page + 1;
+    applyEditTransform(editQuizListCurrentPage, true);
+    renderEditQuizPagination();
+  });
   editQuizPaginationEl.appendChild(prevBtn);
   editQuizPaginationEl.appendChild(info);
   editQuizPaginationEl.appendChild(nextBtn);
@@ -1748,14 +1936,18 @@ if (isIOS) {
 
 // Event wiring
 playQuizBtn.addEventListener("click", () => {
-  refreshQuizSelect();
   showView("quizSelect");
+  requestAnimationFrame(() => {
+    refreshQuizSelect();
+  });
 });
 
 createQuizBtn.addEventListener("click", () => {
   resetCreateQuizForm();
-  refreshEditQuizSelect();
   showView("createQuiz");
+  requestAnimationFrame(() => {
+    refreshEditQuizSelect();
+  });
 });
 
 const exportQuizzesBtn = document.getElementById("export-quizzes-btn");
@@ -1799,13 +1991,7 @@ startQuizBtn.addEventListener("click", () => {
 
 const editQuestionsBtn = document.getElementById("edit-questions-btn");
 if (editQuestionsBtn) {
-  editQuestionsBtn.addEventListener("click", () => {
-    const quizId = selectedEditQuizId || editingQuizId || "";
-    if (!quizId) return;
-    currentQuizForEdit = quizId;
-    showView("quizQuestionsList");
-    renderQuestionsList();
-  });
+  editQuestionsBtn.addEventListener("click", () => doEditQuestions());
 }
 
 const questionsListEl = document.getElementById("questions-list");
@@ -2042,30 +2228,42 @@ if (pasteQuestionsBtn && bulkInput) {
   });
 }
 
+function doLoadEditQuiz(quizId) {
+  const id = quizId || selectedEditQuizId;
+  if (!id) {
+    resetCreateQuizForm();
+    return;
+  }
+  const quiz = quizzes.find((q) => q.id === id);
+  if (!quiz) return;
+  selectedEditQuizId = id;
+  editingQuizId = quiz.id;
+  currentQuizForEdit = quiz.id;
+  quizNameInput.value = quiz.name;
+  quizDescriptionInput.value = quiz.description || "";
+  draftQuestions = quiz.questions.slice();
+  showManualQuestionsChips = false;
+  showView("quizEditQuestions");
+  renderPrepareQuestionsChips();
+  if (editQuizStatusEl) {
+    editQuizStatusEl.textContent = `Editing quiz "${quiz.name}" with ${draftQuestions.length} existing questions. New parsed questions will be appended.`;
+  }
+  parsedQuestionsSummaryEl.classList.add("hidden");
+  parseStatusEl.textContent = "";
+  updateEditQuestionsBtn();
+}
+
+function doEditQuestions(quizId) {
+  const id = quizId || selectedEditQuizId || editingQuizId || "";
+  if (!id) return;
+  selectedEditQuizId = id;
+  currentQuizForEdit = id;
+  showView("quizQuestionsList");
+  renderQuestionsList();
+}
+
 if (loadEditQuizBtn) {
-  loadEditQuizBtn.addEventListener("click", () => {
-    const id = selectedEditQuizId;
-    if (!id) {
-      resetCreateQuizForm();
-      return;
-    }
-    const quiz = quizzes.find((q) => q.id === id);
-    if (!quiz) return;
-    editingQuizId = quiz.id;
-    currentQuizForEdit = quiz.id;
-    quizNameInput.value = quiz.name;
-    quizDescriptionInput.value = quiz.description || "";
-    draftQuestions = quiz.questions.slice();
-    showManualQuestionsChips = false;
-    showView("quizEditQuestions");
-    renderPrepareQuestionsChips();
-    if (editQuizStatusEl) {
-      editQuizStatusEl.textContent = `Editing quiz "${quiz.name}" with ${draftQuestions.length} existing questions. New parsed questions will be appended.`;
-    }
-    parsedQuestionsSummaryEl.classList.add("hidden");
-    parseStatusEl.textContent = "";
-    updateEditQuestionsBtn();
-  });
+  loadEditQuizBtn.addEventListener("click", () => doLoadEditQuiz());
 }
 
 if (clearEditQuizBtn) {
