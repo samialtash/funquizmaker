@@ -992,11 +992,19 @@ pre.format-example {
   color: rgba(248, 113, 113, 0.95);
 }
 
-/* Quiz start toggles: soru sırası + şık sırası */
+/* Quiz start toggles: soru sırası + şık sırası, aşağı yukarı simetrik, ilk harfler hizalı */
 .quiz-start-toggles {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 200px;
+}
+
+.quiz-start-toggles .toggle-pill {
+  width: 100%;
+  min-width: 200px;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 /* Shuffle toggle */
@@ -1445,6 +1453,18 @@ pre.format-example {
 .image-upload-label,
 .option-image-wrap .image-input {
   margin-bottom: 6px;
+}
+
+/* Şık fotoğrafı: dosya seçimi sadece "Fotoğraf ekle" ile tetiklenir, input gizli */
+.option-image-wrap .input-trigger-only {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
 }
 
 .image-field .image-input,

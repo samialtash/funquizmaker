@@ -1022,7 +1022,7 @@ function renderOptionRows() {
         ${n > MIN_OPTIONS ? `<button type="button" class="secondary-btn small-btn remove-option-row-btn" data-index="${i}" title="${t("delete")}">×</button>` : ""}
       </div>
       <div id="single-option-image-wrap-${letter}" class="option-image-wrap hidden">
-        <input type="file" id="single-option-image-${letter}" accept="image/jpeg,image/png,image/webp" class="image-input small" />
+        <input type="file" id="single-option-image-${letter}" accept="image/jpeg,image/png,image/webp" class="image-input small input-trigger-only" tabindex="-1" aria-hidden="true" />
         <div id="single-option-image-preview-${letter}" class="image-preview small"></div>
         <button type="button" class="option-image-remove secondary-btn small-btn" data-option="${letter}" data-index="${i}">${t("removeImage")}</button>
       </div>
@@ -1036,10 +1036,9 @@ function renderOptionRows() {
     const removeImgBtn = field.querySelector(".option-image-remove");
     const removeRowBtn = field.querySelector(".remove-option-row-btn");
 
-    if (addPhotoBtn && wrap) {
+    if (addPhotoBtn && fileInput) {
       addPhotoBtn.addEventListener("click", () => {
-        wrap.classList.remove("hidden");
-        addPhotoBtn.classList.add("hidden");
+        fileInput.click();
       });
     }
     if (fileInput) {
@@ -2196,13 +2195,13 @@ nextQuestionBtn.addEventListener("click", () => {
 exitQuizBtn.addEventListener("click", () => {
   if (!currentQuiz) {
     exitFullScreen();
-    showView("mainMenu");
+    showView("mainMenu", "back");
     return;
   }
   const totalAnswered = currentQuestionIndex;
   if (totalAnswered === 0) {
     exitFullScreen();
-    showView("mainMenu");
+    showView("mainMenu", "back");
     return;
   }
   /* Skor toplam soru sayısına göre: doğru sayısı / quiz'deki toplam soru */
