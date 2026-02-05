@@ -992,6 +992,13 @@ pre.format-example {
   color: rgba(248, 113, 113, 0.95);
 }
 
+/* Quiz start toggles: soru sırası + şık sırası */
+.quiz-start-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Shuffle toggle */
 
 .toggle-pill {

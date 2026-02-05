@@ -71,13 +71,19 @@
         <div id="quiz-select-pagination" class="pagination-row hidden"></div>
         <div class="field inline-row space-between" style="margin-top: 16px;">
           <button id="start-quiz-btn" class="primary-btn">Start Quiz (Full Screen)</button>
-          <button id="shuffle-toggle" class="secondary-btn toggle-pill">
-            <span class="toggle-indicator"></span>
-            <span id="shuffle-label" class="toggle-label">Random question order</span>
-          </button>
+          <div class="quiz-start-toggles">
+            <button id="shuffle-toggle" class="secondary-btn toggle-pill">
+              <span class="toggle-indicator"></span>
+              <span id="shuffle-label" class="toggle-label">Random question order</span>
+            </button>
+            <button id="shuffle-options-toggle" class="secondary-btn toggle-pill">
+              <span class="toggle-indicator"></span>
+              <span id="shuffle-options-label" class="toggle-label">Shuffle option order</span>
+            </button>
+          </div>
         </div>
-        <p id="no-quiz-msg" class="hint hidden">
-          No quizzes yet. Go back and create one first.
+        <p id="no-quiz-msg" class="hint hidden" aria-live="polite">
+          <!-- Metin script ile (noQuizzes) doldurulur: Kayıtlı Quiz Yok / No saved quizzes. -->
         </p>
       </div>
 
@@ -218,6 +224,9 @@
 
         <div class="field">
           <label id="edit-existing-label">Existing quizzes (select to edit)</label>
+          <p id="no-quiz-msg-edit" class="hint hidden" aria-live="polite">
+            <!-- Quiz yokken: Kayıtlı Quiz Yok (script ile doldurulur) -->
+          </p>
           <div id="edit-quiz-wrap" class="quiz-list-slide-wrap">
             <div id="edit-quiz-strip" class="quiz-list-strip"></div>
           </div>

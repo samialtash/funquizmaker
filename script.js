@@ -2,6 +2,7 @@
 const STORAGE_KEY = "custom_quizzes_v1";
 const SOUND_ENABLED_KEY = "quiz_sound_enabled_v1";
 const SHUFFLE_ENABLED_KEY = "quiz_shuffle_enabled_v1";
+const SHUFFLE_OPTIONS_ENABLED_KEY = "quiz_shuffle_options_enabled_v1";
 const LANG_KEY = "quiz_lang_v1";
 
 // Translations: en + tr
@@ -19,7 +20,8 @@ const translations = {
     chooseQuiz: "Choose a quiz",
     startQuiz: "Start Quiz (Full Screen)",
     randomOrder: "Random question order",
-    noQuizzes: "No quizzes yet. Go back and create one first.",
+    shuffleOptions: "Shuffle option order",
+    noQuizzes: "No saved quizzes.",
     back: "← Back",
     next: "Next",
     exit: "Exit",
@@ -107,7 +109,8 @@ const translations = {
     chooseQuiz: "Quiz seçin",
     startQuiz: "Quiz Başlat (Tam Ekran)",
     randomOrder: "Soruları rastgele sırala",
-    noQuizzes: "Henüz quiz yok. Önce bir quiz oluşturun.",
+    shuffleOptions: "Şıkları rastgele sırala",
+    noQuizzes: "Kayıtlı Quiz Yok",
     back: "← Geri",
     next: "İleri",
     exit: "Çıkış",
@@ -253,6 +256,7 @@ let currentScore = 0;
 let lastRunQuizId = null;
 let soundEnabled = true;
 let shuffleEnabled = false;
+let shuffleOptionsEnabled = false;
 let editingQuizId = null;
 let currentLang = "en";
 let currentQuizForEdit = null;
@@ -341,6 +345,7 @@ const clearEditQuizBtn = document.getElementById("clear-edit-quiz-btn");
 const editQuizStatusEl = document.getElementById("edit-quiz-status");
 const soundToggleBtn = document.getElementById("sound-toggle");
 const shuffleToggleBtn = document.getElementById("shuffle-toggle");
+const shuffleOptionsToggleBtn = document.getElementById("shuffle-options-toggle");
 
 function isQuizNameDuplicate(name, excludeQuizId) {
   const n = (name || "").trim().toLowerCase();
@@ -508,6 +513,15 @@ function loadSettings() {
   }
 
   try {
+    const shufOpt = localStorage.getItem(SHUFFLE_OPTIONS_ENABLED_KEY);
+    if (shufOpt !== null) {
+      shuffleOptionsEnabled = shufOpt === "true";
+    }
+  } catch (e) {
+    shuffleOptionsEnabled = false;
+  }
+
+  try {
     const lang = localStorage.getItem(LANG_KEY);
     if (lang === "tr" || lang === "en") {
       currentLang = lang;
@@ -580,6 +594,7 @@ function saveSettings() {
   try {
     localStorage.setItem(SOUND_ENABLED_KEY, soundEnabled ? "true" : "false");
     localStorage.setItem(SHUFFLE_ENABLED_KEY, shuffleEnabled ? "true" : "false");
+    localStorage.setItem(SHUFFLE_OPTIONS_ENABLED_KEY, shuffleOptionsEnabled ? "true" : "false");
     localStorage.setItem(LANG_KEY, currentLang);
   } catch (e) {
     // ignore
@@ -600,6 +615,7 @@ function applyTranslations() {
     "choose-quiz-label": t("chooseQuiz"),
     "start-quiz-btn": t("startQuiz"),
     "shuffle-label": t("randomOrder"),
+    "shuffle-options-label": t("shuffleOptions"),
     "no-quiz-msg": t("noQuizzes"),
     "next-question-btn": t("next"),
     "exit-quiz-btn": t("leave"),
@@ -608,6 +624,7 @@ function applyTranslations() {
     "back-to-menu-btn": t("backToMenu"),
     "edit-quiz-title": t("editQuiz"),
     "edit-existing-label": t("editExisting"),
+    "no-quiz-msg-edit": t("noQuizzes"),
     "edit-quiz-hint": t("editQuizHint"),
     "quiz-name-label": t("quizName"),
     "description-label": t("description"),
@@ -674,6 +691,8 @@ function applyTranslations() {
   const langSelect = document.getElementById("lang-select");
   if (langSelect) langSelect.value = currentLang;
   updateSoundToggleUi();
+  updateShuffleToggleUi();
+  updateShuffleOptionsToggleUi();
   updateFullscreenBtnText();
 }
 
@@ -1178,6 +1197,11 @@ function clearQuestionForm() {
 
 function renderEditQuizList(page, _direction) {
   if (!editQuizStripEl || !editQuizWrapEl) return;
+  const noQuizMsgEdit = document.getElementById("no-quiz-msg-edit");
+  if (noQuizMsgEdit) {
+    noQuizMsgEdit.textContent = t("noQuizzes");
+    noQuizMsgEdit.classList.toggle("hidden", !!quizzes.length);
+  }
   editQuizStripEl.innerHTML = "";
   // Her sayfada tam 5 quiz: sayfa sayısı = ceil(quiz sayısı / 5), en az 1 sayfa
   const totalPages = quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE);
@@ -1340,6 +1364,15 @@ function updateShuffleToggleUi() {
   }
 }
 
+function updateShuffleOptionsToggleUi() {
+  if (!shuffleOptionsToggleBtn) return;
+  if (shuffleOptionsEnabled) {
+    shuffleOptionsToggleBtn.classList.add("active");
+  } else {
+    shuffleOptionsToggleBtn.classList.remove("active");
+  }
+}
+
 function buildQuestionOrder(quiz) {
   const total = quiz.questions.length;
   const order = Array.from({ length: total }, (_, i) => i);
@@ -1457,7 +1490,14 @@ function renderCurrentQuestion() {
   const q = currentQuiz.questions[qIndex];
   quizProgressEl.textContent = `Question ${currentQuestionIndex + 1} / ${total}`;
 
-  const opts = (q.options || []).map((o) => (typeof o === "string" ? { text: o } : o));
+  const optsRaw = (q.options || []).map((o) => (typeof o === "string" ? { text: o } : o));
+  let displayOrder = optsRaw.map((_, i) => i);
+  if (shuffleOptionsEnabled && optsRaw.length > 1) {
+    for (let i = displayOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [displayOrder[i], displayOrder[j]] = [displayOrder[j], displayOrder[i]];
+    }
+  }
 
   questionTextEl.innerHTML = "";
   if (q.image) {
@@ -1474,11 +1514,13 @@ function renderCurrentQuestion() {
   optionsContainerEl.innerHTML = "";
   nextQuestionBtn.disabled = true;
 
-  opts.forEach((opt, idx) => {
+  displayOrder.forEach((originalIdx, displayedIdx) => {
+    const opt = optsRaw[originalIdx];
     const btn = document.createElement("button");
     btn.className = "option-btn" + (opt.image ? " has-image" : "");
-    btn.dataset.index = String(idx);
-    btn.dataset.label = String.fromCharCode(65 + idx);
+    btn.dataset.index = String(displayedIdx);
+    btn.dataset.originalIndex = String(originalIdx);
+    btn.dataset.label = String.fromCharCode(65 + displayedIdx);
     if (opt.image) {
       const img = document.createElement("img");
       img.className = "option-image-inline";
@@ -1489,7 +1531,7 @@ function renderCurrentQuestion() {
     const textSpan = document.createElement("span");
     textSpan.textContent = opt.text || "";
     btn.appendChild(textSpan);
-    btn.addEventListener("click", () => handleAnswerClick(btn, idx));
+    btn.addEventListener("click", () => handleAnswerClick(btn, displayedIdx));
     optionsContainerEl.appendChild(btn);
   });
 }
@@ -1500,12 +1542,13 @@ function handleAnswerClick(btn, idx) {
   const qIndex = currentQuestionOrder[currentQuestionIndex];
   const q = currentQuiz.questions[qIndex];
   const correctIndex = q.correctIndex;
+  const originalIndex = btn.dataset.originalIndex != null ? Number(btn.dataset.originalIndex) : idx;
 
   // Disable further clicks
   const optionButtons = optionsContainerEl.querySelectorAll(".option-btn");
   optionButtons.forEach((b) => b.classList.add("disabled"));
 
-  if (idx === correctIndex) {
+  if (originalIndex === correctIndex) {
     btn.classList.add("correct");
     currentScore += 1;
     updateScoreDisplay();
@@ -1514,10 +1557,10 @@ function handleAnswerClick(btn, idx) {
     btn.classList.add("incorrect");
     // Optional SFX for incorrect answer (only when sound enabled)
     if (soundEnabled) playAnswerSound(false);
-    // Highlight correct one
+    // Highlight correct one (by original index)
     optionButtons.forEach((b) => {
-      const bIdx = Number(b.dataset.index);
-      if (bIdx === correctIndex) {
+      const bOriginal = b.dataset.originalIndex != null ? Number(b.dataset.originalIndex) : Number(b.dataset.index);
+      if (bOriginal === correctIndex) {
         b.classList.add("revealed-correct");
       }
     });
@@ -2385,6 +2428,14 @@ if (shuffleToggleBtn) {
   });
 }
 
+if (shuffleOptionsToggleBtn) {
+  shuffleOptionsToggleBtn.addEventListener("click", () => {
+    shuffleOptionsEnabled = !shuffleOptionsEnabled;
+    updateShuffleOptionsToggleUi();
+    saveSettings();
+  });
+}
+
 // Language selector
 const langSelectEl = document.getElementById("lang-select");
 if (langSelectEl) {
@@ -2419,6 +2470,7 @@ refreshEditQuizSelect();
 applyTranslations();
 updateSoundToggleUi();
 updateShuffleToggleUi();
+updateShuffleOptionsToggleUi();
 initStandalone();
 showView("mainMenu");
 window.addEventListener("load", function () { checkStandaloneAgain(); });
