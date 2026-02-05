@@ -8,7 +8,7 @@ const LANG_KEY = "quiz_lang_v1";
 // Translations: en + tr
 const translations = {
   en: {
-    mainTitle: "Custom Quiz Game",
+    mainTitle: "Fun Quiz Maker",
     playQuiz: "Play Quiz",
     createQuiz: "Create / Edit Quiz",
     howItWorks: "How it works",
@@ -97,7 +97,7 @@ const translations = {
     saveQuizSuccess: "Quiz saved with {count} question(s).",
   },
   tr: {
-    mainTitle: "Quiz Oyunu",
+    mainTitle: "Eğlenceli Quiz Oluşturucu",
     playQuiz: "Quiz Oyna",
     createQuiz: "Quiz Oluştur / Düzenle",
     howItWorks: "Nasıl çalışır",
