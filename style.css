@@ -22,6 +22,8 @@
   --safe-left: env(safe-area-inset-left, 0);
   /* Touch target minimum (Apple HIG / Material) */
   --touch-min: 44px;
+  /* Anchor (alttan yapışan) reklam için ayrılan yükseklik; alttan reklam bu alana sığar */
+  --anchor-height: 90px;
 }
 
 *,
@@ -49,6 +51,8 @@ body {
   display: flex;
   align-items: stretch;
   justify-content: center;
+  /* Anchor reklam alttan çıkabilsin: alt boşluk ayırıyoruz, içerik bu alanın üstünde kalır */
+  padding-bottom: calc(var(--anchor-height) + env(safe-area-inset-bottom, 0));
 }
 
 /* Masaüstü: side rail reklamlar için yan boşluk (içerik ortada, sol/sağda reklam alanı) */
@@ -64,7 +68,7 @@ body.standalone .view.active {
   min-height: auto;
 }
 
-/* Ana ekrana alınca: tüm uygulama kutusu ortada, başlık ortada; side rail padding yok */
+/* Ana ekrana alınca: tüm uygulama kutusu ortada; side rail ve anchor padding yok */
 body.standalone {
   display: flex;
   align-items: center;
@@ -74,6 +78,7 @@ body.standalone {
   padding: 16px;
   padding-left: 16px;
   padding-right: 16px;
+  padding-bottom: 16px;
   box-sizing: border-box;
   width: 100%;
   margin: 0;
@@ -99,6 +104,18 @@ body.standalone #app .view.active {
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
+}
+
+body.standalone .main-menu-lang-row {
+  bottom: calc(16px + env(safe-area-inset-bottom, 0));
+}
+
+body.standalone .global-fullscreen-btn {
+  bottom: max(14px, var(--safe-bottom));
+}
+
+body.standalone .anchor-ad-slot {
+  display: none;
 }
 
 #app {
@@ -330,10 +347,10 @@ body.standalone .app-logo {
   margin: 0 auto;
 }
 
-/* Dil seçimi: tam ekranla aynı hizada, viewport sağ alt köşe (side rail ads için ana içerik dışında) */
+/* Dil seçimi: anchor alanının üstünde, viewport sağ alt (side rail + anchor ile uyumlu) */
 .main-menu-lang-row {
   position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  bottom: calc(var(--anchor-height) + 16px + env(safe-area-inset-bottom, 0));
   right: calc(16px + env(safe-area-inset-right, 0));
   display: flex;
   align-items: center;
@@ -352,6 +369,19 @@ body.standalone .app-logo {
   min-width: 100px;
   padding: 8px 12px;
   font-size: 0.9rem;
+}
+
+/* Anchor reklam slotu: viewport en altında, tam genişlik; reklam buraya enjekte edilebilir */
+.anchor-ad-slot {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  min-height: var(--anchor-height);
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .title {
@@ -828,10 +858,10 @@ pre.format-example {
   align-items: center;
 }
 
-/* Global fullscreen button: bottom-left, all views */
+/* Global fullscreen button: anchor alanının üstünde, sol alt */
 .global-fullscreen-btn {
   position: fixed;
-  bottom: max(14px, var(--safe-bottom));
+  bottom: max(calc(var(--anchor-height) + 14px), calc(var(--anchor-height) + var(--safe-bottom)));
   left: max(14px, var(--safe-left));
   z-index: 50;
   font-size: 0.88rem;
