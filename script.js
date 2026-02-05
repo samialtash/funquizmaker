@@ -56,6 +56,9 @@ const translations = {
     copied: "Copied!",
     fullscreen: "Full screen",
     exitFullscreen: "Exit full screen",
+    settings: "Settings",
+    selectLanguage: "Select language",
+    languageName: "English",
     backupHint: "Backup / restore quizzes so they are not lost when you update or use another device.",
     exportBackup: "Export backup",
     importBackup: "Import backup",
@@ -150,6 +153,9 @@ const translations = {
     copied: "Kopyalandı!",
     fullscreen: "Tam ekran",
     exitFullscreen: "Tam ekrandan çık",
+    settings: "Ayarlar",
+    selectLanguage: "Dil seç",
+    languageName: "Türkçe",
     backupHint: "Güncelleme veya farklı cihazda quizlerin kaybolmaması için yedekle / geri yükle.",
     exportBackup: "Yedek indir",
     importBackup: "Yedekten geri yükle",
@@ -195,7 +201,20 @@ const translations = {
     alertQuestionEmpty: "Lütfen soru kısmını doldurunuz.",
     alertOptionsEmpty: "Lütfen şıkları doldurunuz.",
   },
+  es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
+  zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
+  hi: { languageName: "हिन्दी", mainTitle: "मजेदार क्विज निर्माता", myQuizzes: "मेरे क्विज", createQuiz: "क्विज बनाएं / संपादित करें", back: "← वापस", settings: "सेटिंग्स", language: "भाषा", selectLanguage: "भाषा चुनें", selectQuiz: "क्विज चुनें", startQuiz: "क्विज शुरू करें (पूर्ण स्क्रीन)", noQuizzes: "कोई सहेजे गए क्विज नहीं।", howItWorks: "कैसे काम करता है", storedLocally: "क्विज आपके ब्राउज़र में सहेजे जाते हैं (सर्वर की जरूरत नहीं)।", searchPlaceholder: "क्विज खोजें", searchNoResults: "कोई परिणाम नहीं मिला।", next: "अगला", exit: "बाहर निकलें", leave: "छोड़ें", quizFinished: "क्विज समाप्त!", retryQuiz: "दोबारा खेलें", backToMenu: "मुख्य मेनू पर वापस", fullscreen: "पूर्ण स्क्रीन", exitFullscreen: "पूर्ण स्क्रीन से बाहर" },
+  ar: { languageName: "العربية", mainTitle: "صانع اختبارات ممتع", myQuizzes: "اختباراتي", createQuiz: "إنشاء / تعديل اختبار", back: "← رجوع", settings: "الإعدادات", language: "اللغة", selectLanguage: "اختر اللغة", selectQuiz: "اختر اختباراً", startQuiz: "بدء الاختبار (ملء الشاشة)", noQuizzes: "لا توجد اختبارات محفوظة.", howItWorks: "كيف يعمل", storedLocally: "الاختبارات تُحفظ في متصفحك (لا حاجة لخادم).", searchPlaceholder: "البحث عن اختبارات", searchNoResults: "لم يتم العثور على نتائج.", next: "التالي", exit: "خروج", leave: "مغادرة", quizFinished: "انتهى الاختبار!", retryQuiz: "إعادة المحاولة", backToMenu: "العودة للقائمة", fullscreen: "ملء الشاشة", exitFullscreen: "الخروج من ملء الشاشة" },
+  pt: { languageName: "Português", mainTitle: "Criador de Quiz Divertido", myQuizzes: "Meus Quizzes", createQuiz: "Criar / Editar Quiz", back: "← Voltar", settings: "Configurações", language: "Idioma", selectLanguage: "Selecionar idioma", selectQuiz: "Selecionar Quiz", startQuiz: "Iniciar Quiz (Tela cheia)", noQuizzes: "Nenhum quiz salvo.", howItWorks: "Como funciona", storedLocally: "Os quizzes são salvos no seu navegador (sem servidor).", searchPlaceholder: "Pesquisar quizzes", searchNoResults: "Nenhum resultado encontrado.", next: "Próximo", exit: "Sair", leave: "Sair", quizFinished: "Quiz finalizado!", retryQuiz: "Tentar novamente", backToMenu: "Voltar ao menu", fullscreen: "Tela cheia", exitFullscreen: "Sair da tela cheia" },
+  ru: { languageName: "Русский", mainTitle: "Создатель викторин", myQuizzes: "Мои викторины", createQuiz: "Создать / Редактировать викторину", back: "← Назад", settings: "Настройки", language: "Язык", selectLanguage: "Выбрать язык", selectQuiz: "Выбрать викторину", startQuiz: "Начать викторину (полный экран)", noQuizzes: "Нет сохранённых викторин.", howItWorks: "Как это работает", storedLocally: "Викторины сохраняются в браузере (сервер не нужен).", searchPlaceholder: "Поиск викторин", searchNoResults: "Ничего не найдено.", next: "Далее", exit: "Выход", leave: "Выйти", quizFinished: "Викторина завершена!", retryQuiz: "Повторить", backToMenu: "В главное меню", fullscreen: "Полный экран", exitFullscreen: "Выйти из полного экрана" },
+  ja: { languageName: "日本語", mainTitle: "楽しいクイズメーカー", myQuizzes: "マイクイズ", createQuiz: "クイズを作成/編集", back: "← 戻る", settings: "設定", language: "言語", selectLanguage: "言語を選択", selectQuiz: "クイズを選択", startQuiz: "クイズを開始（全画面）", noQuizzes: "保存されたクイズはありません。", howItWorks: "使い方", storedLocally: "クイズはブラウザに保存されます（サーバー不要）。", searchPlaceholder: "クイズを検索", searchNoResults: "結果が見つかりません。", next: "次へ", exit: "終了", leave: "終了", quizFinished: "クイズ終了！", retryQuiz: "もう一度", backToMenu: "メインメニューに戻る", fullscreen: "全画面", exitFullscreen: "全画面を終了" },
+  fr: { languageName: "Français", mainTitle: "Créateur de quiz amusant", myQuizzes: "Mes quiz", createQuiz: "Créer / Modifier un quiz", back: "← Retour", settings: "Paramètres", language: "Langue", selectLanguage: "Choisir la langue", selectQuiz: "Choisir un quiz", startQuiz: "Démarrer le quiz (plein écran)", noQuizzes: "Aucun quiz enregistré.", howItWorks: "Comment ça marche", storedLocally: "Les quiz sont enregistrés dans votre navigateur (pas de serveur).", searchPlaceholder: "Rechercher des quiz", searchNoResults: "Aucun résultat trouvé.", next: "Suivant", exit: "Quitter", leave: "Quitter", quizFinished: "Quiz terminé !", retryQuiz: "Réessayer", backToMenu: "Retour au menu", fullscreen: "Plein écran", exitFullscreen: "Quitter le plein écran" },
+  de: { languageName: "Deutsch", mainTitle: "Lustiger Quiz-Macher", myQuizzes: "Meine Quiz", createQuiz: "Quiz erstellen / bearbeiten", back: "← Zurück", settings: "Einstellungen", language: "Sprache", selectLanguage: "Sprache wählen", selectQuiz: "Quiz auswählen", startQuiz: "Quiz starten (Vollbild)", noQuizzes: "Keine gespeicherten Quiz.", howItWorks: "So funktioniert's", storedLocally: "Quiz werden im Browser gespeichert (kein Server nötig).", searchPlaceholder: "Quiz suchen", searchNoResults: "Keine Ergebnisse gefunden.", next: "Weiter", exit: "Beenden", leave: "Verlassen", quizFinished: "Quiz beendet!", retryQuiz: "Nochmal", backToMenu: "Zum Hauptmenü", fullscreen: "Vollbild", exitFullscreen: "Vollbild beenden" },
+  ko: { languageName: "한국어", mainTitle: "재미있는 퀴즈 메이커", myQuizzes: "내 퀴즈", createQuiz: "퀴즈 만들기 / 편집", back: "← 뒤로", settings: "설정", language: "언어", selectLanguage: "언어 선택", selectQuiz: "퀴즈 선택", startQuiz: "퀴즈 시작 (전체 화면)", noQuizzes: "저장된 퀴즈가 없습니다.", howItWorks: "사용 방법", storedLocally: "퀴즈는 브라우저에 저장됩니다 (서버 불필요).", searchPlaceholder: "퀴즈 검색", searchNoResults: "결과를 찾을 수 없습니다.", next: "다음", exit: "종료", leave: "나가기", quizFinished: "퀴즈 완료!", retryQuiz: "다시 하기", backToMenu: "메인 메뉴로", fullscreen: "전체 화면", exitFullscreen: "전체 화면 종료" },
 };
+
+/** Supported language codes (for lang select view and system detection) */
+const SUPPORTED_LANG_CODES = ["en", "tr", "es", "zh", "hi", "ar", "pt", "ru", "ja", "fr", "de", "ko"];
 
 /**
  * Quiz structure:
@@ -294,6 +313,8 @@ Answer: D`;
 // DOM references
 const views = {
   mainMenu: document.getElementById("main-menu"),
+  settings: document.getElementById("settings-view"),
+  langSelect: document.getElementById("lang-select-view"),
   quizSelect: document.getElementById("quiz-select-view"),
   quizQuestionsList: document.getElementById("quiz-questions-list-view"),
   quizQuestionEdit: document.getElementById("quiz-question-edit-view"),
@@ -534,8 +555,13 @@ function loadSettings() {
 
   try {
     const lang = localStorage.getItem(LANG_KEY);
-    if (lang === "tr" || lang === "en") {
+    if (lang && SUPPORTED_LANG_CODES.includes(lang)) {
       currentLang = lang;
+    } else {
+      const sys = (navigator.language || navigator.userLanguage || "").toLowerCase();
+      const map = { tr: "tr", en: "en", es: "es", zh: "zh", "zh-cn": "zh", "zh-tw": "zh", hi: "hi", ar: "ar", pt: "pt", "pt-br": "pt", ru: "ru", ja: "ja", fr: "fr", de: "de", ko: "ko" };
+      const code = map[sys] || map[sys.split("-")[0]];
+      currentLang = code && SUPPORTED_LANG_CODES.includes(code) ? code : "en";
     }
   } catch (e) {
     currentLang = "en";
@@ -699,10 +725,20 @@ function applyTranslations() {
   if (mainSearchEl) mainSearchEl.placeholder = t("searchPlaceholder");
   const backSelect = document.getElementById("back-btn-select");
   const backCreate = document.getElementById("back-btn-create");
+  const backSettings = document.getElementById("back-btn-settings");
+  const backLangSelect = document.getElementById("back-btn-lang-select");
   if (backSelect) backSelect.textContent = t("back");
   if (backCreate) backCreate.textContent = t("back");
-  const langSelect = document.getElementById("lang-select");
-  if (langSelect) langSelect.value = currentLang;
+  if (backSettings) backSettings.textContent = t("back");
+  if (backLangSelect) backLangSelect.textContent = t("back");
+  const settingsBtn = document.getElementById("settings-btn");
+  if (settingsBtn) settingsBtn.textContent = t("settings");
+  const settingsTitle = document.getElementById("settings-title");
+  if (settingsTitle) settingsTitle.textContent = t("settings");
+  const settingsOpenLangSelect = document.getElementById("settings-open-lang-select");
+  if (settingsOpenLangSelect) settingsOpenLangSelect.textContent = t("selectLanguage");
+  const langSelectTitle = document.getElementById("lang-select-title");
+  if (langSelectTitle) langSelectTitle.textContent = t("selectLanguage");
   updateSoundToggleUi();
   updateShuffleToggleUi();
   updateShuffleOptionsToggleUi();
@@ -1786,10 +1822,9 @@ function exitFullScreen() {
 }
 
 function updateFullscreenBtnText() {
-  const btn = document.getElementById("fullscreen-btn");
-  if (!btn) return;
   const isFullscreen = !!document.fullscreenElement;
-  btn.textContent = isFullscreen ? t("exitFullscreen") : t("fullscreen");
+  const settingsFsBtn = document.getElementById("settings-fullscreen-btn");
+  if (settingsFsBtn) settingsFsBtn.textContent = isFullscreen ? t("exitFullscreen") : t("fullscreen");
   const fullscreenLogo = document.getElementById("fullscreen-logo");
   if (fullscreenLogo) {
     fullscreenLogo.classList.toggle("hidden", !isFullscreen);
@@ -2059,6 +2094,9 @@ createQuizBtn.addEventListener("click", () => {
   });
 });
 
+const settingsBtnNav = document.getElementById("settings-btn");
+if (settingsBtnNav) settingsBtnNav.addEventListener("click", () => showView("settings"));
+
 const exportQuizzesBtn = document.getElementById("export-quizzes-btn");
 const importQuizzesFile = document.getElementById("import-quizzes-file");
 if (exportQuizzesBtn) {
@@ -2077,6 +2115,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     const rawTarget = btn.dataset.back || "mainMenu";
     let targetViewKey = rawTarget;
     if (rawTarget === "main-menu") targetViewKey = "mainMenu";
+    if (rawTarget === "settings") targetViewKey = "settings";
     if (rawTarget === "quiz-select-view") targetViewKey = "quizSelect";
     if (rawTarget === "create-quiz-view") targetViewKey = "createQuiz";
     if (rawTarget === "quiz-edit-questions-view") targetViewKey = "quizEditQuestions";
@@ -2282,16 +2321,6 @@ exitQuizBtn.addEventListener("click", () => {
   showQuizResult(currentScore, totalQuestions);
 });
 
-const fullscreenBtn = document.getElementById("fullscreen-btn");
-if (fullscreenBtn) {
-  fullscreenBtn.addEventListener("click", () => {
-    if (document.fullscreenElement) {
-      exitFullScreen();
-    } else {
-      goFullScreen();
-    }
-  });
-}
 document.addEventListener("fullscreenchange", updateFullscreenBtnText);
 
 retryQuizBtn.addEventListener("click", () => {
@@ -2508,15 +2537,41 @@ if (shuffleOptionsToggleBtn) {
   });
 }
 
-// Language selector
-const langSelectEl = document.getElementById("lang-select");
-if (langSelectEl) {
-  langSelectEl.addEventListener("change", () => {
-    const val = langSelectEl.value;
-    if (val === "en" || val === "tr") {
-      currentLang = val;
+// Settings: Dil seç menüsüne git
+const settingsOpenLangSelect = document.getElementById("settings-open-lang-select");
+if (settingsOpenLangSelect) {
+  settingsOpenLangSelect.addEventListener("click", () => showView("langSelect"));
+}
+
+// Dil seç listesi: SUPPORTED_LANG_CODES ile doldur, tıklanınca dili ayarla
+function renderLangSelectList() {
+  const list = document.getElementById("lang-select-list");
+  if (!list) return;
+  list.innerHTML = "";
+  SUPPORTED_LANG_CODES.forEach((code) => {
+    const name = (translations[code] && translations[code].languageName) || code;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary-btn main-btn-secondary lang-select-option";
+    btn.dataset.lang = code;
+    btn.textContent = name;
+    btn.addEventListener("click", () => {
+      currentLang = code;
       saveSettings();
       applyTranslations();
+    });
+    list.appendChild(btn);
+  });
+}
+renderLangSelectList();
+// Settings: tam ekran butonu
+const settingsFullscreenBtn = document.getElementById("settings-fullscreen-btn");
+if (settingsFullscreenBtn) {
+  settingsFullscreenBtn.addEventListener("click", () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
     }
   });
 }

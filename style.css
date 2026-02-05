@@ -22,8 +22,6 @@
   --safe-left: env(safe-area-inset-left, 0);
   /* Touch target minimum (Apple HIG / Material) */
   --touch-min: 44px;
-  /* Anchor (alttan yapışan) reklam için ayrılan yükseklik; alttan reklam bu alana sığar */
-  --anchor-height: 90px;
 }
 
 *,
@@ -51,8 +49,6 @@ body {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  /* Anchor reklam alttan çıkabilsin: alt boşluk ayırıyoruz, içerik bu alanın üstünde kalır */
-  padding-bottom: calc(var(--anchor-height) + env(safe-area-inset-bottom, 0));
 }
 
 /* Masaüstü: side rail reklamlar için yan boşluk (içerik ortada, sol/sağda reklam alanı) */
@@ -68,7 +64,7 @@ body.standalone .view.active {
   min-height: auto;
 }
 
-/* Ana ekrana alınca: tüm uygulama kutusu ortada; side rail ve anchor padding yok */
+/* Ana ekrana alınca: tüm uygulama kutusu ortada, başlık ortada; side rail padding yok */
 body.standalone {
   display: flex;
   align-items: center;
@@ -78,7 +74,6 @@ body.standalone {
   padding: 16px;
   padding-left: 16px;
   padding-right: 16px;
-  padding-bottom: 16px;
   box-sizing: border-box;
   width: 100%;
   margin: 0;
@@ -104,18 +99,6 @@ body.standalone #app .view.active {
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
-}
-
-body.standalone .main-menu-lang-row {
-  bottom: calc(16px + env(safe-area-inset-bottom, 0));
-}
-
-body.standalone .global-fullscreen-btn {
-  bottom: max(14px, var(--safe-bottom));
-}
-
-body.standalone .anchor-ad-slot {
-  display: none;
 }
 
 #app {
@@ -219,6 +202,19 @@ body.standalone .app-logo {
   flex-direction: column;
   align-items: center;
   pointer-events: none;
+}
+
+/* Küçük ekranlarda arama barı logo ile çakışmasın: logo sağından başlasın, daralsın */
+@media (max-width: 640px) {
+  .main-menu-search-wrap {
+    left: 0;
+    right: 0;
+    transform: none;
+    padding-left: calc(56px + 12px);
+    padding-right: 12px;
+    max-width: none;
+    box-sizing: border-box;
+  }
 }
 
 .main-menu-search-wrap .main-quiz-search {
@@ -347,41 +343,24 @@ body.standalone .app-logo {
   margin: 0 auto;
 }
 
-/* Dil seçimi: anchor alanının üstünde, viewport sağ alt (side rail + anchor ile uyumlu) */
-.main-menu-lang-row {
-  position: fixed;
-  bottom: calc(var(--anchor-height) + 16px + env(safe-area-inset-bottom, 0));
-  right: calc(16px + env(safe-area-inset-right, 0));
+/* Ayarlar sayfası: ana ekrandaki gibi butonlar */
+#settings-view .settings-buttons {
+  margin: 0 auto;
+}
+
+/* Dil seç menüsü: liste butonları */
+.lang-select-list {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  z-index: 100;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
 }
 
-.main-menu-lang-label {
-  margin: 0;
-  font-size: 0.88rem;
-  color: var(--muted);
-}
-
-.main-menu-lang-select {
-  width: auto;
-  min-width: 100px;
-  padding: 8px 12px;
-  font-size: 0.9rem;
-}
-
-/* Anchor reklam slotu: viewport en altında, tam genişlik; reklam buraya enjekte edilebilir */
-.anchor-ad-slot {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  min-height: var(--anchor-height);
-  z-index: 10;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.lang-select-list .lang-select-option {
+  width: 100%;
 }
 
 .title {
@@ -856,19 +835,6 @@ pre.format-example {
   display: flex;
   gap: 10px;
   align-items: center;
-}
-
-/* Global fullscreen button: anchor alanının üstünde, sol alt */
-.global-fullscreen-btn {
-  position: fixed;
-  bottom: max(calc(var(--anchor-height) + 14px), calc(var(--anchor-height) + var(--safe-bottom)));
-  left: max(14px, var(--safe-left));
-  z-index: 50;
-  font-size: 0.88rem;
-  padding: 10px 14px;
-  border-radius: 14px;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 /* VFX layer */
