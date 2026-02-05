@@ -51,12 +51,20 @@ body {
   justify-content: center;
 }
 
+/* Masaüstü: side rail reklamlar için yan boşluk (içerik ortada, sol/sağda reklam alanı) */
+@media (min-width: 1280px) {
+  body {
+    padding-left: calc(160px + env(safe-area-inset-left, 0));
+    padding-right: calc(160px + env(safe-area-inset-right, 0));
+  }
+}
+
 body.standalone .view,
 body.standalone .view.active {
   min-height: auto;
 }
 
-/* Ana ekrana alınca: tüm uygulama kutusu ortada, başlık ortada */
+/* Ana ekrana alınca: tüm uygulama kutusu ortada, başlık ortada; side rail padding yok */
 body.standalone {
   display: flex;
   align-items: center;
@@ -64,6 +72,8 @@ body.standalone {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
   box-sizing: border-box;
   width: 100%;
   margin: 0;
@@ -160,7 +170,6 @@ body.standalone .app-logo {
   display: flex;
   flex-direction: column;
   min-height: 560px;
-  padding-bottom: 52px;
 }
 
 .main-menu-header {
@@ -321,13 +330,15 @@ body.standalone .app-logo {
   margin: 0 auto;
 }
 
+/* Dil seçimi: tam ekranla aynı hizada, viewport sağ alt köşe (side rail ads için ana içerik dışında) */
 .main-menu-lang-row {
-  position: absolute;
-  bottom: 20px;
-  right: 28px;
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  right: calc(16px + env(safe-area-inset-right, 0));
   display: flex;
   align-items: center;
   gap: 8px;
+  z-index: 100;
 }
 
 .main-menu-lang-label {
