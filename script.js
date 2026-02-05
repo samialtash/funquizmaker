@@ -9,11 +9,14 @@ const LANG_KEY = "quiz_lang_v1";
 const translations = {
   en: {
     mainTitle: "Fun Quiz Maker",
+    myQuizzes: "My Quizzes",
     playQuiz: "Play Quiz",
     createQuiz: "Create / Edit Quiz",
+    searchPlaceholder: "Search quizzes",
+    searchNoResults: "No results found.",
     howItWorks: "How it works",
-    playQuizDesc: "Play Quiz: Choose a quiz and answer in full screen.",
-    createQuizDesc: "Create / Edit Quiz: Paste many questions at once (e.g. 100) and the system will detect each question and its 5 options.",
+    playQuizDesc: "My Quizzes: Choose a quiz and answer in full screen. Use the search bar above to find quizzes.",
+    createQuizDesc: "Create / Edit Quiz: Paste many questions at once (e.g. 100) and the system will detect each question and its 5 options. Add photos to questions and options.",
     storedLocally: "Quizzes are stored locally in your browser (no server needed).",
     language: "Language",
     selectQuiz: "Select Quiz",
@@ -95,15 +98,20 @@ const translations = {
     duplicateQuizName: "A quiz with this name already exists. Please use a different name.",
     saveQuizNoQuestions: "Add at least one question (manually or via bulk paste) before saving.",
     saveQuizSuccess: "Quiz saved with {count} question(s).",
+    alertQuestionEmpty: "Please fill in the question.",
+    alertOptionsEmpty: "Please fill in the options.",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
+    myQuizzes: "Quizlerim",
     playQuiz: "Quiz Oyna",
     createQuiz: "Quiz Oluştur / Düzenle",
+    searchPlaceholder: "Quiz ara",
+    searchNoResults: "Sonuç bulunamadı.",
     howItWorks: "Nasıl çalışır",
-    playQuizDesc: "Quiz Oyna: Bir quiz seçin ve tam ekranda cevaplayın.",
-    createQuizDesc: "Quiz Oluştur / Düzenle: Çok sayıda soruyu (örn. 100) bir seferde yapıştırın; sistem her soruyu ve 5 seçeneği algılar.",
-    storedLocally: "Quizler tarayıcınızda yerel olarak saklanır (sunucu gerekmez).",
+    playQuizDesc: "Quizlerim: Quiz seçin, tam ekranda cevaplayın. Yukarıdaki arama ile quiz arayabilirsiniz.",
+    createQuizDesc: "Quiz oluştur / düzenle: Toplu soru yapıştırma (örn. 100 soru) ile ekleyin; sistem soru ve 5 şıkkı otomatik algılar. Soru ve şıklara fotoğraf ekleyebilirsiniz.",
+    storedLocally: "Quizler tarayıcınızda yerel saklanır (sunucu gerekmez).",
     language: "Dil",
     selectQuiz: "Quiz Seç",
     chooseQuiz: "Quiz seçin",
@@ -184,6 +192,8 @@ const translations = {
     duplicateQuizName: "Bu isimde bir quiz zaten var. Lütfen farklı bir isim kullanın.",
     saveQuizNoQuestions: "Kaydetmeden önce en az bir soru ekleyin (manuel veya toplu yapıştırma ile).",
     saveQuizSuccess: "Quiz {count} soru ile kaydedildi.",
+    alertQuestionEmpty: "Lütfen soru kısmını doldurunuz.",
+    alertOptionsEmpty: "Lütfen şıkları doldurunuz.",
   },
 };
 
@@ -263,6 +273,7 @@ let currentQuizForEdit = null;
 let currentQuestionEditIndex = -1;
 let fromCreateQuizPage = false;
 let lastAddedQuestionIndex = -1;
+let mainPageSearchQuery = "";
 
 const FORMAT_EXAMPLE_PLACEHOLDER = `1) What is 2 + 2?
 A) 3
@@ -604,7 +615,7 @@ function saveSettings() {
 function applyTranslations() {
   const els = {
     "main-title": t("mainTitle"),
-    "play-quiz-btn": t("playQuiz"),
+    "play-quiz-btn": t("myQuizzes"),
     "create-quiz-btn": t("createQuiz"),
     "how-it-works": t("howItWorks"),
     "play-quiz-desc": t("playQuizDesc"),
@@ -684,6 +695,8 @@ function applyTranslations() {
     const el = document.getElementById(id);
     if (el) el.textContent = els[id];
   });
+  const mainSearchEl = document.getElementById("main-quiz-search");
+  if (mainSearchEl) mainSearchEl.placeholder = t("searchPlaceholder");
   const backSelect = document.getElementById("back-btn-select");
   const backCreate = document.getElementById("back-btn-create");
   if (backSelect) backSelect.textContent = t("back");
@@ -765,10 +778,11 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
 function renderQuizSelectList(page, _direction) {
   if (!quizSelectStripEl || !quizSelectWrapEl) return;
   quizSelectStripEl.innerHTML = "";
-  noQuizMsg.classList.toggle("hidden", !!quizzes.length);
+  const listToShow = getQuizzesForPlay();
+  noQuizMsg.classList.toggle("hidden", !!listToShow.length);
   startQuizBtn.disabled = !selectedPlayQuizId;
   // Her sayfada tam 5 quiz: sayfa sayısı = ceil(quiz sayısı / 5), en az 1 sayfa
-  const totalPages = quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE);
+  const totalPages = listToShow.length === 0 ? 1 : Math.ceil(listToShow.length / QUIZ_PER_PAGE);
   const wrapWidth = Math.max(quizSelectWrapEl.offsetWidth || 320, 280);
 
   for (let p = 0; p < totalPages; p++) {
@@ -778,7 +792,7 @@ function renderQuizSelectList(page, _direction) {
     slide.style.minWidth = wrapWidth + "px";
     slide.style.maxWidth = wrapWidth + "px";
     const start = p * QUIZ_PER_PAGE;
-    const slice = quizzes.slice(start, start + QUIZ_PER_PAGE);
+    const slice = listToShow.slice(start, start + QUIZ_PER_PAGE);
     for (let i = 0; i < QUIZ_PER_PAGE; i++) {
       const quiz = slice[i];
       if (quiz) {
@@ -821,7 +835,7 @@ function renderQuizSelectList(page, _direction) {
     setupQuizListCarousel(
       quizSelectWrapEl,
       quizSelectStripEl,
-      () => (quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE)),
+      () => (getQuizzesForPlay().length === 0 ? 1 : Math.ceil(getQuizzesForPlay().length / QUIZ_PER_PAGE)),
       () => quizSelectCurrentPage,
       (n) => { quizSelectCurrentPage = n; },
       () => { renderQuizSelectPagination(); }
@@ -830,7 +844,8 @@ function renderQuizSelectList(page, _direction) {
 }
 
 function renderQuizSelectPagination() {
-  const totalPages = Math.ceil(quizzes.length / QUIZ_PER_PAGE);
+  const listToShow = getQuizzesForPlay();
+  const totalPages = Math.ceil(listToShow.length / QUIZ_PER_PAGE);
   if (!quizSelectPaginationEl || totalPages <= 1) return;
   quizSelectPaginationEl.innerHTML = "";
   const page = quizSelectCurrentPage;
@@ -1382,6 +1397,43 @@ function buildQuestionOrder(quiz) {
     }
   }
   return order;
+}
+
+function getQuizzesForPlay() {
+  const q = (mainPageSearchQuery || "").trim().toLowerCase();
+  if (!q) return quizzes;
+  return quizzes.filter((quiz) => (quiz.name || "").toLowerCase().includes(q));
+}
+
+function renderMainSearchResults() {
+  const container = document.getElementById("main-search-results");
+  if (!container) return;
+  const q = (mainPageSearchQuery || "").trim();
+  if (!q) {
+    container.classList.add("hidden");
+    container.innerHTML = "";
+    return;
+  }
+  const list = getQuizzesForPlay();
+  if (list.length === 0) {
+    container.classList.remove("hidden");
+    container.innerHTML = "<p class=\"hint\" style=\"margin:0;padding:8px 0;\">" + escapeHtml(t("searchNoResults")) + "</p>";
+    return;
+  }
+  container.classList.remove("hidden");
+  container.innerHTML = "";
+  list.forEach((quiz) => {
+    const item = document.createElement("div");
+    item.className = "main-search-result-item";
+    item.dataset.quizId = quiz.id;
+    item.innerHTML = `<span class="result-name">${escapeHtml(quiz.name)}</span><span class="result-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? (currentLang === "tr" ? "soru" : "question") : (currentLang === "tr" ? "soru" : "questions")}</span>`;
+    item.addEventListener("click", () => {
+      selectedPlayQuizId = quiz.id;
+      showView("quizSelect");
+      requestAnimationFrame(() => refreshQuizSelect());
+    });
+    container.appendChild(item);
+  });
 }
 
 // Sound buffers (Web Audio): decoded MP3s for reliable playback on mobile/iOS
@@ -1977,6 +2029,21 @@ if (isIOS) {
 }
 
 // Event wiring
+const mainQuizSearchEl = document.getElementById("main-quiz-search");
+if (mainQuizSearchEl) {
+  mainQuizSearchEl.addEventListener("input", () => {
+    mainPageSearchQuery = mainQuizSearchEl.value;
+    renderMainSearchResults();
+  });
+  mainQuizSearchEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      showView("quizSelect");
+      requestAnimationFrame(() => refreshQuizSelect());
+    }
+  });
+}
+
 playQuizBtn.addEventListener("click", () => {
   showView("quizSelect");
   requestAnimationFrame(() => {
@@ -2118,9 +2185,15 @@ if (saveSingleQuestionBtn) {
       options.push({ text: optionText, image: editFormOptionImages[i] || undefined });
     }
     const correctIndex = correctEl ? parseInt(correctEl.value, 10) : 0;
-    if (!text) return;
+    if (!text) {
+      alert(t("alertQuestionEmpty"));
+      return;
+    }
     if (options.length < MIN_OPTIONS || options.length > MAX_OPTIONS) return;
-    if (options.some((o) => !(o.text && o.text.trim()) && !o.image)) return;
+    if (options.some((o) => !(o.text && o.text.trim()) && !o.image)) {
+      alert(t("alertOptionsEmpty"));
+      return;
+    }
     const quiz = quizzes.find((q) => q.id === currentQuizForEdit);
     if (!quiz) return;
     const q = { text, image: editFormQuestionImage || undefined, options, correctIndex };

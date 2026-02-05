@@ -29,45 +29,39 @@
     </div>
     <div id="app">
       <!-- Main Menu -->
-      <div id="main-menu" class="view active">
-        <img src="logoquiz.png" alt="Quiz" class="app-logo" />
-        <h1 id="main-title" class="title">Custom Quiz Game</h1>
-        <div class="menu-buttons">
-          <button id="play-quiz-btn" class="primary-btn">Play Quiz</button>
-          <button id="create-quiz-btn" class="secondary-btn">
-            Create / Edit Quiz
-          </button>
+      <div id="main-menu" class="view active main-menu-view">
+        <header class="main-menu-header">
+          <img src="logoquiz.png" alt="Quiz" class="main-menu-logo" />
+          <div class="main-menu-search-wrap">
+            <input type="search" id="main-quiz-search" class="main-quiz-search" placeholder="" autocomplete="off" aria-label="Quiz ara" />
+            <div id="main-search-results" class="main-search-results hidden" aria-live="polite" role="listbox"></div>
+          </div>
+        </header>
+        <div class="main-menu-content">
+          <h1 id="main-title" class="main-menu-title">Fun Quiz Maker</h1>
+          <div class="main-menu-buttons">
+            <button id="play-quiz-btn" class="primary-btn main-btn-primary">Quizlerim</button>
+            <button id="create-quiz-btn" class="secondary-btn main-btn-secondary">Quiz oluştur / düzenle</button>
+          </div>
+          <div class="info-box main-menu-info">
+            <h2 id="how-it-works">How it works</h2>
+            <ul>
+              <li id="play-quiz-desc"><strong>Quizlerim</strong>: Quiz seçin, tam ekranda cevaplayın. Yukarıdaki arama ile quiz arayabilirsiniz.</li>
+              <li id="create-quiz-desc">
+                <strong>Quiz oluştur / düzenle</strong>: Toplu soru yapıştırma (örn. 100 soru) ile soruları ekleyin; sistem soru ve 5 şıkkı otomatik algılar. Soru ve şıklara fotoğraf ekleyebilirsiniz.
+              </li>
+              <li id="stored-locally">
+                Quizler tarayıcınızda yerel saklanır (sunucu gerekmez).
+              </li>
+            </ul>
+          </div>
         </div>
-        <div class="info-box">
-          <h2 id="how-it-works">How it works</h2>
-          <ul>
-            <li id="play-quiz-desc"><strong>Play Quiz</strong>: Choose a quiz and answer in full screen.</li>
-            <li id="create-quiz-desc">
-              <strong>Create / Edit Quiz</strong>: Paste many questions at once (e.g. 100)
-              and the system will detect each question and its 5 options.
-            </li>
-            <li id="stored-locally">
-              Quizzes are stored locally in your browser (no server needed).
-            </li>
-          </ul>
-        </div>
-        <div class="field language-row">
-          <label id="lang-label" for="lang-select">Language</label>
-          <select id="lang-select">
+        <div class="main-menu-lang-row">
+          <label id="lang-label" for="lang-select" class="main-menu-lang-label">Language</label>
+          <select id="lang-select" class="main-menu-lang-select">
             <option value="en">English</option>
             <option value="tr">Türkçe</option>
           </select>
-        </div>
-        <div class="field backup-row">
-          <span id="backup-hint" class="hint">Backup / restore quizzes so they are not lost when you update or use another device.</span>
-          <div class="backup-buttons">
-            <button type="button" id="export-quizzes-btn" class="secondary-btn small-btn">Export backup</button>
-            <label class="secondary-btn small-btn import-label">
-              <input type="file" id="import-quizzes-file" accept=".json,application/json" hidden />
-              <span id="import-backup-label">Import backup</span>
-            </label>
-          </div>
-          <span id="backup-status" class="hint hidden"></span>
         </div>
       </div>
 
