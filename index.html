@@ -36,12 +36,22 @@
             <input type="search" id="main-quiz-search" class="main-quiz-search" placeholder="" autocomplete="off" aria-label="Quiz ara" />
             <div id="main-search-results" class="main-search-results hidden" aria-live="polite" role="listbox"></div>
           </div>
+          <div class="main-menu-auth" id="main-menu-auth">
+            <button type="button" id="auth-login-btn" class="auth-link-btn">Giriş yap</button>
+            <span class="auth-sep" aria-hidden="true">|</span>
+            <button type="button" id="auth-signup-btn" class="auth-link-btn">Kaydol</button>
+          </div>
+          <div class="main-menu-auth logged-in hidden" id="main-menu-auth-logged-in">
+            <span id="auth-nickname" class="auth-nickname"></span>
+            <button type="button" id="auth-logout-btn" class="auth-link-btn">Çıkış yap</button>
+          </div>
         </header>
         <div class="main-menu-content">
           <h1 id="main-title" class="main-menu-title">Fun Quiz Maker</h1>
           <div class="main-menu-buttons">
             <button id="play-quiz-btn" class="primary-btn main-btn-primary">Quizlerim</button>
             <button id="create-quiz-btn" class="secondary-btn main-btn-secondary">Quiz oluştur / düzenle</button>
+            <button id="discover-quiz-btn" class="secondary-btn main-btn-secondary">Quizleri keşfet</button>
             <button id="settings-btn" class="secondary-btn main-btn-secondary">Ayarlar</button>
           </div>
           <div class="info-box main-menu-info">
@@ -74,6 +84,13 @@
         <button id="back-btn-lang-select" class="back-btn" data-back="settings">← Back</button>
         <h1 id="lang-select-title" class="main-menu-title">Dil seç</h1>
         <div id="lang-select-list" class="lang-select-list"></div>
+      </div>
+
+      <!-- Quizleri keşfet: forum placeholder (ileride forum + paylaşım) -->
+      <div id="discover-view" class="view">
+        <button id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
+        <h1 id="discover-title" class="main-menu-title">Quizleri keşfet</h1>
+        <p id="discover-desc" class="info-box main-menu-info">Yakında: Forumdan başkalarının quizlerini keşfedin ve kendi quizlerinizi paylaşın.</p>
       </div>
 
       <!-- Quiz Selection / Start: list 5 per page -->
@@ -311,6 +328,41 @@
       </div>
     </div>
 
-    <script src="script.js?v=6"></script>
+    <!-- Auth modals -->
+    <div id="auth-modal-overlay" class="auth-overlay hidden" aria-hidden="true">
+      <div class="auth-modal" role="dialog" aria-labelledby="auth-modal-title">
+        <button type="button" class="auth-modal-close" id="auth-modal-close" aria-label="Kapat">×</button>
+        <h2 id="auth-modal-title" class="auth-modal-title">Giriş yap</h2>
+        <div id="auth-form-login" class="auth-form">
+          <label id="auth-email-label-login" for="auth-email-login">E-posta</label>
+          <input type="email" id="auth-email-login" autocomplete="email" placeholder="ornek@email.com" />
+          <label id="auth-password-label-login" for="auth-password-login">Şifre</label>
+          <input type="password" id="auth-password-login" autocomplete="current-password" />
+          <p id="auth-login-error" class="auth-error hidden"></p>
+          <button type="button" id="auth-submit-login" class="primary-btn">Giriş yap</button>
+          <button type="button" id="auth-google-login" class="secondary-btn auth-google-btn">Google ile giriş yap</button>
+        </div>
+        <div id="auth-form-signup" class="auth-form hidden">
+          <label id="auth-email-label-signup" for="auth-email-signup">E-posta</label>
+          <input type="email" id="auth-email-signup" autocomplete="email" placeholder="ornek@email.com" />
+          <label id="auth-password-label-signup" for="auth-password-signup">Şifre</label>
+          <input type="password" id="auth-password-signup" autocomplete="new-password" minlength="6" />
+          <label id="auth-nickname-label-signup" for="auth-nickname-signup">Nickname</label>
+          <input type="text" id="auth-nickname-signup" autocomplete="username" placeholder="kullaniciadi" />
+          <p id="auth-signup-error" class="auth-error hidden"></p>
+          <button type="button" id="auth-submit-signup" class="primary-btn">Kaydol</button>
+          <button type="button" id="auth-google-signup" class="secondary-btn auth-google-btn">Google ile kaydol</button>
+        </div>
+        <p class="auth-switch">
+          <button type="button" id="auth-show-signup" class="auth-link-btn">Hesabınız yok mu? Kaydol</button>
+          <button type="button" id="auth-show-login" class="auth-link-btn hidden">Zaten hesabınız var mı? Giriş yap</button>
+        </p>
+      </div>
+    </div>
+
+    <script>window.SUPABASE_URL=window.SUPABASE_URL||"";window.SUPABASE_ANON_KEY=window.SUPABASE_ANON_KEY||"";</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js?v=7"></script>
   </body>
 </html>

@@ -103,6 +103,22 @@ const translations = {
     saveQuizSuccess: "Quiz saved with {count} question(s).",
     alertQuestionEmpty: "Please fill in the question.",
     alertOptionsEmpty: "Please fill in the options.",
+    login: "Log in",
+    signup: "Sign up",
+    logout: "Log out",
+    email: "Email",
+    password: "Password",
+    nickname: "Nickname (for forum)",
+    discoverQuizzes: "Discover quizzes",
+    loginTitle: "Log in",
+    signupTitle: "Sign up",
+    googleLogin: "Log in with Google",
+    googleSignup: "Sign up with Google",
+    noAccountSignup: "No account? Sign up",
+    haveAccountLogin: "Already have an account? Log in",
+    discoverTitle: "Discover quizzes",
+    discoverDesc: "Coming soon: Discover and share quizzes in the forum.",
+    authConfigNeeded: "Add your Supabase URL and anon key in supabase-config.js to enable login.",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -200,6 +216,22 @@ const translations = {
     saveQuizSuccess: "Quiz {count} soru ile kaydedildi.",
     alertQuestionEmpty: "Lütfen soru kısmını doldurunuz.",
     alertOptionsEmpty: "Lütfen şıkları doldurunuz.",
+    login: "Giriş yap",
+    signup: "Kaydol",
+    logout: "Çıkış yap",
+    email: "E-posta",
+    password: "Şifre",
+    nickname: "Nickname (forumda görünecek)",
+    discoverQuizzes: "Quizleri keşfet",
+    loginTitle: "Giriş yap",
+    signupTitle: "Kaydol",
+    googleLogin: "Google ile giriş yap",
+    googleSignup: "Google ile kaydol",
+    noAccountSignup: "Hesabınız yok mu? Kaydol",
+    haveAccountLogin: "Zaten hesabınız var mı? Giriş yap",
+    discoverTitle: "Quizleri keşfet",
+    discoverDesc: "Yakında: Forumdan başkalarının quizlerini keşfedin ve kendi quizlerinizi paylaşın.",
+    authConfigNeeded: "Giriş için supabase-config.js dosyasına Supabase URL ve anon key ekleyin.",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -215,6 +247,82 @@ const translations = {
 
 /** Supported language codes (for lang select view and system detection) */
 const SUPPORTED_LANG_CODES = ["en", "tr", "es", "zh", "hi", "ar", "pt", "ru", "ja", "fr", "de", "ko"];
+
+/** Supabase auth: config from supabase-config.js (window.SUPABASE_URL, window.SUPABASE_ANON_KEY) */
+const SUPABASE_URL = typeof window !== "undefined" ? (window.SUPABASE_URL || "") : "";
+const SUPABASE_ANON_KEY = typeof window !== "undefined" ? (window.SUPABASE_ANON_KEY || "") : "";
+let supabaseClient = null;
+let currentAuthUser = null;
+
+function initSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || typeof window.supabase === "undefined") return;
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      currentAuthUser = session?.user ?? null;
+      if (event === "SIGNED_IN" && session) {
+        fetchUserQuizzes().then(() => {
+          refreshQuizSelect();
+          refreshEditQuizSelect();
+        });
+      } else if (event === "SIGNED_OUT") {
+        loadQuizzes();
+        refreshQuizSelect();
+        refreshEditQuizSelect();
+      }
+      updateAuthUI();
+    });
+  } catch (e) {
+    console.warn("Supabase init failed", e);
+  }
+}
+initSupabase();
+
+function updateAuthUI() {
+  const guest = document.getElementById("main-menu-auth");
+  const logged = document.getElementById("main-menu-auth-logged-in");
+  const nicknameEl = document.getElementById("auth-nickname");
+  if (!guest || !logged) return;
+  if (currentAuthUser) {
+    guest.classList.add("hidden");
+    logged.classList.remove("hidden");
+    const nick = currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "";
+    if (nicknameEl) nicknameEl.textContent = nick || currentAuthUser.email;
+  } else {
+    guest.classList.remove("hidden");
+    logged.classList.add("hidden");
+  }
+}
+
+async function fetchUserQuizzes() {
+  if (!supabaseClient || !currentAuthUser) return;
+  try {
+    const { data, error } = await supabaseClient.from("quizzes").select("id,name,description,questions").eq("user_id", currentAuthUser.id).order("created_at", { ascending: false });
+    if (error) throw error;
+    quizzes = (data || []).map((r) => ({ id: r.id, name: r.name || "", description: r.description || "", questions: Array.isArray(r.questions) ? r.questions : [] }));
+  } catch (e) {
+    console.warn("fetchUserQuizzes failed", e);
+    quizzes = [];
+  }
+}
+
+async function saveQuizToCloud(quiz) {
+  if (!supabaseClient || !currentAuthUser) return;
+  const row = { user_id: currentAuthUser.id, name: quiz.name, description: quiz.description || "", questions: quiz.questions || [] };
+  const isUuid = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+  try {
+    if (quiz.id && isUuid(quiz.id)) {
+      await supabaseClient.from("quizzes").update(row).eq("id", quiz.id).eq("user_id", currentAuthUser.id);
+    } else {
+      const { data, error } = await supabaseClient.from("quizzes").insert(row).select("id").single();
+      if (error) throw error;
+      if (data?.id) quiz.id = data.id;
+    }
+  } catch (e) {
+    console.warn("saveQuizToCloud failed", e);
+    throw e;
+  }
+}
 
 /**
  * Quiz structure:
@@ -315,6 +423,7 @@ const views = {
   mainMenu: document.getElementById("main-menu"),
   settings: document.getElementById("settings-view"),
   langSelect: document.getElementById("lang-select-view"),
+  discover: document.getElementById("discover-view"),
   quizSelect: document.getElementById("quiz-select-view"),
   quizQuestionsList: document.getElementById("quiz-questions-list-view"),
   quizQuestionEdit: document.getElementById("quiz-question-edit-view"),
@@ -727,10 +836,46 @@ function applyTranslations() {
   const backCreate = document.getElementById("back-btn-create");
   const backSettings = document.getElementById("back-btn-settings");
   const backLangSelect = document.getElementById("back-btn-lang-select");
+  const backDiscover = document.getElementById("back-btn-discover");
   if (backSelect) backSelect.textContent = t("back");
   if (backCreate) backCreate.textContent = t("back");
   if (backSettings) backSettings.textContent = t("back");
   if (backLangSelect) backLangSelect.textContent = t("back");
+  if (backDiscover) backDiscover.textContent = t("back");
+  const authLoginBtn = document.getElementById("auth-login-btn");
+  const authSignupBtn = document.getElementById("auth-signup-btn");
+  const authLogoutBtn = document.getElementById("auth-logout-btn");
+  if (authLoginBtn) authLoginBtn.textContent = t("login");
+  if (authSignupBtn) authSignupBtn.textContent = t("signup");
+  if (authLogoutBtn) authLogoutBtn.textContent = t("logout");
+  const discoverTitle = document.getElementById("discover-title");
+  const discoverDesc = document.getElementById("discover-desc");
+  if (discoverTitle) discoverTitle.textContent = t("discoverTitle");
+  if (discoverDesc) discoverDesc.textContent = t("discoverDesc");
+  const discoverQuizBtn = document.getElementById("discover-quiz-btn");
+  if (discoverQuizBtn) discoverQuizBtn.textContent = t("discoverQuizzes");
+  const authEmailLabelLogin = document.getElementById("auth-email-label-login");
+  const authPasswordLabelLogin = document.getElementById("auth-password-label-login");
+  const authEmailLabelSignup = document.getElementById("auth-email-label-signup");
+  const authPasswordLabelSignup = document.getElementById("auth-password-label-signup");
+  const authNicknameLabelSignup = document.getElementById("auth-nickname-label-signup");
+  if (authEmailLabelLogin) authEmailLabelLogin.textContent = t("email");
+  if (authPasswordLabelLogin) authPasswordLabelLogin.textContent = t("password");
+  if (authEmailLabelSignup) authEmailLabelSignup.textContent = t("email");
+  if (authPasswordLabelSignup) authPasswordLabelSignup.textContent = t("password");
+  if (authNicknameLabelSignup) authNicknameLabelSignup.textContent = t("nickname");
+  const authSubmitLoginEl = document.getElementById("auth-submit-login");
+  const authSubmitSignupEl = document.getElementById("auth-submit-signup");
+  const authGoogleLoginEl = document.getElementById("auth-google-login");
+  const authGoogleSignupEl = document.getElementById("auth-google-signup");
+  const authShowSignupEl = document.getElementById("auth-show-signup");
+  const authShowLoginEl = document.getElementById("auth-show-login");
+  if (authSubmitLoginEl) authSubmitLoginEl.textContent = t("login");
+  if (authSubmitSignupEl) authSubmitSignupEl.textContent = t("signup");
+  if (authGoogleLoginEl) authGoogleLoginEl.textContent = t("googleLogin");
+  if (authGoogleSignupEl) authGoogleSignupEl.textContent = t("googleSignup");
+  if (authShowSignupEl) authShowSignupEl.textContent = t("noAccountSignup");
+  if (authShowLoginEl) authShowLoginEl.textContent = t("haveAccountLogin");
   const settingsBtn = document.getElementById("settings-btn");
   if (settingsBtn) settingsBtn.textContent = t("settings");
   const settingsTitle = document.getElementById("settings-title");
@@ -1990,7 +2135,7 @@ function handleParseQuestions() {
   parsedQuestionsSummaryEl.innerHTML = html;
 }
 
-function handleSaveQuiz() {
+async function handleSaveQuiz() {
   const name = quizNameInput.value.trim();
   const description = quizDescriptionInput.value.trim();
 
@@ -2030,7 +2175,19 @@ function handleSaveQuiz() {
     };
     quizzes.push(newQuiz);
   }
-  saveQuizzes();
+
+  const quiz = editingQuizId ? quizzes.find((q) => q.id === editingQuizId) : quizzes[quizzes.length - 1];
+  if (supabaseClient && currentAuthUser && quiz) {
+    try {
+      await saveQuizToCloud(quiz);
+      await fetchUserQuizzes();
+    } catch (e) {
+      alert(t("importError") || "Could not save to cloud.");
+      return;
+    }
+  } else {
+    saveQuizzes();
+  }
   refreshQuizSelect();
   refreshEditQuizSelect();
 
@@ -2097,6 +2254,146 @@ createQuizBtn.addEventListener("click", () => {
 const settingsBtnNav = document.getElementById("settings-btn");
 if (settingsBtnNav) settingsBtnNav.addEventListener("click", () => showView("settings"));
 
+const discoverQuizBtn = document.getElementById("discover-quiz-btn");
+if (discoverQuizBtn) discoverQuizBtn.addEventListener("click", () => showView("discover"));
+
+// Auth modal
+const authOverlay = document.getElementById("auth-modal-overlay");
+const authFormLogin = document.getElementById("auth-form-login");
+const authFormSignup = document.getElementById("auth-form-signup");
+const authShowSignup = document.getElementById("auth-show-signup");
+const authShowLogin = document.getElementById("auth-show-login");
+const authModalTitle = document.getElementById("auth-modal-title");
+
+function openAuthModal(mode) {
+  if (!authOverlay) return;
+  if (mode === "signup") {
+    authFormLogin.classList.add("hidden");
+    authFormSignup.classList.remove("hidden");
+    authShowSignup.classList.add("hidden");
+    authShowLogin.classList.remove("hidden");
+    if (authModalTitle) authModalTitle.textContent = t("signupTitle");
+  } else {
+    authFormLogin.classList.remove("hidden");
+    authFormSignup.classList.add("hidden");
+    authShowSignup.classList.remove("hidden");
+    authShowLogin.classList.add("hidden");
+    if (authModalTitle) authModalTitle.textContent = t("loginTitle");
+  }
+  authOverlay.classList.remove("hidden");
+  authOverlay.setAttribute("aria-hidden", "false");
+}
+
+function closeAuthModal() {
+  if (authOverlay) {
+    authOverlay.classList.add("hidden");
+    authOverlay.setAttribute("aria-hidden", "true");
+  }
+  const errLogin = document.getElementById("auth-login-error");
+  const errSignup = document.getElementById("auth-signup-error");
+  if (errLogin) { errLogin.classList.add("hidden"); errLogin.textContent = ""; }
+  if (errSignup) { errSignup.classList.add("hidden"); errSignup.textContent = ""; }
+}
+
+if (document.getElementById("auth-login-btn")) {
+  document.getElementById("auth-login-btn").addEventListener("click", () => {
+    if (supabaseClient) openAuthModal("login");
+    else alert(t("authConfigNeeded"));
+  });
+}
+if (document.getElementById("auth-signup-btn")) {
+  document.getElementById("auth-signup-btn").addEventListener("click", () => {
+    if (supabaseClient) openAuthModal("signup");
+    else alert(t("authConfigNeeded"));
+  });
+}
+if (document.getElementById("auth-modal-close")) {
+  document.getElementById("auth-modal-close").addEventListener("click", closeAuthModal);
+}
+if (authOverlay) {
+  authOverlay.addEventListener("click", (e) => { if (e.target === authOverlay) closeAuthModal(); });
+}
+if (authShowSignup) {
+  authShowSignup.addEventListener("click", () => openAuthModal("signup"));
+}
+if (authShowLogin) {
+  authShowLogin.addEventListener("click", () => openAuthModal("login"));
+}
+
+if (document.getElementById("auth-logout-btn")) {
+  document.getElementById("auth-logout-btn").addEventListener("click", async () => {
+    if (supabaseClient) await supabaseClient.auth.signOut();
+    closeAuthModal();
+    updateAuthUI();
+  });
+}
+
+if (supabaseClient) {
+  const authSubmitLogin = document.getElementById("auth-submit-login");
+  const authSubmitSignup = document.getElementById("auth-submit-signup");
+  const authGoogleLogin = document.getElementById("auth-google-login");
+  const authGoogleSignup = document.getElementById("auth-google-signup");
+  if (authSubmitLogin) {
+    authSubmitLogin.addEventListener("click", async () => {
+      const email = document.getElementById("auth-email-login")?.value?.trim();
+      const password = document.getElementById("auth-password-login")?.value;
+      const err = document.getElementById("auth-login-error");
+      if (!email || !password) {
+        if (err) { err.textContent = currentLang === "tr" ? "E-posta ve şifre girin." : "Enter email and password."; err.classList.remove("hidden"); }
+        return;
+      }
+      try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeAuthModal();
+      } catch (e) {
+        if (err) { err.textContent = e.message || (currentLang === "tr" ? "Giriş başarısız." : "Login failed."); err.classList.remove("hidden"); }
+      }
+    });
+  }
+  if (authSubmitSignup) {
+    authSubmitSignup.addEventListener("click", async () => {
+      const email = document.getElementById("auth-email-signup")?.value?.trim();
+      const password = document.getElementById("auth-password-signup")?.value;
+      const nickname = document.getElementById("auth-nickname-signup")?.value?.trim() || "";
+      const err = document.getElementById("auth-signup-error");
+      if (!email || !password) {
+        if (err) { err.textContent = currentLang === "tr" ? "E-posta ve şifre girin." : "Enter email and password."; err.classList.remove("hidden"); return; }
+        return;
+      }
+      if (password.length < 6) {
+        if (err) { err.textContent = currentLang === "tr" ? "Şifre en az 6 karakter olmalı." : "Password must be at least 6 characters."; err.classList.remove("hidden"); return; }
+        return;
+      }
+      try {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { nickname } } });
+        if (error) throw error;
+        if (data?.user) {
+          const { error: profileErr } = await supabaseClient.from("profiles").upsert({ id: data.user.id, nickname }, { onConflict: "id" });
+          if (profileErr) console.warn(profileErr);
+        }
+        closeAuthModal();
+        if (currentLang === "tr") alert("Kayıt başarılı. E-posta doğrulama gerekiyorsa kutunuzu kontrol edin.");
+        else alert("Sign up successful. Check your email if verification is required.");
+      } catch (e) {
+        if (err) { err.textContent = e.message || (currentLang === "tr" ? "Kayıt başarısız." : "Sign up failed."); err.classList.remove("hidden"); }
+      }
+    });
+  }
+  if (authGoogleLogin) {
+    authGoogleLogin.addEventListener("click", () => {
+      supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
+      closeAuthModal();
+    });
+  }
+  if (authGoogleSignup) {
+    authGoogleSignup.addEventListener("click", () => {
+      supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
+      closeAuthModal();
+    });
+  }
+}
+
 const exportQuizzesBtn = document.getElementById("export-quizzes-btn");
 const importQuizzesFile = document.getElementById("import-quizzes-file");
 if (exportQuizzesBtn) {
@@ -2116,6 +2413,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     let targetViewKey = rawTarget;
     if (rawTarget === "main-menu") targetViewKey = "mainMenu";
     if (rawTarget === "settings") targetViewKey = "settings";
+    if (rawTarget === "discover-view") targetViewKey = "discover";
     if (rawTarget === "quiz-select-view") targetViewKey = "quizSelect";
     if (rawTarget === "create-quiz-view") targetViewKey = "createQuiz";
     if (rawTarget === "quiz-edit-questions-view") targetViewKey = "quizEditQuestions";
@@ -2590,16 +2888,31 @@ function checkStandaloneAgain() {
 // Bulk input: örnek format hayalet yazı (placeholder) olarak
 if (bulkInput) bulkInput.placeholder = FORMAT_EXAMPLE_PLACEHOLDER;
 
-// Initial setup
-loadQuizzes();
-loadSettings();
-refreshEditQuizSelect();
-applyTranslations();
-updateSoundToggleUi();
-updateShuffleToggleUi();
-updateShuffleOptionsToggleUi();
-initStandalone();
-showView("mainMenu");
+// Initial setup: auth varsa buluttan quiz yükle, yoksa localStorage
+async function initAuthAndQuizzes() {
+  loadSettings();
+  if (supabaseClient) {
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      currentAuthUser = session?.user ?? null;
+      if (session) await fetchUserQuizzes();
+      else loadQuizzes();
+    } catch (e) {
+      loadQuizzes();
+    }
+  } else {
+    loadQuizzes();
+  }
+  updateAuthUI();
+  refreshEditQuizSelect();
+  applyTranslations();
+  updateSoundToggleUi();
+  updateShuffleToggleUi();
+  updateShuffleOptionsToggleUi();
+  initStandalone();
+  showView("mainMenu");
+}
+initAuthAndQuizzes();
 window.addEventListener("load", function () { checkStandaloneAgain(); });
 setTimeout(checkStandaloneAgain, 500);
 

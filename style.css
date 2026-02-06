@@ -179,6 +179,147 @@ body.standalone .app-logo {
   flex-shrink: 0;
 }
 
+/* Sağ üst: Giriş yap / Kaydol veya nickname + Çıkış yap */
+.main-menu-auth {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.main-menu-auth.logged-in .auth-nickname {
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-link-btn:hover {
+  text-decoration: underline;
+}
+
+.auth-sep {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Auth modal */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.auth-overlay.hidden {
+  display: none !important;
+}
+
+.auth-modal {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  position: relative;
+  box-shadow: var(--shadow-soft);
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+
+.auth-modal-close:hover {
+  color: var(--text);
+}
+
+.auth-modal-title {
+  margin: 0 0 20px;
+  font-size: 1.35rem;
+}
+
+.auth-form label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.auth-form .primary-btn,
+.auth-form .secondary-btn {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.auth-form .auth-google-btn {
+  margin-top: 8px;
+}
+
+.auth-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin: 8px 0 0;
+}
+
+.auth-error.hidden {
+  display: none !important;
+}
+
+.auth-switch {
+  margin: 16px 0 0;
+  text-align: center;
+}
+
+.auth-switch .auth-link-btn {
+  font-size: 0.88rem;
+}
+
 .main-menu-logo {
   position: absolute;
   top: 0;
