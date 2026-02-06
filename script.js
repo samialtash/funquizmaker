@@ -119,6 +119,7 @@ const translations = {
     discoverTitle: "Discover quizzes",
     discoverDesc: "Coming soon: Discover and share quizzes in the forum.",
     authConfigNeeded: "Add your Supabase URL and anon key in supabase-config.js to enable login.",
+    authSdkLoadFailed: "Giriş çalışmıyor: Sayfayı dosya (file://) ile değil, yerel sunucu (http://) ile açın. Örn: proje klasöründe 'npx serve' çalıştırın.",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -232,6 +233,7 @@ const translations = {
     discoverTitle: "Quizleri keşfet",
     discoverDesc: "Yakında: Forumdan başkalarının quizlerini keşfedin ve kendi quizlerinizi paylaşın.",
     authConfigNeeded: "Giriş için supabase-config.js dosyasına Supabase URL ve anon key ekleyin.",
+    authSdkLoadFailed: "Giriş çalışmıyor: Sayfayı dosya (file://) ile değil, yerel sunucu (http://) ile açın. Örn: proje klasöründe 'npx serve' çalıştırın.",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -249,15 +251,16 @@ const translations = {
 const SUPPORTED_LANG_CODES = ["en", "tr", "es", "zh", "hi", "ar", "pt", "ru", "ja", "fr", "de", "ko"];
 
 /** Supabase auth: config from supabase-config.js (window.SUPABASE_URL, window.SUPABASE_ANON_KEY) */
-const SUPABASE_URL = typeof window !== "undefined" ? (window.SUPABASE_URL || "") : "";
-const SUPABASE_ANON_KEY = typeof window !== "undefined" ? (window.SUPABASE_ANON_KEY || "") : "";
 let supabaseClient = null;
 let currentAuthUser = null;
 
 function initSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || typeof window.supabase === "undefined") return;
+  const url = (typeof window !== "undefined" && window.SUPABASE_URL) ? String(window.SUPABASE_URL).trim() : "";
+  const key = (typeof window !== "undefined" && window.SUPABASE_ANON_KEY) ? String(window.SUPABASE_ANON_KEY).trim() : "";
+  if (!url || !key) return;
+  if (typeof window.supabase === "undefined") return;
   try {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(url, key);
     supabaseClient.auth.onAuthStateChange((event, session) => {
       currentAuthUser = session?.user ?? null;
       if (event === "SIGNED_IN" && session) {
@@ -2295,16 +2298,22 @@ function closeAuthModal() {
   if (errSignup) { errSignup.classList.add("hidden"); errSignup.textContent = ""; }
 }
 
+function getAuthErrorMessage() {
+  const url = (typeof window !== "undefined" && window.SUPABASE_URL) ? String(window.SUPABASE_URL).trim() : "";
+  const key = (typeof window !== "undefined" && window.SUPABASE_ANON_KEY) ? String(window.SUPABASE_ANON_KEY).trim() : "";
+  if (url && key && typeof window.supabase === "undefined") return t("authSdkLoadFailed");
+  return t("authConfigNeeded");
+}
 if (document.getElementById("auth-login-btn")) {
   document.getElementById("auth-login-btn").addEventListener("click", () => {
     if (supabaseClient) openAuthModal("login");
-    else alert(t("authConfigNeeded"));
+    else alert(getAuthErrorMessage());
   });
 }
 if (document.getElementById("auth-signup-btn")) {
   document.getElementById("auth-signup-btn").addEventListener("click", () => {
     if (supabaseClient) openAuthModal("signup");
-    else alert(t("authConfigNeeded"));
+    else alert(getAuthErrorMessage());
   });
 }
 if (document.getElementById("auth-modal-close")) {
