@@ -2326,7 +2326,7 @@ function loadSupabaseSdkThenOpenModal(mode) {
     return;
   }
   var s = document.createElement("script");
-  s.src = "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js";
   s.async = false;
   s.onload = function () {
     initSupabase();
