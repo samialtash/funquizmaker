@@ -2304,17 +2304,46 @@ function getAuthErrorMessage() {
   if (url && key && typeof window.supabase === "undefined") return t("authSdkLoadFailed");
   return t("authConfigNeeded");
 }
+
+function loadSupabaseSdkThenOpenModal(mode) {
+  if (supabaseClient) {
+    if (mode === "login") openAuthModal("login");
+    else openAuthModal("signup");
+    return;
+  }
+  const url = (typeof window !== "undefined" && window.SUPABASE_URL) ? String(window.SUPABASE_URL).trim() : "";
+  const key = (typeof window !== "undefined" && window.SUPABASE_ANON_KEY) ? String(window.SUPABASE_ANON_KEY).trim() : "";
+  if (!url || !key) {
+    alert(getAuthErrorMessage());
+    return;
+  }
+  if (typeof window.supabase !== "undefined") {
+    initSupabase();
+    if (supabaseClient) {
+      if (mode === "login") openAuthModal("login");
+      else openAuthModal("signup");
+    } else alert(getAuthErrorMessage());
+    return;
+  }
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js";
+  s.async = false;
+  s.onload = function () {
+    initSupabase();
+    if (supabaseClient) {
+      if (mode === "login") openAuthModal("login");
+      else openAuthModal("signup");
+    } else alert(getAuthErrorMessage());
+  };
+  s.onerror = function () { alert(getAuthErrorMessage()); };
+  document.head.appendChild(s);
+}
+
 if (document.getElementById("auth-login-btn")) {
-  document.getElementById("auth-login-btn").addEventListener("click", () => {
-    if (supabaseClient) openAuthModal("login");
-    else alert(getAuthErrorMessage());
-  });
+  document.getElementById("auth-login-btn").addEventListener("click", () => loadSupabaseSdkThenOpenModal("login"));
 }
 if (document.getElementById("auth-signup-btn")) {
-  document.getElementById("auth-signup-btn").addEventListener("click", () => {
-    if (supabaseClient) openAuthModal("signup");
-    else alert(getAuthErrorMessage());
-  });
+  document.getElementById("auth-signup-btn").addEventListener("click", () => loadSupabaseSdkThenOpenModal("signup"));
 }
 if (document.getElementById("auth-modal-close")) {
   document.getElementById("auth-modal-close").addEventListener("click", closeAuthModal);
