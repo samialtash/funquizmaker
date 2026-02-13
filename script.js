@@ -139,6 +139,8 @@ const translations = {
     nicknameSave: "Save",
     ratingOutOf5: "{avg}/5",
     termsLink: "Terms of Service",
+    editProfile: "Edit profile",
+    profileSharedQuizzes: "Quizzes shared on profile",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -272,6 +274,8 @@ const translations = {
     nicknameSave: "Kaydet",
     ratingOutOf5: "{avg}/5",
     termsLink: "Kullanıcı Sözleşmesi",
+    editProfile: "Profili düzenle",
+    profileSharedQuizzes: "Profilinde paylaşılan quizler",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -493,6 +497,7 @@ const views = {
   langSelect: document.getElementById("lang-select-view"),
   discover: document.getElementById("discover-view"),
   profile: document.getElementById("profile-view"),
+  profileEdit: document.getElementById("profile-edit-view"),
   friends: document.getElementById("friends-view"),
   quizSelect: document.getElementById("quiz-select-view"),
   quizQuestionsList: document.getElementById("quiz-questions-list-view"),
@@ -917,7 +922,9 @@ function applyTranslations() {
   if (backProfile) backProfile.textContent = t("back");
   if (backFriends) backFriends.textContent = t("back");
   const profileTitleEl = document.getElementById("profile-title");
-  const profileUploadBtn = document.getElementById("profile-avatar-upload-btn");
+  const profileEditTitleEl = document.getElementById("profile-edit-title");
+  const profileEditBtn = document.getElementById("profile-edit-btn");
+  const profileEditNicknameSave = document.getElementById("profile-edit-nickname-save");
   const friendsTitleEl = document.getElementById("friends-title");
   const friendsPendingTitle = document.getElementById("friends-pending-title");
   const friendsListTitle = document.getElementById("friends-list-title");
@@ -926,9 +933,9 @@ function applyTranslations() {
   const sharePublicBtn = document.getElementById("share-quiz-public-btn");
   const discoverLoginHintEl = document.getElementById("discover-login-hint");
   if (profileTitleEl) profileTitleEl.textContent = t("profileTitle");
-  if (profileUploadBtn) profileUploadBtn.textContent = t("uploadPhoto");
-  const profileNicknameSaveBtn = document.getElementById("profile-nickname-save-btn");
-  if (profileNicknameSaveBtn) profileNicknameSaveBtn.textContent = t("nicknameSave");
+  if (profileEditTitleEl) profileEditTitleEl.textContent = t("editProfile");
+  if (profileEditBtn) profileEditBtn.textContent = t("editProfile");
+  if (profileEditNicknameSave) profileEditNicknameSave.textContent = t("nicknameSave");
   if (friendsTitleEl) friendsTitleEl.textContent = t("friendsTitle");
   if (friendsPendingTitle) friendsPendingTitle.textContent = t("pendingRequests");
   if (friendsListTitle) friendsListTitle.textContent = t("myFriends");
@@ -2392,15 +2399,14 @@ if (document.getElementById("auth-nickname-btn")) {
   });
 }
 
-// Profil: avatar + nickname yükle, nickname düzenleme (20 günde bir)
+// Profil: avatar + isim, Profili düzenle butonu (kendi profilinde), paylaşılan quizler
 async function loadProfile() {
   if (!supabaseClient || !currentAuthUser) return;
   const nickEl = document.getElementById("profile-nickname");
   const imgEl = document.getElementById("profile-avatar-img");
   const placeEl = document.getElementById("profile-avatar-placeholder");
-  const inputEl = document.getElementById("profile-nickname-input");
-  const cooldownEl = document.getElementById("profile-nickname-cooldown");
-  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname,last_nickname_change").eq("id", currentAuthUser.id).single();
+  const editBtn = document.getElementById("profile-edit-btn");
+  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname").eq("id", currentAuthUser.id).single();
   const nick = (profile?.nickname || currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "").trim() || currentAuthUser.email || "";
   if (nickEl) nickEl.textContent = nick;
   const headerNick = document.getElementById("auth-nickname");
@@ -2408,57 +2414,96 @@ async function loadProfile() {
   const safeAvatar = profile?.avatar_url ? sanitizeImageSrc(profile.avatar_url) : "";
   if (safeAvatar && imgEl && placeEl) { imgEl.src = safeAvatar; imgEl.classList.remove("hidden"); placeEl.classList.add("hidden"); }
   else if (imgEl && placeEl) { imgEl.classList.add("hidden"); placeEl.classList.remove("hidden"); }
-  if (inputEl) inputEl.value = nick;
-  if (cooldownEl) {
-    const last = profile?.last_nickname_change ? new Date(profile.last_nickname_change) : null;
-    const now = new Date();
-    const daysSince = last ? Math.floor((now - last) / (24 * 60 * 60 * 1000)) : 999;
-    const canChange = !last || daysSince >= NICKNAME_COOLDOWN_DAYS;
-    cooldownEl.classList.toggle("hidden", false);
-    if (canChange) cooldownEl.textContent = t("nicknameCooldownReady");
-    else {
-      const daysLeft = Math.max(0, NICKNAME_COOLDOWN_DAYS - daysSince);
-      cooldownEl.textContent = (t("nicknameCooldown") || "").replace("{days}", String(daysLeft));
-    }
+  if (editBtn) { editBtn.classList.remove("hidden"); editBtn.textContent = t("editProfile"); }
+  await loadProfileSharedQuizzes();
+}
+async function loadProfileSharedQuizzes() {
+  const titleEl = document.getElementById("profile-shared-title");
+  const listEl = document.getElementById("profile-shared-list");
+  if (!listEl || !currentAuthUser || !supabaseClient) return;
+  listEl.innerHTML = "";
+  titleEl?.classList.add("hidden");
+  const { data: rows } = await supabaseClient.from("public_quizzes").select("quiz_id").eq("user_id", currentAuthUser.id).order("created_at", { ascending: false });
+  if (!rows?.length) return;
+  titleEl?.classList.remove("hidden");
+  if (titleEl) titleEl.textContent = t("profileSharedQuizzes");
+  const quizIds = rows.map((r) => r.quiz_id);
+  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds);
+  const byId = {};
+  if (quizData) for (const q of quizData) byId[q.id] = q;
+  const ratingsMap = await getQuizRatings(quizIds);
+  for (const r of rows) {
+    const quiz = byId[r.quiz_id];
+    if (!quiz) continue;
+    const avgStr = formatRating(ratingsMap[r.quiz_id] ? ratingsMap[r.quiz_id].avg : null);
+    const card = document.createElement("article");
+    card.className = "discover-card profile-shared-card";
+    card.innerHTML = `
+      <div class="discover-card-main">
+        <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
+        <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
+      </div>
+      <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
+    `;
+    card.addEventListener("click", () => openDiscoverPreview(quiz, "", ratingsMap[r.quiz_id]));
+    listEl.appendChild(card);
   }
 }
+document.getElementById("profile-edit-btn")?.addEventListener("click", () => { showView("profileEdit"); loadProfileEdit(); });
 
-if (document.getElementById("profile-avatar-upload-btn")) {
-  document.getElementById("profile-avatar-upload-btn").addEventListener("click", () => document.getElementById("profile-avatar-input")?.click());
-}
-if (document.getElementById("profile-avatar-input")) {
-  document.getElementById("profile-avatar-input").addEventListener("change", async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !supabaseClient || !currentAuthUser) return;
-    const path = `${currentAuthUser.id}/avatar`;
-    const { error } = await supabaseClient.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) { console.warn(error); return; }
-    const { data: { publicUrl } } = supabaseClient.storage.from("avatars").getPublicUrl(path);
-    await supabaseClient.from("profiles").update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", currentAuthUser.id);
-    loadProfile();
-    updateAuthUI();
-    e.target.value = "";
-  });
-}
-if (document.getElementById("profile-nickname-save-btn")) {
-  document.getElementById("profile-nickname-save-btn").addEventListener("click", async () => {
-    if (!supabaseClient || !currentAuthUser) return;
-    const inputEl = document.getElementById("profile-nickname-input");
-    const newNick = inputEl?.value?.trim()?.slice(0, 50) || "";
-    if (!newNick) return;
-    const { data: profile } = await supabaseClient.from("profiles").select("last_nickname_change").eq("id", currentAuthUser.id).single();
+// Profil düzenle ekranı: avatar + nickname (20 günde bir)
+async function loadProfileEdit() {
+  if (!supabaseClient || !currentAuthUser) return;
+  const imgEl = document.getElementById("profile-edit-avatar-img");
+  const placeEl = document.getElementById("profile-edit-avatar-placeholder");
+  const inputEl = document.getElementById("profile-edit-nickname-input");
+  const cooldownEl = document.getElementById("profile-edit-nickname-cooldown");
+  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname,last_nickname_change").eq("id", currentAuthUser.id).single();
+  const nick = (profile?.nickname || "").trim();
+  if (inputEl) inputEl.value = nick;
+  const safeAvatar = profile?.avatar_url ? sanitizeImageSrc(profile.avatar_url) : "";
+  if (safeAvatar && imgEl && placeEl) { imgEl.src = safeAvatar; imgEl.classList.remove("hidden"); placeEl.classList.add("hidden"); }
+  else if (imgEl && placeEl) { imgEl.classList.add("hidden"); placeEl.classList.remove("hidden"); }
+  if (cooldownEl) {
+    cooldownEl.classList.remove("hidden");
     const last = profile?.last_nickname_change ? new Date(profile.last_nickname_change) : null;
     const daysSince = last ? Math.floor((new Date() - last) / (24 * 60 * 60 * 1000)) : 999;
-    if (last && daysSince < NICKNAME_COOLDOWN_DAYS) {
-      alert(currentLang === "tr" ? "Nickname 20 günde bir değiştirilebilir. Henüz süre dolmadı." : "Nickname can only be changed once every 20 days.");
-      return;
-    }
-    const { error } = await supabaseClient.from("profiles").update({ nickname: newNick, last_nickname_change: new Date().toISOString() }).eq("id", currentAuthUser.id);
-    if (error) { console.warn(error); return; }
-    loadProfile();
-    updateAuthUI();
-  });
+    if (!last || daysSince >= NICKNAME_COOLDOWN_DAYS) cooldownEl.textContent = t("nicknameCooldownReady");
+    else cooldownEl.textContent = (t("nicknameCooldown") || "").replace("{days}", String(Math.max(0, NICKNAME_COOLDOWN_DAYS - daysSince)));
+  }
 }
+document.getElementById("profile-edit-avatar-btn")?.addEventListener("click", () => document.getElementById("profile-edit-avatar-input")?.click());
+document.getElementById("profile-edit-avatar-input")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file || !supabaseClient || !currentAuthUser) return;
+  const path = `${currentAuthUser.id}/avatar`;
+  const { error } = await supabaseClient.storage.from("avatars").upload(path, file, { upsert: true });
+  if (error) { console.warn(error); return; }
+  const { data: { publicUrl } } = supabaseClient.storage.from("avatars").getPublicUrl(path);
+  await supabaseClient.from("profiles").update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", currentAuthUser.id);
+  loadProfileEdit();
+  loadProfile();
+  updateAuthUI();
+  e.target.value = "";
+});
+document.getElementById("profile-edit-nickname-save")?.addEventListener("click", async () => {
+  if (!supabaseClient || !currentAuthUser) return;
+  const inputEl = document.getElementById("profile-edit-nickname-input");
+  const newNick = inputEl?.value?.trim()?.slice(0, 50) || "";
+  if (!newNick) return;
+  const { data: profile } = await supabaseClient.from("profiles").select("last_nickname_change").eq("id", currentAuthUser.id).single();
+  const last = profile?.last_nickname_change ? new Date(profile.last_nickname_change) : null;
+  const daysSince = last ? Math.floor((new Date() - last) / (24 * 60 * 60 * 1000)) : 999;
+  if (last && daysSince < NICKNAME_COOLDOWN_DAYS) {
+    alert(currentLang === "tr" ? "Nickname 20 günde bir değiştirilebilir. Henüz süre dolmadı." : "Nickname can only be changed once every 20 days.");
+    return;
+  }
+  const { error } = await supabaseClient.from("profiles").update({ nickname: newNick, last_nickname_change: new Date().toISOString() }).eq("id", currentAuthUser.id);
+  if (error) { console.warn(error); return; }
+  loadProfileEdit();
+  loadProfile();
+  updateAuthUI();
+});
 if (document.getElementById("profile-friends-btn")) {
   document.getElementById("profile-friends-btn").addEventListener("click", () => { showView("friends"); loadFriendsView(); });
 }
@@ -2643,6 +2688,15 @@ document.getElementById("share-quiz-public-btn")?.addEventListener("click", asyn
   alert(currentLang === "tr" ? "Profilinde paylaşıldı." : "Shared on profile.");
 });
 
+// Puan gösterimi: tam sayıda "5", küsürlüde "4.2" (0.1 katları)
+function formatRating(avg) {
+  if (avg == null || Number.isNaN(Number(avg))) return "—";
+  const n = Number(avg);
+  if (n === 0) return "—";
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(1);
+}
+
 // Quiz puanlama: ortalamaları al, puan gönder
 async function getQuizRatings(quizIds) {
   if (!supabaseClient || !quizIds?.length) return {};
@@ -2697,7 +2751,7 @@ async function loadDiscoverQuizzes() {
     }
     const author = authorCache[r.user_id];
     const ratingInfo = ratingsMap[quiz.id];
-    const avgStr = ratingInfo ? ratingInfo.avg.toFixed(1) : "—";
+    const avgStr = formatRating(ratingInfo ? ratingInfo.avg : null);
     const card = document.createElement("article");
     card.className = "discover-card";
     card.dataset.quizId = quiz.id;
@@ -2707,11 +2761,17 @@ async function loadDiscoverQuizzes() {
         <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
         <span class="discover-card-author">${escapeHtml(author)}</span>
       </div>
-      <div class="discover-card-rating" aria-label="Puan">${avgStr}/5</div>
+      <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
     `;
     card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingsMap[quiz.id]));
     feed.appendChild(card);
   }
+}
+function updateDiscoverPreviewShuffleUi() {
+  const shuf = document.getElementById("discover-preview-shuffle");
+  const shufOpt = document.getElementById("discover-preview-shuffle-options");
+  if (shuf) shuf.classList.toggle("active", !!shuffleEnabled);
+  if (shufOpt) shufOpt.classList.toggle("active", !!shuffleOptionsEnabled);
 }
 function openDiscoverPreview(quiz, author, ratingInfo) {
   discoverPreviewQuiz = quiz;
@@ -2723,6 +2783,11 @@ function openDiscoverPreview(quiz, author, ratingInfo) {
   if (titleEl) titleEl.textContent = quiz.name;
   if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
   renderPreviewRating(ratingEl, quiz.id, ratingInfo);
+  updateDiscoverPreviewShuffleUi();
+  const shuffleLabel = document.getElementById("discover-preview-shuffle-label");
+  const shuffleOptLabel = document.getElementById("discover-preview-shuffle-options-label");
+  if (shuffleLabel) shuffleLabel.textContent = t("randomOrder");
+  if (shuffleOptLabel) shuffleOptLabel.textContent = t("shuffleOptions");
   overlay?.classList.remove("hidden");
   startBtn?.replaceWith(startBtn.cloneNode(true));
   const newStart = document.getElementById("discover-preview-start-btn");
@@ -2737,10 +2802,10 @@ function renderPreviewRating(container, quizId, ratingInfo) {
   container.innerHTML = "";
   const avg = ratingInfo ? ratingInfo.avg : 0;
   const count = ratingInfo ? ratingInfo.count : 0;
-  const avgStr = avg > 0 ? avg.toFixed(1) : "—";
+  const avgStr = formatRating(avg);
   const label = document.createElement("span");
   label.className = "discover-preview-rating-label";
-  label.textContent = (t("ratingOutOf5") || "{avg}/5").replace("{avg}", avgStr) + (count ? ` (${count})` : "");
+  label.innerHTML = `<span class="discover-rating-stars">★</span> ${escapeHtml(avgStr)}/5${count ? ` (${count})` : ""}`;
   container.appendChild(label);
   const starsWrap = document.createElement("div");
   starsWrap.className = "discover-preview-stars";
@@ -2775,6 +2840,18 @@ if (document.getElementById("discover-preview-close")) {
   document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
 }
 document.getElementById("discover-preview-overlay")?.addEventListener("click", (e) => { if (e.target.id === "discover-preview-overlay") closeDiscoverPreview(); });
+document.getElementById("discover-preview-shuffle")?.addEventListener("click", () => {
+  shuffleEnabled = !shuffleEnabled;
+  saveSettings();
+  updateDiscoverPreviewShuffleUi();
+  if (shuffleToggleBtn) shuffleToggleBtn.classList.toggle("active", !!shuffleEnabled);
+});
+document.getElementById("discover-preview-shuffle-options")?.addEventListener("click", () => {
+  shuffleOptionsEnabled = !shuffleOptionsEnabled;
+  saveSettings();
+  updateDiscoverPreviewShuffleUi();
+  if (shuffleOptionsToggleBtn) shuffleOptionsToggleBtn.classList.toggle("active", !!shuffleOptionsEnabled);
+});
 
 // Auth modal
 const authOverlay = document.getElementById("auth-modal-overlay");
@@ -2982,6 +3059,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     }
     showView(targetViewKey, "back");
     if (targetViewKey === "quizQuestionsList") renderQuestionsList();
+    if (targetViewKey === "profile") loadProfile();
   });
 });
 

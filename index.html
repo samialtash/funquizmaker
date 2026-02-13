@@ -117,18 +117,28 @@
           <div id="discover-feed" class="discover-feed"></div>
         </div>
       </div>
-      <!-- Keşfet: quiz önizleme popup (başlık, açıklama, Quiz'i Başlat) -->
+      <!-- Keşfet: quiz önizleme popup (başlık, açıklama, karıştır tikleri, Quiz'i Başlat) -->
       <div id="discover-preview-overlay" class="auth-overlay hidden" aria-hidden="true">
         <div class="auth-modal discover-preview-modal">
           <button type="button" id="discover-preview-close" class="auth-modal-close" aria-label="Kapat">×</button>
           <h2 id="discover-preview-title" class="discover-preview-title"></h2>
           <p id="discover-preview-desc" class="discover-preview-desc"></p>
           <div id="discover-preview-rating" class="discover-preview-rating"></div>
+          <div class="discover-preview-toggles">
+            <button type="button" id="discover-preview-shuffle" class="secondary-btn toggle-pill">
+              <span class="toggle-indicator"></span>
+              <span id="discover-preview-shuffle-label" class="toggle-label">Soruları rastgele sırala</span>
+            </button>
+            <button type="button" id="discover-preview-shuffle-options" class="secondary-btn toggle-pill">
+              <span class="toggle-indicator"></span>
+              <span id="discover-preview-shuffle-options-label" class="toggle-label">Şıkları rastgele sırala</span>
+            </button>
+          </div>
           <button type="button" id="discover-preview-start-btn" class="primary-btn">Quiz'i Başlat</button>
         </div>
       </div>
 
-      <!-- Profil: avatar, nickname, arkadaşlar -->
+      <!-- Profil: avatar, isim, Profili düzenle (kendi profilinde), çizgi, paylaşılan quizler -->
       <div id="profile-view" class="view">
         <button id="back-btn-profile" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="profile-title" class="main-menu-title">Profil</h1>
@@ -136,18 +146,34 @@
           <div id="profile-avatar-wrap" class="profile-avatar-wrap">
             <img id="profile-avatar-img" class="profile-avatar-img hidden" alt="" />
             <div id="profile-avatar-placeholder" class="profile-avatar-placeholder" aria-hidden="true"></div>
-            <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
-            <button type="button" id="profile-avatar-upload-btn" class="secondary-btn small-btn">Profil resmi yükle</button>
           </div>
           <p id="profile-nickname" class="profile-nickname"></p>
-          <div id="profile-nickname-edit" class="profile-nickname-edit">
-            <input type="text" id="profile-nickname-input" class="auth-form input" placeholder="Nickname" maxlength="50" />
-            <button type="button" id="profile-nickname-save-btn" class="secondary-btn small-btn">Kaydet</button>
-            <p id="profile-nickname-cooldown" class="hint profile-nickname-cooldown hidden"></p>
-          </div>
+          <button type="button" id="profile-edit-btn" class="secondary-btn small-btn hidden">Profili düzenle</button>
         </div>
+        <hr class="profile-divider" />
         <div class="profile-actions main-menu-buttons">
           <button type="button" id="profile-friends-btn" class="secondary-btn main-btn-secondary">Arkadaşlar</button>
+        </div>
+        <h2 id="profile-shared-title" class="profile-section-title hidden">Profilinde paylaşılan quizler</h2>
+        <div id="profile-shared-list" class="profile-shared-list"></div>
+      </div>
+      <!-- Profil düzenle: avatar + nickname (sadece kendi profili) -->
+      <div id="profile-edit-view" class="view">
+        <button id="back-btn-profile-edit" class="back-btn" data-back="profile">← Back</button>
+        <h1 id="profile-edit-title" class="main-menu-title">Profili düzenle</h1>
+        <div class="profile-edit-form">
+          <div class="profile-avatar-wrap">
+            <img id="profile-edit-avatar-img" class="profile-avatar-img hidden" alt="" />
+            <div id="profile-edit-avatar-placeholder" class="profile-avatar-placeholder" aria-hidden="true"></div>
+            <input type="file" id="profile-edit-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
+            <button type="button" id="profile-edit-avatar-btn" class="secondary-btn small-btn">Profil resmi yükle</button>
+          </div>
+          <div class="profile-nickname-edit">
+            <label for="profile-edit-nickname-input">Nickname</label>
+            <input type="text" id="profile-edit-nickname-input" class="auth-form input" placeholder="Nickname" maxlength="50" />
+            <button type="button" id="profile-edit-nickname-save" class="secondary-btn small-btn">Kaydet</button>
+            <p id="profile-edit-nickname-cooldown" class="hint profile-nickname-cooldown hidden"></p>
+          </div>
         </div>
       </div>
 

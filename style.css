@@ -422,10 +422,19 @@ body.standalone .app-logo {
 .discover-preview-stars { display: flex; gap: 4px; }
 .discover-star-btn { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0 2px; transition: color 0.15s; }
 .discover-star-btn:hover { color: var(--accent); }
+.discover-preview-toggles { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.discover-preview-toggles .toggle-pill { width: 100%; }
+.discover-rating-stars { color: #fbbf24; margin-right: 2px; }
 
-/* Profil: nickname düzenleme */
+/* Profil: çizgi, paylaşılan quizler, düzenle formu */
+.profile-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.profile-section-title { font-size: 1rem; margin: 12px 0 8px 0; font-weight: 600; }
+.profile-shared-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.profile-shared-card { cursor: pointer; }
 .profile-nickname-edit { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-width: 280px; }
 .profile-nickname-cooldown { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.profile-edit-form { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.profile-edit-form .profile-avatar-wrap { margin-bottom: 0; }
 
 .main-menu-logo {
   position: absolute;
