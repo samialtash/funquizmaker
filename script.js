@@ -3050,6 +3050,7 @@ async function loadDiscoverQuizzes() {
     btn.type = "button";
     btn.className = "discover-card discover-feed-card";
     btn.setAttribute("role", "listitem");
+    btn.dataset.quizId = quiz.id;
     btn.innerHTML = `
       <span class="discover-card-main">
         <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
@@ -3058,7 +3059,9 @@ async function loadDiscoverQuizzes() {
       </span>
       <span class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</span>
     `;
-    btn.addEventListener("click", function () {
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
       openDiscoverPreview(quiz, author, ratingInfo, r.id);
     });
     feed.appendChild(btn);
@@ -3093,6 +3096,10 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   if (overlay) {
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
+    overlay.style.display = "flex";
+    overlay.style.visibility = "visible";
+    overlay.style.opacity = "1";
+    overlay.style.zIndex = "99999";
   }
   const newStart = startBtn ? startBtn.cloneNode(true) : null;
   if (startBtn && startBtn.parentNode) {
@@ -3187,7 +3194,14 @@ async function renderPreviewRating(container, quizId, ratingInfo) {
 function closeDiscoverPreview() {
   discoverPreviewQuiz = null;
   var ov = document.getElementById("discover-preview-overlay");
-  if (ov) ov.classList.add("hidden"), ov.setAttribute("aria-hidden", "true");
+  if (ov) {
+    ov.classList.add("hidden");
+    ov.setAttribute("aria-hidden", "true");
+    ov.style.display = "";
+    ov.style.visibility = "";
+    ov.style.opacity = "";
+    ov.style.zIndex = "";
+  }
 }
 
 function playDiscoverQuiz(quiz) {
@@ -3212,6 +3226,20 @@ async function copyQuizToMyQuizzes(quiz) {
 }
 
 (function initDiscoverPopup() {
+  var feed = document.getElementById("discover-feed");
+  if (feed) {
+    feed.addEventListener("click", function (e) {
+      var card = e.target.closest && e.target.closest(".discover-feed-card");
+      if (!card) return;
+      var quizId = card.dataset && card.dataset.quizId;
+      if (!quizId) return;
+      var cached = discoverCardCache[quizId];
+      if (!cached || !cached.quiz) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
+    }, true);
+  }
   var overlay = document.getElementById("discover-preview-overlay");
   var closeBtn = document.getElementById("discover-preview-close");
   var backdrop = document.getElementById("discover-preview-backdrop");
