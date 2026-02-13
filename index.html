@@ -18,7 +18,7 @@
     <link rel="icon" href="logoquiz.png" type="image/png" />
     <link rel="apple-touch-icon" href="logoquiz.png" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=6" />
+    <link rel="stylesheet" href="style.css?v=8" />
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1484572525060728"
          crossorigin="anonymous"></script>
@@ -42,7 +42,7 @@
             <button type="button" id="auth-signup-btn" class="auth-link-btn">Kaydol</button>
           </div>
           <div class="main-menu-auth logged-in hidden" id="main-menu-auth-logged-in">
-            <span id="auth-nickname" class="auth-nickname"></span>
+            <button type="button" id="auth-nickname-btn" class="auth-nickname-btn"><span id="auth-nickname" class="auth-nickname"></span></button>
             <button type="button" id="auth-logout-btn" class="auth-link-btn">Çıkış yap</button>
           </div>
         </header>
@@ -86,11 +86,64 @@
         <div id="lang-select-list" class="lang-select-list"></div>
       </div>
 
-      <!-- Quizleri keşfet: forum placeholder (ileride forum + paylaşım) -->
+      <!-- Quizleri keşfet: herkese açık quizler, giriş zorunlu -->
       <div id="discover-view" class="view">
         <button id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="discover-title" class="main-menu-title">Quizleri keşfet</h1>
-        <p id="discover-desc" class="info-box main-menu-info">Yakında: Forumdan başkalarının quizlerini keşfedin ve kendi quizlerinizi paylaşın.</p>
+        <p id="discover-login-hint" class="info-box main-menu-info hidden">Giriş yaparak keşfet sayfasındaki quizlere erişebilirsiniz.</p>
+        <div id="discover-list-wrap" class="discover-list-wrap hidden">
+          <p id="discover-empty" class="hint hidden"></p>
+          <ul id="discover-list" class="discover-list"></ul>
+        </div>
+      </div>
+
+      <!-- Profil: avatar, nickname, arkadaşlar -->
+      <div id="profile-view" class="view">
+        <button id="back-btn-profile" class="back-btn" data-back="main-menu">← Back</button>
+        <h1 id="profile-title" class="main-menu-title">Profil</h1>
+        <div class="profile-header">
+          <div id="profile-avatar-wrap" class="profile-avatar-wrap">
+            <img id="profile-avatar-img" class="profile-avatar-img hidden" alt="" />
+            <div id="profile-avatar-placeholder" class="profile-avatar-placeholder" aria-hidden="true"></div>
+            <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
+            <button type="button" id="profile-avatar-upload-btn" class="secondary-btn small-btn">Fotoğraf yükle</button>
+          </div>
+          <p id="profile-nickname" class="profile-nickname"></p>
+        </div>
+        <div class="profile-actions main-menu-buttons">
+          <button type="button" id="profile-friends-btn" class="secondary-btn main-btn-secondary">Arkadaşlar</button>
+        </div>
+      </div>
+
+      <!-- Arkadaşlar: arama, istekler, liste -->
+      <div id="friends-view" class="view">
+        <button id="back-btn-friends" class="back-btn" data-back="profile">← Back</button>
+        <h1 id="friends-title" class="main-menu-title">Arkadaşlar</h1>
+        <div class="friends-search-wrap">
+          <input type="text" id="friends-search-nickname" class="friends-search-input" placeholder="Nickname ile ara..." />
+          <button type="button" id="friends-search-btn" class="primary-btn">Ara</button>
+        </div>
+        <div id="friends-search-results" class="friends-list hidden"></div>
+        <h2 id="friends-pending-title" class="friends-section-title">Bekleyen istekler</h2>
+        <div id="friends-pending-list" class="friends-list"></div>
+        <h2 id="friends-list-title" class="friends-section-title">Arkadaşlarım</h2>
+        <div id="friends-list" class="friends-list"></div>
+      </div>
+
+      <!-- Quiz paylaş modal: arkadaş seç veya Profilinde Paylaş -->
+      <div id="share-quiz-modal-overlay" class="auth-overlay hidden" aria-hidden="true">
+        <div class="auth-modal share-quiz-modal">
+          <button type="button" id="share-quiz-modal-close" class="auth-modal-close" aria-label="Kapat">×</button>
+          <h2 id="share-quiz-modal-title" class="auth-modal-title">Quiz'i Paylaş</h2>
+          <div class="share-quiz-section">
+            <input type="text" id="share-quiz-search-user" class="auth-form input" placeholder="Kullanıcı ara (nickname)..." />
+            <div id="share-quiz-friends-list" class="share-quiz-user-list"></div>
+            <div id="share-quiz-search-results" class="share-quiz-user-list hidden"></div>
+          </div>
+          <button type="button" id="share-quiz-send-btn" class="primary-btn">Gönder</button>
+          <hr class="share-quiz-divider" />
+          <button type="button" id="share-quiz-public-btn" class="secondary-btn">Profilinde Paylaş (herkese açık)</button>
+        </div>
       </div>
 
       <!-- Quiz Selection / Start: list 5 per page -->
@@ -266,6 +319,7 @@
           <div class="inline-row edit-existing-row" style="margin-top: 8px; gap: 8px;">
             <button id="load-edit-quiz-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true">Edit quiz</button>
             <button id="edit-questions-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true" title="Edit questions of this quiz">Edit questions</button>
+            <button id="share-quiz-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true">Quiz'i Paylaş</button>
             <button id="clear-edit-quiz-btn" class="secondary-btn small-btn">Clear</button>
           </div>
           <div id="delete-quiz-wrap-edit" class="field delete-quiz-wrap hidden">
@@ -363,6 +417,6 @@
     <script>window.SUPABASE_URL=window.SUPABASE_URL||"";window.SUPABASE_ANON_KEY=window.SUPABASE_ANON_KEY||"";</script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="script.js?v=7"></script>
+    <script src="script.js?v=8"></script>
   </body>
 </html>
