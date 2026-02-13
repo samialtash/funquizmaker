@@ -71,3 +71,17 @@ create policy "avatars_public_read" on storage.objects for select using (bucket_
 create policy "avatars_own_upload" on storage.objects for insert with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 create policy "avatars_own_update" on storage.objects for update using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 create policy "avatars_own_delete" on storage.objects for delete using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 9) Herkese açık quiz giriş sayısı (keşfette kaç kere girildiği)
+create table if not exists public.quiz_play_counts (
+  quiz_id uuid primary key references public.quizzes(id) on delete cascade,
+  count bigint not null default 0
+);
+alter table public.quiz_play_counts enable row level security;
+create policy "quiz_play_counts_select" on public.quiz_play_counts for select using (true);
+-- Artırma için RPC (anon da çağırabilir; sadece +1 yapıyor)
+create or replace function public.increment_quiz_play_count(p_quiz_id uuid)
+returns void language sql security definer set search_path = public as $$
+  insert into public.quiz_play_counts (quiz_id, count) values (p_quiz_id, 1)
+  on conflict (quiz_id) do update set count = quiz_play_counts.count + 1;
+$$;

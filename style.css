@@ -422,9 +422,13 @@ body.standalone .app-logo {
 .discover-preview-stars { display: flex; gap: 4px; }
 .discover-star-btn { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0 2px; transition: color 0.15s; }
 .discover-star-btn:hover { color: var(--accent); }
+.discover-star-btn.rated { color: #fbbf24; }
+.discover-star-btn:disabled { cursor: default; opacity: 1; }
 .discover-preview-toggles { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .discover-preview-toggles .toggle-pill { width: 100%; }
 .discover-rating-stars { color: #fbbf24; margin-right: 2px; }
+.discover-preview-rate-hint { margin: 4px 0 0 0; font-size: 0.9rem; }
+.quiz-finished-rate-hint { margin: 6px 0 0 0; font-size: 0.9rem; }
 
 /* Profil: çizgi, paylaşılan quizler, düzenle formu */
 .profile-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
@@ -434,6 +438,8 @@ body.standalone .app-logo {
 .profile-nickname-edit { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-width: 280px; }
 .profile-nickname-cooldown { font-size: 0.85rem; color: var(--muted); margin: 0; }
 .profile-edit-form { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.profile-edit-avatar-block { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.profile-edit-avatar-block .profile-avatar-wrap { margin-bottom: 0; }
 .profile-edit-form .profile-avatar-wrap { margin-bottom: 0; }
 
 /* Bildirim: buton, badge, dropdown */
@@ -479,6 +485,7 @@ body.standalone .app-logo {
 }
 .notification-dropdown-item:hover { background: var(--accent-soft); }
 .notification-dropdown-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.notification-dropdown-item:not(:last-child) { border-bottom: 1px solid var(--border); }
 .notification-item-sender { font-weight: 600; font-size: 0.9rem; }
 .notification-item-quiz { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .notification-all-link {
@@ -543,14 +550,14 @@ body.standalone .app-logo {
   transform: translateX(-50%);
   top: 0;
   width: 100%;
-  max-width: 420px;
+  max-width: min(420px, calc(100vw - 56px - 220px));
   display: flex;
   flex-direction: column;
   align-items: center;
   pointer-events: none;
 }
 
-/* Küçük ekranlarda arama barı logo ile çakışmasın: logo sağından başlasın, daralsın */
+/* Küçük ekranlarda arama barı logo ve sağdaki yazıları kapatmasın */
 @media (max-width: 640px) {
   .main-menu-search-wrap {
     left: 0;
@@ -559,6 +566,7 @@ body.standalone .app-logo {
     padding-left: calc(56px + 12px);
     padding-right: 12px;
     max-width: none;
+    width: auto;
     box-sizing: border-box;
   }
 }
