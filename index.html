@@ -117,35 +117,13 @@
         <div id="lang-select-list" class="lang-select-list"></div>
       </div>
 
-      <!-- Quizleri keşfet: Reddit tarzı kartlar, puanlama, önizleme popup -->
+      <!-- Quizleri keşfet: herkese açık quizler, karta tıklanınca popup → Quiz'i Başlat -->
       <div id="discover-view" class="view">
-        <button id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
+        <button type="button" id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="discover-title" class="main-menu-title">Quizleri keşfet</h1>
-        <p id="discover-login-hint" class="info-box main-menu-info hidden">Giriş yaparak keşfet sayfasındaki quizlere erişebilirsiniz.</p>
-        <div id="discover-list-wrap" class="discover-list-wrap hidden">
-          <p id="discover-empty" class="hint hidden"></p>
-          <div id="discover-feed" class="discover-feed"></div>
-        </div>
-      </div>
-      <!-- Keşfet: quiz önizleme popup (başlık, açıklama, karıştır tikleri, Quiz'i Başlat) -->
-      <div id="discover-preview-overlay" class="auth-overlay hidden" aria-hidden="true">
-        <div class="auth-modal discover-preview-modal">
-          <button type="button" id="discover-preview-close" class="auth-modal-close" aria-label="Kapat">×</button>
-          <h2 id="discover-preview-title" class="discover-preview-title"></h2>
-          <p id="discover-preview-desc" class="discover-preview-desc"></p>
-          <div id="discover-preview-rating" class="discover-preview-rating"></div>
-          <div class="discover-preview-toggles">
-            <button type="button" id="discover-preview-shuffle" class="secondary-btn toggle-pill">
-              <span class="toggle-indicator"></span>
-              <span id="discover-preview-shuffle-label" class="toggle-label">Soruları rastgele sırala</span>
-            </button>
-            <button type="button" id="discover-preview-shuffle-options" class="secondary-btn toggle-pill">
-              <span class="toggle-indicator"></span>
-              <span id="discover-preview-shuffle-options-label" class="toggle-label">Şıkları rastgele sırala</span>
-            </button>
-          </div>
-          <button type="button" id="discover-preview-add-to-mine-btn" class="secondary-btn">Quizlerime ekle</button>
-          <button type="button" id="discover-preview-start-btn" class="primary-btn">Quiz'i Başlat</button>
+        <div id="discover-list-wrap" class="discover-list-wrap">
+          <p id="discover-empty" class="discover-empty hint hidden"></p>
+          <div id="discover-feed" class="discover-feed" role="list"></div>
         </div>
       </div>
 
@@ -514,6 +492,23 @@
           <button type="button" id="auth-show-signup" class="auth-link-btn">Hesabınız yok mu? Kaydol</button>
           <button type="button" id="auth-show-login" class="auth-link-btn hidden">Zaten hesabınız var mı? Giriş yap</button>
         </p>
+      </div>
+    </div>
+
+    <!-- Keşfet quiz önizleme popup – body altında, her zaman en üstte -->
+    <div id="discover-preview-overlay" class="discover-overlay hidden" aria-hidden="true">
+      <div class="discover-overlay-backdrop" id="discover-preview-backdrop"></div>
+      <div class="discover-overlay-modal" role="dialog" aria-modal="true" aria-labelledby="discover-preview-title">
+        <button type="button" id="discover-preview-close" class="discover-overlay-close" aria-label="Kapat">×</button>
+        <h2 id="discover-preview-title" class="discover-preview-title"></h2>
+        <p id="discover-preview-desc" class="discover-preview-desc"></p>
+        <div id="discover-preview-rating" class="discover-preview-rating"></div>
+        <div class="discover-preview-toggles">
+          <button type="button" id="discover-preview-shuffle" class="secondary-btn toggle-pill"><span class="toggle-indicator"></span><span id="discover-preview-shuffle-label" class="toggle-label">Soruları rastgele sırala</span></button>
+          <button type="button" id="discover-preview-shuffle-options" class="secondary-btn toggle-pill"><span class="toggle-indicator"></span><span id="discover-preview-shuffle-options-label" class="toggle-label">Şıkları rastgele sırala</span></button>
+        </div>
+        <button type="button" id="discover-preview-add-to-mine-btn" class="secondary-btn">Quizlerime ekle</button>
+        <button type="button" id="discover-preview-start-btn" class="primary-btn">Quiz'i Başlat</button>
       </div>
     </div>
 

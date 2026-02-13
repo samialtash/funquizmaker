@@ -950,7 +950,6 @@ function applyTranslations() {
   const shareModalTitle = document.getElementById("share-quiz-modal-title");
   const shareSendBtn = document.getElementById("share-quiz-send-btn");
   const sharePublicBtn = document.getElementById("share-quiz-public-btn");
-  const discoverLoginHintEl = document.getElementById("discover-login-hint");
   if (profileTitleEl) profileTitleEl.textContent = t("profileTitle");
   if (profileEditTitleEl) profileEditTitleEl.textContent = t("editProfile");
   if (profileEditBtn) profileEditBtn.textContent = t("editProfile");
@@ -961,7 +960,6 @@ function applyTranslations() {
   if (shareModalTitle) shareModalTitle.textContent = t("shareQuizTitle");
   if (shareSendBtn) shareSendBtn.textContent = t("send");
   if (sharePublicBtn) sharePublicBtn.textContent = t("shareToProfile");
-  if (discoverLoginHintEl) discoverLoginHintEl.textContent = t("discoverLoginHint");
   const authLoginBtn = document.getElementById("auth-login-btn");
   const authSignupBtn = document.getElementById("auth-signup-btn");
   const authLogoutBtn = document.getElementById("auth-logout-btn");
@@ -969,9 +967,7 @@ function applyTranslations() {
   if (authSignupBtn) authSignupBtn.textContent = t("signup");
   if (authLogoutBtn) authLogoutBtn.textContent = t("logout");
   const discoverTitle = document.getElementById("discover-title");
-  const discoverDesc = document.getElementById("discover-desc");
   if (discoverTitle) discoverTitle.textContent = t("discoverTitle");
-  if (discoverDesc) discoverDesc.textContent = t("discoverDesc");
   const discoverQuizBtn = document.getElementById("discover-quiz-btn");
   if (discoverQuizBtn) discoverQuizBtn.textContent = t("discoverQuizzes");
   const termsLinkBtn = document.getElementById("terms-link-btn");
@@ -2997,7 +2993,7 @@ async function submitQuizRating(quizId, rating) {
   await supabaseClient.from("quiz_ratings").upsert({ user_id: currentAuthUser.id, quiz_id: quizId, rating }, { onConflict: "user_id,quiz_id" });
 }
 
-// Quizleri keşfet: Reddit tarzı kartlar (başlık, açıklama, yanda puan), tıklanınca önizleme popup
+// ——— Quizleri keşfet (sil baştan) ———
 let discoverPreviewQuiz = null;
 var discoverCardCache = {};
 function ensureSupabaseThenRun(fn) {
@@ -3009,18 +3005,25 @@ function ensureSupabaseThenRun(fn) {
   s.onload = function () { initSupabase(); if (supabaseClient) fn(); };
   document.head.appendChild(s);
 }
+
 async function loadDiscoverQuizzes() {
-  if (!supabaseClient) return;
-  const wrap = document.getElementById("discover-list-wrap");
   const feed = document.getElementById("discover-feed");
-  const empty = document.getElementById("discover-empty");
-  if (!wrap || !feed) return;
-  wrap.classList.remove("hidden");
-  const { data: rows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count").order("created_at", { ascending: false }).limit(50);
+  const emptyEl = document.getElementById("discover-empty");
+  if (!feed || !emptyEl) return;
   feed.innerHTML = "";
   discoverCardCache = {};
-  if (!rows?.length) { empty?.classList.remove("hidden"); empty.textContent = t("discoverEmpty"); return; }
-  empty?.classList.add("hidden");
+  if (!supabaseClient) {
+    emptyEl.textContent = t("discoverEmpty");
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  const { data: rows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count").order("created_at", { ascending: false }).limit(50);
+  if (!rows || !rows.length) {
+    emptyEl.textContent = t("discoverEmpty");
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  emptyEl.classList.add("hidden");
   const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
   const [quizDataResult, ratingsMap] = await Promise.all([
     supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds),
@@ -3028,55 +3031,58 @@ async function loadDiscoverQuizzes() {
   ]);
   const quizData = quizDataResult?.data || [];
   const byId = {};
-  for (const q of quizData) byId[q.id] = q;
+  quizData.forEach((q) => { byId[q.id] = q; });
   const authorCache = {};
   for (const r of rows) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
-    if (currentAuthUser && !authorCache[r.user_id]) {
+    if (currentAuthUser && authorCache[r.user_id] === undefined) {
       const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", r.user_id).single();
-      authorCache[r.user_id] = prof?.nickname || "";
+      authorCache[r.user_id] = prof?.nickname || "—";
     }
-    const author = currentAuthUser ? (authorCache[r.user_id] || "—") : "—";
+    const author = currentAuthUser ? (authorCache[r.user_id] ?? "—") : "—";
     const ratingInfo = ratingsMap[quiz.id];
     const avgStr = formatRating(ratingInfo ? ratingInfo.avg : null);
     const viewCount = r.view_count != null ? r.view_count : 0;
     const viewStr = currentLang === "tr" ? `(${viewCount} kez girildi)` : `(${viewCount} views)`;
     discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id };
-    const card = document.createElement("article");
-    card.className = "discover-card discover-feed-card";
-    card.dataset.quizId = quiz.id;
-    card.innerHTML = `
-      <div class="discover-card-main">
-        <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
-        <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
-        <span class="discover-card-author">${escapeHtml(author)}</span>
-        <span class="discover-card-views">${escapeHtml(viewStr)}</span>
-      </div>
-      <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "discover-card discover-feed-card";
+    btn.setAttribute("role", "listitem");
+    btn.innerHTML = `
+      <span class="discover-card-main">
+        <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
+        <span class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</span>
+        <span class="discover-card-meta">${escapeHtml(author)} · ${escapeHtml(viewStr)}</span>
+      </span>
+      <span class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</span>
     `;
-    feed.appendChild(card);
+    btn.addEventListener("click", function () {
+      openDiscoverPreview(quiz, author, ratingInfo, r.id);
+    });
+    feed.appendChild(btn);
   }
 }
+
 function updateDiscoverPreviewShuffleUi() {
   const shuf = document.getElementById("discover-preview-shuffle");
   const shufOpt = document.getElementById("discover-preview-shuffle-options");
   if (shuf) shuf.classList.toggle("active", !!shuffleEnabled);
   if (shufOpt) shufOpt.classList.toggle("active", !!shuffleOptionsEnabled);
 }
+
 function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   discoverPreviewQuiz = quiz;
   if (publicRowId && supabaseClient) {
     supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId }).catch(() => {});
   }
   const overlay = document.getElementById("discover-preview-overlay");
-  // Overlay'ı body'de tut ki her zaman en üstte görünsün (#app stacking context'inden çıkar)
-  if (overlay && overlay.parentNode !== document.body) document.body.appendChild(overlay);
   const titleEl = document.getElementById("discover-preview-title");
   const descEl = document.getElementById("discover-preview-desc");
   const ratingEl = document.getElementById("discover-preview-rating");
   const startBtn = document.getElementById("discover-preview-start-btn");
-  if (titleEl) titleEl.textContent = quiz.name;
+  if (titleEl) titleEl.textContent = quiz.name || "";
   if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
   renderPreviewRating(ratingEl, quiz.id, ratingInfo).catch(() => {});
   updateDiscoverPreviewShuffleUi();
@@ -3087,23 +3093,21 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   if (overlay) {
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
-    overlay.style.display = "flex";
-    overlay.style.visibility = "visible";
-    overlay.style.opacity = "1";
-    requestAnimationFrame(function () { overlay.style.display = "flex"; });
   }
-  startBtn?.replaceWith(startBtn.cloneNode(true));
-  const newStart = document.getElementById("discover-preview-start-btn");
-  if (newStart) newStart.textContent = t("discoverPreviewStart") || "Quiz'i Başlat";
-  newStart?.addEventListener("click", () => {
-    closeDiscoverPreview();
-    playDiscoverQuiz(quiz);
-  });
+  const newStart = startBtn ? startBtn.cloneNode(true) : null;
+  if (startBtn && startBtn.parentNode) {
+    startBtn.replaceWith(newStart);
+    newStart.textContent = t("discoverPreviewStart") || "Quiz'i Başlat";
+    newStart.addEventListener("click", function () {
+      closeDiscoverPreview();
+      playDiscoverQuiz(quiz);
+    });
+  }
   const addToMineBtn = document.getElementById("discover-preview-add-to-mine-btn");
   if (addToMineBtn) {
     addToMineBtn.textContent = t("addToMyQuizzes");
     addToMineBtn.style.display = currentAuthUser ? "" : "none";
-    addToMineBtn.onclick = async () => {
+    addToMineBtn.onclick = async function () {
       if (!currentAuthUser || !supabaseClient) return;
       const ok = await copyQuizToMyQuizzes(quiz);
       if (ok) { closeDiscoverPreview(); alert(currentLang === "tr" ? "Quizlerinize eklendi." : "Added to your quizzes."); }
@@ -3114,13 +3118,11 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
 function openDiscoverByQuizId(quizId) {
   var id = (quizId && String(quizId).trim()) || null;
   if (!id) return;
-  // 1) Önce cache'ten aç – keşfet listesinden tıklandıysa veri zaten var, Supabase/RLS hatası olmadan popup açılır
   var cached = discoverCardCache[id];
   if (cached && cached.quiz) {
     openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
     return;
   }
-  // 2) Cache'te yoksa Supabase'den çek (linkten vb. gelmiş olabilir)
   if (!supabaseClient) return;
   supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", id).single()
     .then(function (res) {
@@ -3142,95 +3144,97 @@ window.openDiscoverByQuizId = openDiscoverByQuizId;
 async function renderPreviewRating(container, quizId, ratingInfo) {
   if (!container) return;
   container.innerHTML = "";
-  const avg = ratingInfo ? ratingInfo.avg : 0;
-  const count = ratingInfo ? ratingInfo.count : 0;
-  const avgStr = formatRating(avg);
-  const label = document.createElement("span");
+  var avg = ratingInfo ? ratingInfo.avg : 0;
+  var count = ratingInfo ? ratingInfo.count : 0;
+  var avgStr = formatRating(avg);
+  var label = document.createElement("span");
   label.className = "discover-preview-rating-label";
-  label.innerHTML = `<span class="discover-rating-stars">★</span> ${escapeHtml(avgStr)}/5${count ? ` (${count})` : ""}`;
+  label.innerHTML = "<span class=\"discover-rating-stars\">★</span> " + escapeHtml(avgStr) + "/5" + (count ? " (" + count + ")" : "");
   container.appendChild(label);
   if (!currentAuthUser || !supabaseClient) {
-    const loginHint = document.createElement("p");
+    var loginHint = document.createElement("p");
     loginHint.className = "discover-preview-rating-login-hint";
     loginHint.textContent = currentLang === "tr" ? "Puan verebilmek için giriş yapın (üyelik gerekir)" : "Log in to rate (membership required)";
     container.appendChild(loginHint);
     return;
   }
-  const myRating = await getMyQuizRating(quizId);
-  const starsWrap = document.createElement("div");
+  var myRating = await getMyQuizRating(quizId);
+  var starsWrap = document.createElement("div");
   starsWrap.className = "discover-preview-stars";
-  for (let i = 1; i <= 5; i++) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "discover-star-btn" + (myRating !== null && i <= myRating ? " rated" : "");
-    btn.setAttribute("aria-label", `${i} yıldız`);
-    btn.textContent = "★";
-    btn.dataset.rating = String(i);
+  for (var i = 1; i <= 5; i++) {
+    var starBtn = document.createElement("button");
+    starBtn.type = "button";
+    starBtn.className = "discover-star-btn" + (myRating !== null && i <= myRating ? " rated" : "");
+    starBtn.setAttribute("aria-label", i + " yıldız");
+    starBtn.textContent = "★";
+    starBtn.dataset.rating = String(i);
     if (myRating === null) {
-      btn.addEventListener("click", async (e) => {
+      starBtn.addEventListener("click", async function (e) {
         e.stopPropagation();
         if (!currentAuthUser || !supabaseClient) return;
-        await submitQuizRating(quizId, i);
-        const newRatings = await getQuizRatings([quizId]);
+        await submitQuizRating(quizId, Number(e.currentTarget.dataset.rating));
+        var newRatings = await getQuizRatings([quizId]);
         await renderPreviewRating(container, quizId, newRatings[quizId]);
       });
     } else {
-      btn.disabled = true;
+      starBtn.disabled = true;
     }
-    starsWrap.appendChild(btn);
+    starsWrap.appendChild(starBtn);
   }
   container.appendChild(starsWrap);
 }
+
 function closeDiscoverPreview() {
   discoverPreviewQuiz = null;
-  document.getElementById("discover-preview-overlay")?.classList.add("hidden");
+  var ov = document.getElementById("discover-preview-overlay");
+  if (ov) ov.classList.add("hidden"), ov.setAttribute("aria-hidden", "true");
 }
+
 function playDiscoverQuiz(quiz) {
   lastPlayedQuizFromShared = true;
-  const id = quiz.id;
-  if (!quizzes.find((q) => q.id === id)) quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
+  var id = quiz.id;
+  if (!quizzes.find(function (q) { return q.id === id; })) {
+    quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
+  }
   startQuiz(id);
 }
+
 async function copyQuizToMyQuizzes(quiz) {
-  if (!supabaseClient || !currentAuthUser || !quiz) return;
-  const row = { user_id: currentAuthUser.id, name: (quiz.name || "").trim() || "Kopya quiz", description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] };
-  const { data, error } = await supabaseClient.from("quizzes").insert(row).select("id").single();
-  if (error) { console.warn(error); return false; }
-  if (data?.id) quizzes.push({ id: data.id, name: row.name, description: row.description, questions: row.questions });
-  return true;
+  if (!supabaseClient || !currentAuthUser || !quiz) return false;
+  var row = { user_id: currentAuthUser.id, name: (quiz.name || "").trim() || "Kopya quiz", description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] };
+  var res = await supabaseClient.from("quizzes").insert(row).select("id").single();
+  if (res.error) { console.warn(res.error); return false; }
+  if (res.data && res.data.id) {
+    quizzes.push({ id: res.data.id, name: row.name, description: row.description, questions: row.questions });
+    return true;
+  }
+  return false;
 }
-// Keşfet feed: event delegation – karta (veya içindeki herhangi bir öğeye) tıklanınca popup açılır (Supabase'den gelen quizler için güvenilir)
-(function () {
-  var feed = document.getElementById("discover-feed");
-  if (!feed) return;
-  feed.addEventListener("click", function (e) {
-    var card = e.target.closest(".discover-card.discover-feed-card");
-    if (!card) return;
-    var quizId = card.dataset.quizId;
-    if (!quizId) return;
-    var cached = discoverCardCache[quizId];
-    if (!cached || !cached.quiz) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
+
+(function initDiscoverPopup() {
+  var overlay = document.getElementById("discover-preview-overlay");
+  var closeBtn = document.getElementById("discover-preview-close");
+  var backdrop = document.getElementById("discover-preview-backdrop");
+  if (closeBtn) closeBtn.addEventListener("click", closeDiscoverPreview);
+  if (overlay) overlay.addEventListener("click", function (e) {
+    if (e.target === overlay || e.target.id === "discover-preview-backdrop") closeDiscoverPreview();
+  });
+  if (backdrop) backdrop.addEventListener("click", closeDiscoverPreview);
+  var shuf = document.getElementById("discover-preview-shuffle");
+  var shufOpt = document.getElementById("discover-preview-shuffle-options");
+  if (shuf) shuf.addEventListener("click", function () {
+    shuffleEnabled = !shuffleEnabled;
+    saveSettings();
+    updateDiscoverPreviewShuffleUi();
+    if (shuffleToggleBtn) shuffleToggleBtn.classList.toggle("active", !!shuffleEnabled);
+  });
+  if (shufOpt) shufOpt.addEventListener("click", function () {
+    shuffleOptionsEnabled = !shuffleOptionsEnabled;
+    saveSettings();
+    updateDiscoverPreviewShuffleUi();
+    if (shuffleOptionsToggleBtn) shuffleOptionsToggleBtn.classList.toggle("active", !!shuffleOptionsEnabled);
   });
 })();
-if (document.getElementById("discover-preview-close")) {
-  document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
-}
-document.getElementById("discover-preview-overlay")?.addEventListener("click", (e) => { if (e.target.id === "discover-preview-overlay") closeDiscoverPreview(); });
-document.getElementById("discover-preview-shuffle")?.addEventListener("click", () => {
-  shuffleEnabled = !shuffleEnabled;
-  saveSettings();
-  updateDiscoverPreviewShuffleUi();
-  if (shuffleToggleBtn) shuffleToggleBtn.classList.toggle("active", !!shuffleEnabled);
-});
-document.getElementById("discover-preview-shuffle-options")?.addEventListener("click", () => {
-  shuffleOptionsEnabled = !shuffleOptionsEnabled;
-  saveSettings();
-  updateDiscoverPreviewShuffleUi();
-  if (shuffleOptionsToggleBtn) shuffleOptionsToggleBtn.classList.toggle("active", !!shuffleOptionsEnabled);
-});
 
 // Auth modal + e-posta doğrulama kodu (kayıt sonrası)
 let pendingSignupEmail = "";
