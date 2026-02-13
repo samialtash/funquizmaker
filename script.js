@@ -3045,6 +3045,7 @@ async function loadDiscoverQuizzes() {
     discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id };
     const card = document.createElement("article");
     card.className = "discover-card discover-feed-card";
+    card.dataset.quizId = quiz.id;
     card.innerHTML = `
       <div class="discover-card-main">
         <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
@@ -3054,12 +3055,6 @@ async function loadDiscoverQuizzes() {
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
     `;
-    // Profil paylaşılan quizlerdeki gibi: karta tıklanınca önizleme popup'ı aç, oradan "Quiz'i Başlat" ile quize girilir
-    card.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openDiscoverPreview(quiz, author, ratingInfo, r.id);
-    });
     feed.appendChild(card);
   }
 }
@@ -3075,6 +3070,8 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
     supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId }).catch(() => {});
   }
   const overlay = document.getElementById("discover-preview-overlay");
+  // Overlay'ı body'de tut ki her zaman en üstte görünsün (#app stacking context'inden çıkar)
+  if (overlay && overlay.parentNode !== document.body) document.body.appendChild(overlay);
   const titleEl = document.getElementById("discover-preview-title");
   const descEl = document.getElementById("discover-preview-desc");
   const ratingEl = document.getElementById("discover-preview-rating");
@@ -3202,15 +3199,22 @@ async function copyQuizToMyQuizzes(quiz) {
   if (data?.id) quizzes.push({ id: data.id, name: row.name, description: row.description, questions: row.questions });
   return true;
 }
-// Keşfet kartları profil paylaşılan sorular gibi kendi click listener'ı ile açılıyor; body'de müdahale etmiyoruz
-document.body.addEventListener("click", function (e) {
-  var el = e.target;
-  while (el && el !== document.body) {
-    if (el.classList && (el.classList.contains("discover-card-hit") || el.classList.contains("discover-feed-card"))) return;
-    if (el.classList && el.classList.contains("discover-card")) return;
-    el = el.parentNode;
-  }
-}, true);
+// Keşfet feed: event delegation – karta (veya içindeki herhangi bir öğeye) tıklanınca popup açılır (Supabase'den gelen quizler için güvenilir)
+(function () {
+  var feed = document.getElementById("discover-feed");
+  if (!feed) return;
+  feed.addEventListener("click", function (e) {
+    var card = e.target.closest(".discover-card.discover-feed-card");
+    if (!card) return;
+    var quizId = card.dataset.quizId;
+    if (!quizId) return;
+    var cached = discoverCardCache[quizId];
+    if (!cached || !cached.quiz) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
+  });
+})();
 if (document.getElementById("discover-preview-close")) {
   document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
 }
