@@ -436,6 +436,67 @@ body.standalone .app-logo {
 .profile-edit-form { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 .profile-edit-form .profile-avatar-wrap { margin-bottom: 0; }
 
+/* Bildirim: buton, badge, dropdown */
+.header-notif-wrap { position: relative; display: flex; align-items: center; }
+.notification-btn { background: none; border: none; color: var(--text); font-size: 1.25rem; padding: 6px 10px; cursor: pointer; position: relative; }
+.notification-badge {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: 700;
+  border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+}
+.notification-badge.hidden { display: none; }
+.notification-dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 4px;
+  width: 280px; max-height: 320px;
+  background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft); z-index: 100;
+  display: flex; flex-direction: column;
+}
+.notification-dropdown.hidden { display: none; }
+.notification-dropdown-list { overflow-y: auto; flex: 1; padding: 8px 0; }
+.notification-dropdown-item {
+  display: block; width: 100%; padding: 12px 16px; text-align: left;
+  background: none; border: none; color: var(--text); cursor: pointer;
+  font-size: 0.95rem; transition: background 0.15s;
+}
+.notification-dropdown-item:hover { background: var(--accent-soft); }
+.notification-all-link {
+  padding: 10px 16px; font-size: 0.8rem; color: var(--muted);
+  background: none; border: none; border-top: 1px solid var(--border);
+  cursor: pointer; text-align: center;
+}
+.notification-all-link:hover { color: var(--text); }
+
+/* Mesajlar listesi */
+.messages-list-container { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.messages-list-item {
+  display: block; width: 100%; padding: 14px 16px; text-align: left;
+  background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: var(--radius-md);
+  color: var(--text); font-size: 1rem; cursor: pointer; transition: background 0.15s;
+}
+.messages-list-item:hover { background: var(--accent-soft); }
+
+/* Sohbet: baloncuklar */
+.chat-messages { padding: 16px 0; display: flex; flex-direction: column; gap: 12px; }
+.chat-bubble {
+  max-width: 85%; padding: 12px 14px; border-radius: 14px;
+  cursor: pointer; transition: background 0.15s;
+}
+.chat-bubble-them { align-self: flex-start; background: rgba(15,23,42,0.7); border: 1px solid var(--border); }
+.chat-bubble-me { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent); }
+.chat-bubble:hover { filter: brightness(1.05); }
+.chat-bubble-title { font-weight: 600; margin-bottom: 4px; }
+.chat-bubble-desc { font-size: 0.85rem; color: var(--muted); }
+
+/* Quiz bitti: ekstra (Quizlerime ekle, puanla) */
+.quiz-finished-extra { margin: 16px 0; text-align: center; }
+.quiz-finished-rate-label { font-size: 0.9rem; margin: 8px 0 6px 0; color: var(--muted); }
+.quiz-finished-stars { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.quiz-finished-star-btn { background: none; border: none; color: var(--muted); font-size: 1.8rem; cursor: pointer; padding: 0 4px; transition: color 0.15s; }
+.quiz-finished-star-btn:hover { color: #fbbf24; }
+.quiz-finished-star-btn.rated { color: #fbbf24; }
+
 .main-menu-logo {
   position: absolute;
   top: 0;

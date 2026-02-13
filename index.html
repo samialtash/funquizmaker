@@ -42,6 +42,16 @@
             <button type="button" id="auth-signup-btn" class="auth-link-btn">Kaydol</button>
           </div>
           <div class="main-menu-auth logged-in hidden" id="main-menu-auth-logged-in">
+            <div class="header-notif-wrap">
+              <button type="button" id="notification-btn" class="icon-btn notification-btn" aria-label="Bildirimler">
+                <span class="notification-icon">🔔</span>
+                <span id="notification-badge" class="notification-badge hidden">0</span>
+              </button>
+              <div id="notification-dropdown" class="notification-dropdown hidden">
+                <div id="notification-dropdown-list" class="notification-dropdown-list"></div>
+                <button type="button" id="notification-all-messages" class="notification-all-link"></button>
+              </div>
+            </div>
             <button type="button" id="auth-nickname-btn" class="auth-nickname-btn"><span id="auth-nickname" class="auth-nickname"></span></button>
             <button type="button" id="auth-logout-btn" class="auth-link-btn">Çıkış yap</button>
           </div>
@@ -134,6 +144,7 @@
               <span id="discover-preview-shuffle-options-label" class="toggle-label">Şıkları rastgele sırala</span>
             </button>
           </div>
+          <button type="button" id="discover-preview-add-to-mine-btn" class="secondary-btn">Quizlerime ekle</button>
           <button type="button" id="discover-preview-start-btn" class="primary-btn">Quiz'i Başlat</button>
         </div>
       </div>
@@ -328,12 +339,32 @@
           </div>
         </div>
         <p id="final-score-text"></p>
+        <div id="quiz-finished-extra" class="quiz-finished-extra hidden">
+          <button type="button" id="quiz-finished-add-to-mine-btn" class="secondary-btn">Quizlerime ekle</button>
+          <p id="quiz-finished-rate-label" class="quiz-finished-rate-label">Quizi puanla</p>
+          <div id="quiz-finished-stars" class="quiz-finished-stars"></div>
+        </div>
         <div class="menu-buttons">
           <button id="retry-quiz-btn" class="primary-btn">Retry Quiz</button>
           <button id="back-to-menu-btn" class="secondary-btn back-btn" data-back="main-menu">
             Back to Main Menu
           </button>
         </div>
+      </div>
+
+      <!-- Mesajlar listesi (10lu sayfa) -->
+      <div id="messages-list-view" class="view">
+        <button id="back-btn-messages-list" class="back-btn" data-back="main-menu">← Back</button>
+        <h1 id="messages-list-title" class="main-menu-title">Mesajlar</h1>
+        <div id="messages-list-container" class="messages-list-container"></div>
+        <div id="messages-list-pagination" class="pagination-row hidden"></div>
+      </div>
+
+      <!-- Sohbet (tek kişiyle) -->
+      <div id="chat-view" class="view">
+        <button id="back-btn-chat" class="back-btn" data-back="messages-list">← Back</button>
+        <h1 id="chat-title" class="main-menu-title chat-title"></h1>
+        <div id="chat-messages" class="chat-messages"></div>
       </div>
 
       <!-- Modal: delete quiz confirm -->

@@ -141,6 +141,12 @@ const translations = {
     termsLink: "Terms of Service",
     editProfile: "Edit profile",
     profileSharedQuizzes: "Quizzes shared on profile",
+    addToMyQuizzes: "Add to my quizzes",
+    rateThisQuiz: "Rate this quiz",
+    allMessages: "See all messages",
+    messages: "Messages",
+    noNewNotifications: "No new notifications.",
+    noMessagesYet: "No messages yet.",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -276,6 +282,12 @@ const translations = {
     termsLink: "Kullanıcı Sözleşmesi",
     editProfile: "Profili düzenle",
     profileSharedQuizzes: "Profilinde paylaşılan quizler",
+    addToMyQuizzes: "Quizlerime ekle",
+    rateThisQuiz: "Quizi puanla",
+    allMessages: "Bütün mesajları gör",
+    messages: "Mesajlar",
+    noNewNotifications: "Yeni bildirim yok.",
+    noMessagesYet: "Henüz mesaj yok.",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -353,6 +365,7 @@ function updateAuthUI() {
         const nick = (p?.nickname || "").trim() || fallbackNick;
         if (nicknameEl) nicknameEl.textContent = nick || currentAuthUser?.email || "";
       }).catch(() => {});
+      updateNotificationBadge();
     }
   } else {
     guest.classList.remove("hidden");
@@ -463,6 +476,10 @@ let currentQuestionIndex = 0;
 let currentQuestionOrder = [];
 let currentScore = 0;
 let lastRunQuizId = null;
+let lastPlayedQuizFromShared = false;
+let chatWithUserId = null;
+const MESSAGES_PER_PAGE = 10;
+let messagesListCurrentPage = 0;
 let soundEnabled = true;
 let shuffleEnabled = false;
 let shuffleOptionsEnabled = false;
@@ -499,6 +516,8 @@ const views = {
   profile: document.getElementById("profile-view"),
   profileEdit: document.getElementById("profile-edit-view"),
   friends: document.getElementById("friends-view"),
+  messagesList: document.getElementById("messages-list-view"),
+  chat: document.getElementById("chat-view"),
   quizSelect: document.getElementById("quiz-select-view"),
   quizQuestionsList: document.getElementById("quiz-questions-list-view"),
   quizQuestionEdit: document.getElementById("quiz-question-edit-view"),
@@ -957,6 +976,8 @@ function applyTranslations() {
   if (discoverQuizBtn) discoverQuizBtn.textContent = t("discoverQuizzes");
   const termsLinkBtn = document.getElementById("terms-link-btn");
   if (termsLinkBtn) termsLinkBtn.textContent = t("termsLink");
+  const notificationAllLink = document.getElementById("notification-all-messages");
+  if (notificationAllLink) notificationAllLink.textContent = t("allMessages");
   const authEmailLabelLogin = document.getElementById("auth-email-label-login");
   const authPasswordLabelLogin = document.getElementById("auth-password-label-login");
   const authEmailLabelSignup = document.getElementById("auth-email-label-signup");
@@ -1967,8 +1988,47 @@ function showQuizResult(score, total) {
   }
 
   showView("quizFinished");
+  updateQuizFinishedExtra();
   if (soundEnabled) playResultSound(percentage);
-  /* Fullscreen durumunu değiştirmiyoruz: ana ekrandaysa öyle kalır, normaldeyse normal kalır. */
+}
+
+function updateQuizFinishedExtra() {
+  const extra = document.getElementById("quiz-finished-extra");
+  const addBtn = document.getElementById("quiz-finished-add-to-mine-btn");
+  const rateLabel = document.getElementById("quiz-finished-rate-label");
+  const starsWrap = document.getElementById("quiz-finished-stars");
+  if (!extra) return;
+  if (!lastPlayedQuizFromShared || !currentQuiz) {
+    extra.classList.add("hidden");
+    return;
+  }
+  extra.classList.remove("hidden");
+  if (addBtn) {
+    addBtn.textContent = t("addToMyQuizzes");
+    addBtn.onclick = async () => {
+      const ok = await copyQuizToMyQuizzes(currentQuiz);
+      if (ok) addBtn.disabled = true;
+    };
+  }
+  if (rateLabel) rateLabel.textContent = t("rateThisQuiz");
+  if (starsWrap) {
+    starsWrap.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "quiz-finished-star-btn";
+      btn.setAttribute("aria-label", `${i} yıldız`);
+      btn.textContent = "★";
+      btn.dataset.rating = String(i);
+      btn.addEventListener("click", async () => {
+        if (!currentAuthUser || !supabaseClient || !currentQuiz) return;
+        await submitQuizRating(currentQuiz.id, i);
+        starsWrap.querySelectorAll("button").forEach((b) => b.classList.remove("rated"));
+        btn.classList.add("rated");
+      });
+      starsWrap.appendChild(btn);
+    }
+  }
 }
 
 function finishQuiz() {
@@ -2508,6 +2568,147 @@ if (document.getElementById("profile-friends-btn")) {
   document.getElementById("profile-friends-btn").addEventListener("click", () => { showView("friends"); loadFriendsView(); });
 }
 
+// Bildirim: okunmamış sayısı, dropdown (quiz atan kişiler), bütün mesajlar, sohbet
+async function fetchUnreadNotificationCount() {
+  if (!supabaseClient || !currentAuthUser) return 0;
+  const { count, error } = await supabaseClient.from("quiz_shared_to").select("id", { count: "exact", head: true }).eq("to_user_id", currentAuthUser.id).is("read_at", null);
+  if (error) return 0;
+  return count ?? 0;
+}
+async function updateNotificationBadge() {
+  const badge = document.getElementById("notification-badge");
+  if (!badge) return;
+  if (!currentAuthUser || !supabaseClient) { badge.classList.add("hidden"); return; }
+  const n = await fetchUnreadNotificationCount();
+  badge.textContent = n > 99 ? "99+" : String(n);
+  badge.classList.toggle("hidden", n === 0);
+}
+function toggleNotificationDropdown() {
+  const dd = document.getElementById("notification-dropdown");
+  if (!dd) return;
+  dd.classList.toggle("hidden");
+  if (!dd.classList.contains("hidden")) loadNotificationDropdownList();
+}
+async function loadNotificationDropdownList() {
+  const list = document.getElementById("notification-dropdown-list");
+  if (!list || !supabaseClient || !currentAuthUser) return;
+  list.innerHTML = "";
+  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("from_user_id").eq("to_user_id", currentAuthUser.id).is("read_at", null).order("created_at", { ascending: false });
+  const bySender = {};
+  if (rows) for (const r of rows) { bySender[r.from_user_id] = (bySender[r.from_user_id] || 0) + 1; }
+  const ids = Object.keys(bySender);
+  if (!ids.length) { list.innerHTML = "<p class=\"hint\" style=\"padding:12px;\">" + escapeHtml(t("noNewNotifications")) + "</p>"; return; }
+  for (const id of ids) {
+    const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", id).single();
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "notification-dropdown-item";
+    row.textContent = (prof?.nickname || id.slice(0, 8)) + (bySender[id] > 1 ? ` (${bySender[id]})` : "");
+    row.dataset.userId = id;
+    row.addEventListener("click", () => { closeNotificationDropdown(); openChatWith(id); });
+    list.appendChild(row);
+  }
+}
+function closeNotificationDropdown() {
+  document.getElementById("notification-dropdown")?.classList.add("hidden");
+}
+document.getElementById("notification-btn")?.addEventListener("click", (e) => { e.stopPropagation(); toggleNotificationDropdown(); });
+document.getElementById("notification-all-messages")?.addEventListener("click", () => { closeNotificationDropdown(); showView("messagesList"); loadMessagesList(0); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".header-notif-wrap")) closeNotificationDropdown(); });
+document.getElementById("notification-dropdown")?.addEventListener("click", (e) => e.stopPropagation());
+
+async function openChatWith(otherUserId) {
+  chatWithUserId = otherUserId;
+  await markSharedAsRead(otherUserId);
+  updateNotificationBadge();
+  showView("chat");
+  loadChatView();
+}
+async function markSharedAsRead(fromUserId) {
+  if (!supabaseClient || !currentAuthUser) return;
+  await supabaseClient.from("quiz_shared_to").update({ read_at: new Date().toISOString() }).eq("to_user_id", currentAuthUser.id).eq("from_user_id", fromUserId);
+}
+
+async function loadMessagesList(page) {
+  messagesListCurrentPage = page;
+  const container = document.getElementById("messages-list-container");
+  const paginationEl = document.getElementById("messages-list-pagination");
+  if (!container || !supabaseClient || !currentAuthUser) return;
+  const { data: all } = await supabaseClient.from("quiz_shared_to").select("from_user_id,to_user_id,created_at").or(`from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${currentAuthUser.id}`).order("created_at", { ascending: false });
+  const otherIds = new Set();
+  const lastAt = {};
+  if (all) for (const r of all) {
+    const other = r.from_user_id === currentAuthUser.id ? r.to_user_id : r.from_user_id;
+    otherIds.add(other);
+    if (!lastAt[other] || r.created_at > lastAt[other]) lastAt[other] = r.created_at;
+  }
+  const sorted = [...otherIds].sort((a, b) => (lastAt[b] || "").localeCompare(lastAt[a] || ""));
+  const total = sorted.length;
+  const start = page * MESSAGES_PER_PAGE;
+  const pageIds = sorted.slice(start, start + MESSAGES_PER_PAGE);
+  container.innerHTML = "";
+  document.getElementById("messages-list-title").textContent = t("messages");
+  for (const id of pageIds) {
+    const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", id).single();
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "messages-list-item";
+    btn.textContent = prof?.nickname || id.slice(0, 8);
+    btn.addEventListener("click", () => openChatWith(id));
+    container.appendChild(btn);
+  }
+  if (paginationEl) {
+    if (total <= MESSAGES_PER_PAGE) { paginationEl.classList.add("hidden"); paginationEl.innerHTML = ""; return; }
+    paginationEl.classList.remove("hidden");
+    paginationEl.innerHTML = "";
+    const totalPages = Math.ceil(total / MESSAGES_PER_PAGE);
+    if (page > 0) {
+      const prev = document.createElement("button");
+      prev.className = "secondary-btn";
+      prev.textContent = "←";
+      prev.addEventListener("click", () => loadMessagesList(page - 1));
+      paginationEl.appendChild(prev);
+    }
+    const info = document.createElement("span");
+    info.className = "pagination-info";
+    info.textContent = (page + 1) + " / " + totalPages;
+    paginationEl.appendChild(info);
+    if (page < totalPages - 1) {
+      const next = document.createElement("button");
+      next.className = "secondary-btn";
+      next.textContent = "→";
+      next.addEventListener("click", () => loadMessagesList(page + 1));
+      paginationEl.appendChild(next);
+    }
+  }
+}
+
+async function loadChatView() {
+  const titleEl = document.getElementById("chat-title");
+  const messagesEl = document.getElementById("chat-messages");
+  if (!messagesEl || !chatWithUserId || !supabaseClient || !currentAuthUser) return;
+  const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", chatWithUserId).single();
+  if (titleEl) titleEl.textContent = prof?.nickname || chatWithUserId.slice(0, 8);
+  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("id,from_user_id,to_user_id,quiz_id,created_at").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${chatWithUserId}),and(from_user_id.eq.${chatWithUserId},to_user_id.eq.${currentAuthUser.id})`).order("created_at", { ascending: true });
+  messagesEl.innerHTML = "";
+  if (!rows?.length) { messagesEl.innerHTML = "<p class=\"hint\">" + escapeHtml(t("noMessagesYet")) + "</p>"; return; }
+  const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
+  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds);
+  const quizById = {};
+  if (quizData) for (const q of quizData) quizById[q.id] = q;
+  for (const r of rows) {
+    const quiz = quizById[r.quiz_id];
+    const isMe = r.from_user_id === currentAuthUser.id;
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble " + (isMe ? "chat-bubble-me" : "chat-bubble-them");
+    const name = (quiz && quiz.name) ? escapeHtml(quiz.name) : "—";
+    const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + (quiz.description.length > 80 ? "…" : "") : "";
+    bubble.innerHTML = `<div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}`;
+    if (quiz) bubble.addEventListener("click", () => { openDiscoverPreview(quiz, isMe ? "" : (prof?.nickname || ""), null); });
+    messagesEl.appendChild(bubble);
+  }
+}
+
 // Arkadaşlar: arama, bekleyen istekler, liste
 async function loadFriendsView() {
   if (!supabaseClient || !currentAuthUser) return;
@@ -2796,6 +2997,14 @@ function openDiscoverPreview(quiz, author, ratingInfo) {
     closeDiscoverPreview();
     playDiscoverQuiz(quiz);
   });
+  const addToMineBtn = document.getElementById("discover-preview-add-to-mine-btn");
+  if (addToMineBtn) {
+    addToMineBtn.textContent = t("addToMyQuizzes");
+    addToMineBtn.onclick = async () => {
+      const ok = await copyQuizToMyQuizzes(quiz);
+      if (ok) { closeDiscoverPreview(); alert(currentLang === "tr" ? "Quizlerinize eklendi." : "Added to your quizzes."); }
+    };
+  }
 }
 function renderPreviewRating(container, quizId, ratingInfo) {
   if (!container) return;
@@ -2832,9 +3041,18 @@ function closeDiscoverPreview() {
   document.getElementById("discover-preview-overlay")?.classList.add("hidden");
 }
 function playDiscoverQuiz(quiz) {
+  lastPlayedQuizFromShared = true;
   const id = quiz.id;
   if (!quizzes.find((q) => q.id === id)) quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
   startQuiz(id);
+}
+async function copyQuizToMyQuizzes(quiz) {
+  if (!supabaseClient || !currentAuthUser || !quiz) return;
+  const row = { user_id: currentAuthUser.id, name: (quiz.name || "").trim() || "Kopya quiz", description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] };
+  const { data, error } = await supabaseClient.from("quizzes").insert(row).select("id").single();
+  if (error) { console.warn(error); return false; }
+  if (data?.id) quizzes.push({ id: data.id, name: row.name, description: row.description, questions: row.questions });
+  return true;
 }
 if (document.getElementById("discover-preview-close")) {
   document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
@@ -3047,6 +3265,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     if (rawTarget === "discover-view") targetViewKey = "discover";
     if (rawTarget === "profile") targetViewKey = "profile";
     if (rawTarget === "friends") targetViewKey = "friends";
+    if (rawTarget === "messages-list") targetViewKey = "messagesList";
     if (rawTarget === "quiz-select-view") targetViewKey = "quizSelect";
     if (rawTarget === "create-quiz-view") targetViewKey = "createQuiz";
     if (rawTarget === "quiz-edit-questions-view") targetViewKey = "quizEditQuestions";
@@ -3060,12 +3279,14 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     showView(targetViewKey, "back");
     if (targetViewKey === "quizQuestionsList") renderQuestionsList();
     if (targetViewKey === "profile") loadProfile();
+    if (targetViewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
   });
 });
 
 startQuizBtn.addEventListener("click", () => {
   const quizId = selectedPlayQuizId;
   if (!quizId) return;
+  lastPlayedQuizFromShared = false;
   startQuiz(quizId);
 });
 
