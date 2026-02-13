@@ -3144,10 +3144,23 @@ function closeDiscoverPreview() {
   discoverPreviewQuiz = null;
   document.getElementById("discover-preview-overlay")?.classList.add("hidden");
 }
+function ensureQuestionsArray(questions) {
+  if (Array.isArray(questions)) return questions;
+  if (typeof questions === "string") {
+    try { const p = JSON.parse(questions); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+  }
+  return [];
+}
 function playDiscoverQuiz(quiz) {
   lastPlayedQuizFromShared = true;
   const id = quiz.id;
-  if (!quizzes.find((q) => q.id === id)) quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
+  const questions = ensureQuestionsArray(quiz.questions);
+  const existing = quizzes.find((q) => q.id === id);
+  if (existing) {
+    if (questions.length) existing.questions = questions;
+  } else {
+    quizzes.push({ id: quiz.id, name: quiz.name || "", description: quiz.description || "", questions });
+  }
   if (supabaseClient) supabaseClient.rpc("increment_quiz_play_count", { p_quiz_id: id }).catch(() => {});
   startQuiz(id);
 }
