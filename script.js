@@ -2593,19 +2593,25 @@ async function loadNotificationDropdownList() {
   const list = document.getElementById("notification-dropdown-list");
   if (!list || !supabaseClient || !currentAuthUser) return;
   list.innerHTML = "";
-  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("from_user_id").eq("to_user_id", currentAuthUser.id).is("read_at", null).order("created_at", { ascending: false });
-  const bySender = {};
-  if (rows) for (const r of rows) { bySender[r.from_user_id] = (bySender[r.from_user_id] || 0) + 1; }
-  const ids = Object.keys(bySender);
-  if (!ids.length) { list.innerHTML = "<p class=\"hint\" style=\"padding:12px;\">" + escapeHtml(t("noNewNotifications")) + "</p>"; return; }
-  for (const id of ids) {
-    const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", id).single();
+  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("id,from_user_id,quiz_id,created_at").eq("to_user_id", currentAuthUser.id).order("created_at", { ascending: false }).limit(4);
+  if (!rows?.length) { list.innerHTML = "<p class=\"hint\" style=\"padding:12px;\">" + escapeHtml(t("noNewNotifications")) + "</p>"; return; }
+  const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
+  const senderIds = [...new Set(rows.map((r) => r.from_user_id))];
+  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name").in("id", quizIds);
+  const { data: profiles } = await supabaseClient.from("profiles").select("id,nickname").in("id", senderIds);
+  const quizByName = {};
+  if (quizData) for (const q of quizData) quizByName[q.id] = q.name || "—";
+  const nickByUser = {};
+  if (profiles) for (const p of profiles) nickByUser[p.id] = p.nickname || "";
+  for (const r of rows) {
+    const nick = nickByUser[r.from_user_id] || r.from_user_id.slice(0, 8);
+    const quizName = quizByName[r.quiz_id] || "—";
     const row = document.createElement("button");
     row.type = "button";
     row.className = "notification-dropdown-item";
-    row.textContent = (prof?.nickname || id.slice(0, 8)) + (bySender[id] > 1 ? ` (${bySender[id]})` : "");
-    row.dataset.userId = id;
-    row.addEventListener("click", () => { closeNotificationDropdown(); openChatWith(id); });
+    row.innerHTML = `<span class="notification-item-sender">${escapeHtml(nick)}</span><span class="notification-item-quiz">${escapeHtml(quizName)}</span>`;
+    row.dataset.userId = r.from_user_id;
+    row.addEventListener("click", () => { closeNotificationDropdown(); openChatWith(r.from_user_id); });
     list.appendChild(row);
   }
 }
@@ -2703,10 +2709,35 @@ async function loadChatView() {
     bubble.className = "chat-bubble " + (isMe ? "chat-bubble-me" : "chat-bubble-them");
     const name = (quiz && quiz.name) ? escapeHtml(quiz.name) : "—";
     const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + (quiz.description.length > 80 ? "…" : "") : "";
-    bubble.innerHTML = `<div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}`;
-    if (quiz) bubble.addEventListener("click", () => { openDiscoverPreview(quiz, isMe ? "" : (prof?.nickname || ""), null); });
+    const createdAt = r.created_at ? new Date(r.created_at) : null;
+    const timeStr = createdAt ? formatChatTime(createdAt) : "";
+    const dateStr = createdAt ? formatChatDate(createdAt) : "";
+    bubble.innerHTML = `
+      <div class="chat-bubble-content">
+        <div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}
+      </div>
+      <div class="chat-bubble-time-wrap">
+        <button type="button" class="chat-bubble-time" data-time="${escapeHtml(r.created_at || "")}">${escapeHtml(timeStr)}</button>
+        <div class="chat-bubble-date hidden">${escapeHtml(dateStr)}</div>
+      </div>
+    `;
+    const timeBtn = bubble.querySelector(".chat-bubble-time");
+    const dateEl = bubble.querySelector(".chat-bubble-date");
+    if (timeBtn && dateEl) timeBtn.addEventListener("click", (e) => { e.stopPropagation(); dateEl.classList.toggle("hidden"); });
+    const content = bubble.querySelector(".chat-bubble-content");
+    if (quiz && content) content.addEventListener("click", () => { openDiscoverPreview(quiz, isMe ? "" : (prof?.nickname || ""), null); });
     messagesEl.appendChild(bubble);
   }
+}
+function formatChatTime(d) {
+  const h = d.getHours();
+  const m = d.getMinutes();
+  return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+}
+function formatChatDate(d) {
+  if (!d || !(d instanceof Date) || isNaN(d.getTime())) return "";
+  const months = currentLang === "tr" ? ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"] : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return d.getDate() + " " + (months[d.getMonth()] || "") + " " + d.getFullYear();
 }
 
 // Arkadaşlar: arama, bekleyen istekler, liste
@@ -3071,7 +3102,9 @@ document.getElementById("discover-preview-shuffle-options")?.addEventListener("c
   if (shuffleOptionsToggleBtn) shuffleOptionsToggleBtn.classList.toggle("active", !!shuffleOptionsEnabled);
 });
 
-// Auth modal
+// Auth modal + e-posta doğrulama kodu (kayıt sonrası)
+let pendingSignupEmail = "";
+let pendingSignupNickname = "";
 const authOverlay = document.getElementById("auth-modal-overlay");
 const authFormLogin = document.getElementById("auth-form-login");
 const authFormSignup = document.getElementById("auth-form-signup");
@@ -3081,6 +3114,9 @@ const authModalTitle = document.getElementById("auth-modal-title");
 
 function openAuthModal(mode) {
   if (!authOverlay) return;
+  document.getElementById("auth-verify-code-wrap")?.classList.add("hidden");
+  document.getElementById("auth-form-signup")?.classList.remove("hidden");
+  document.querySelector(".auth-switch")?.classList.remove("hidden");
   if (mode === "signup") {
     authFormLogin.classList.add("hidden");
     authFormSignup.classList.remove("hidden");
@@ -3105,8 +3141,15 @@ function closeAuthModal() {
   }
   const errLogin = document.getElementById("auth-login-error");
   const errSignup = document.getElementById("auth-signup-error");
+  const errVerify = document.getElementById("auth-verify-code-error");
   if (errLogin) { errLogin.classList.add("hidden"); errLogin.textContent = ""; }
   if (errSignup) { errSignup.classList.add("hidden"); errSignup.textContent = ""; }
+  if (errVerify) { errVerify.classList.add("hidden"); errVerify.textContent = ""; }
+  document.getElementById("auth-form-signup")?.classList.remove("hidden");
+  document.getElementById("auth-verify-code-wrap")?.classList.add("hidden");
+  document.querySelector(".auth-switch")?.classList.remove("hidden");
+  pendingSignupEmail = "";
+  pendingSignupNickname = "";
 }
 
 function getAuthErrorMessage() {
@@ -3215,15 +3258,33 @@ if (supabaseClient) {
         return;
       }
       try {
-        const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { nickname } } });
+        const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { nickname }, emailRedirectTo: undefined } });
         if (error) throw error;
         if (data?.user) {
+          const needsConfirm = !data.session;
+          if (needsConfirm) {
+            pendingSignupEmail = email;
+            pendingSignupNickname = nickname;
+            document.getElementById("auth-form-signup").classList.add("hidden");
+            document.getElementById("auth-verify-code-wrap").classList.remove("hidden");
+            document.getElementById("auth-modal-close").style.display = "";
+            document.querySelector(".auth-switch").classList.add("hidden");
+            const hint = document.getElementById("auth-verify-code-hint");
+            const label = document.getElementById("auth-verify-code-label");
+            const btn = document.getElementById("auth-verify-code-btn");
+            if (hint) hint.textContent = currentLang === "tr" ? "E-postanıza gelen 6 haneli kodu girin." : "Enter the 6-digit code we sent to your email.";
+            if (label) label.textContent = currentLang === "tr" ? "Doğrulama kodu" : "Verification code";
+            if (btn) btn.textContent = currentLang === "tr" ? "Doğrula" : "Verify";
+            document.getElementById("auth-verify-code-input").value = "";
+            document.getElementById("auth-verify-code-error").classList.add("hidden");
+            return;
+          }
           const { error: profileErr } = await supabaseClient.from("profiles").upsert({ id: data.user.id, nickname }, { onConflict: "id" });
           if (profileErr) console.warn(profileErr);
         }
         closeAuthModal();
-        if (currentLang === "tr") alert("Kayıt başarılı. E-posta doğrulama gerekiyorsa kutunuzu kontrol edin.");
-        else alert("Sign up successful. Check your email if verification is required.");
+        if (currentLang === "tr") alert("Kayıt başarılı.");
+        else alert("Sign up successful.");
       } catch (e) {
         if (err) { err.textContent = e.message || (currentLang === "tr" ? "Kayıt başarısız." : "Sign up failed."); err.classList.remove("hidden"); }
       }
@@ -3240,6 +3301,35 @@ if (supabaseClient) {
       supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
       closeAuthModal();
     });
+  }
+  const authVerifyCodeBtn = document.getElementById("auth-verify-code-btn");
+  const authVerifyCodeInput = document.getElementById("auth-verify-code-input");
+  if (authVerifyCodeBtn && authVerifyCodeInput) {
+    const runVerifyCode = async () => {
+      const code = authVerifyCodeInput.value.trim().replace(/\s/g, "");
+      const errVerify = document.getElementById("auth-verify-code-error");
+      if (!code || code.length < 6) {
+        if (errVerify) { errVerify.textContent = currentLang === "tr" ? "6 haneli kodu girin." : "Enter the 6-digit code."; errVerify.classList.remove("hidden"); }
+        return;
+      }
+      if (!pendingSignupEmail) return;
+      try {
+        const { data, error } = await supabaseClient.auth.verifyOtp({ email: pendingSignupEmail, token: code.slice(0, 6), type: "signup" });
+        if (error) throw error;
+        if (data?.user) {
+          const { error: profileErr } = await supabaseClient.from("profiles").upsert({ id: data.user.id, nickname: pendingSignupNickname || "" }, { onConflict: "id" });
+          if (profileErr) console.warn(profileErr);
+        }
+        closeAuthModal();
+        updateAuthUI();
+        if (currentLang === "tr") alert("E-posta doğrulandı. Kayıt başarılı.");
+        else alert("Email verified. Sign up successful.");
+      } catch (e) {
+        if (errVerify) { errVerify.textContent = e.message || (currentLang === "tr" ? "Kod geçersiz veya süresi dolmuş." : "Invalid or expired code."); errVerify.classList.remove("hidden"); }
+      }
+    };
+    authVerifyCodeBtn.addEventListener("click", runVerifyCode);
+    authVerifyCodeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runVerifyCode(); });
   }
 }
 

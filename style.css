@@ -438,12 +438,29 @@ body.standalone .app-logo {
 
 /* Bildirim: buton, badge, dropdown */
 .header-notif-wrap { position: relative; display: flex; align-items: center; }
-.notification-btn { background: none; border: none; color: var(--text); font-size: 1.25rem; padding: 6px 10px; cursor: pointer; position: relative; }
+.notification-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+.notification-btn:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.notification-icon { line-height: 1; }
 .notification-badge {
-  position: absolute; top: 2px; right: 2px;
-  min-width: 18px; height: 18px; padding: 0 5px;
-  background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: 700;
+  position: absolute; top: -2px; right: -2px;
+  min-width: 14px; height: 14px; padding: 0 3px;
+  background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 700;
   border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--bg-alt);
 }
 .notification-badge.hidden { display: none; }
 .notification-dropdown {
@@ -461,6 +478,9 @@ body.standalone .app-logo {
   font-size: 0.95rem; transition: background 0.15s;
 }
 .notification-dropdown-item:hover { background: var(--accent-soft); }
+.notification-dropdown-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.notification-item-sender { font-weight: 600; font-size: 0.9rem; }
+.notification-item-quiz { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .notification-all-link {
   padding: 10px 16px; font-size: 0.8rem; color: var(--muted);
   background: none; border: none; border-top: 1px solid var(--border);
@@ -486,8 +506,16 @@ body.standalone .app-logo {
 .chat-bubble-them { align-self: flex-start; background: rgba(15,23,42,0.7); border: 1px solid var(--border); }
 .chat-bubble-me { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent); }
 .chat-bubble:hover { filter: brightness(1.05); }
+.chat-bubble-content { cursor: pointer; }
 .chat-bubble-title { font-weight: 600; margin-bottom: 4px; }
 .chat-bubble-desc { font-size: 0.85rem; color: var(--muted); }
+.chat-bubble-time-wrap { display: flex; flex-direction: column; align-items: flex-end; margin-top: 4px; }
+.chat-bubble-time {
+  background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer; padding: 0 2px;
+}
+.chat-bubble-time:hover { color: var(--text); }
+.chat-bubble-date { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+.chat-bubble-date.hidden { display: none; }
 
 /* Quiz bitti: ekstra (Quizlerime ekle, puanla) */
 .quiz-finished-extra { margin: 16px 0; text-align: center; }

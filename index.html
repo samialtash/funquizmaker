@@ -177,7 +177,7 @@
             <img id="profile-edit-avatar-img" class="profile-avatar-img hidden" alt="" />
             <div id="profile-edit-avatar-placeholder" class="profile-avatar-placeholder" aria-hidden="true"></div>
             <input type="file" id="profile-edit-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
-            <button type="button" id="profile-edit-avatar-btn" class="secondary-btn small-btn">Profil resmi yükle</button>
+            <button type="button" id="profile-edit-avatar-btn" class="secondary-btn small-btn">Profil resmi ekle</button>
           </div>
           <div class="profile-nickname-edit">
             <label for="profile-edit-nickname-input">Nickname</label>
@@ -499,6 +499,13 @@
           <p id="auth-signup-error" class="auth-error hidden"></p>
           <button type="button" id="auth-submit-signup" class="primary-btn">Kaydol</button>
           <button type="button" id="auth-google-signup" class="secondary-btn auth-google-btn">Google ile kaydol</button>
+        </div>
+        <div id="auth-verify-code-wrap" class="auth-form hidden">
+          <p id="auth-verify-code-hint" class="hint">E-postanıza gelen 6 haneli kodu girin.</p>
+          <label id="auth-verify-code-label" for="auth-verify-code-input">Doğrulama kodu</label>
+          <input type="text" id="auth-verify-code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" pattern="[0-9]*" />
+          <p id="auth-verify-code-error" class="auth-error hidden"></p>
+          <button type="button" id="auth-verify-code-btn" class="primary-btn">Doğrula</button>
         </div>
         <p class="auth-switch">
           <button type="button" id="auth-show-signup" class="auth-link-btn">Hesabınız yok mu? Kaydol</button>
