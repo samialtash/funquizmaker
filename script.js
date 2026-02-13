@@ -2921,13 +2921,22 @@ function getQuizTextForProfanityCheck(quiz) {
   });
   return s;
 }
-document.getElementById("share-quiz-link-btn")?.addEventListener("click", () => {
+document.getElementById("share-quiz-link-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId) return;
   const base = window.location.origin + (window.location.pathname || "/");
   const link = base.replace(/\/?$/, "") + "#/play/" + shareQuizModalQuizId;
+  if (supabaseClient && currentAuthUser) {
+    const quiz = quizzes.find((q) => q.id === shareQuizModalQuizId);
+    const fullText = getQuizTextForProfanityCheck(quiz);
+    if (containsProfanity(fullText)) {
+      alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Link yine kopyalandı; açan kişi giriş yapmak zorunda kalabilir." : "Quiz contains inappropriate language. Link was still copied; opener may need to log in.");
+    } else {
+      await supabaseClient.from("public_quizzes").upsert({ user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId }, { onConflict: "user_id,quiz_id" });
+    }
+  }
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(link).then(() => {
-      alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied.");
+      alert(currentLang === "tr" ? "Link kopyalandı. Linki açan herkes giriş yapmadan quizi görebilir." : "Link copied. Anyone can open the quiz without logging in.");
     }).catch(() => { fallbackCopyLink(link); });
   } else { fallbackCopyLink(link); }
 });
