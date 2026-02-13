@@ -143,8 +143,6 @@ const translations = {
     profileSharedQuizzes: "Quizzes shared on profile",
     addToMyQuizzes: "Add to my quizzes",
     rateThisQuiz: "Rate this quiz",
-    rateLoginHint: "Log in to rate (to rate this quiz).",
-    shareQuizAsLink: "Share quiz as link",
     allMessages: "See all messages",
     messages: "Messages",
     noNewNotifications: "No new notifications.",
@@ -286,8 +284,6 @@ const translations = {
     profileSharedQuizzes: "Profilinde paylaşılan quizler",
     addToMyQuizzes: "Quizlerime ekle",
     rateThisQuiz: "Quizi puanla",
-    rateLoginHint: "Giriş yapın (puan verebilmek için).",
-    shareQuizAsLink: "Quiz'i link olarak gönder",
     allMessages: "Bütün mesajları gör",
     messages: "Mesajlar",
     noNewNotifications: "Yeni bildirim yok.",
@@ -964,8 +960,6 @@ function applyTranslations() {
   if (friendsListTitle) friendsListTitle.textContent = t("myFriends");
   if (shareModalTitle) shareModalTitle.textContent = t("shareQuizTitle");
   if (shareSendBtn) shareSendBtn.textContent = t("send");
-  const shareLinkBtn = document.getElementById("share-quiz-link-btn");
-  if (shareLinkBtn) shareLinkBtn.textContent = t("shareQuizAsLink");
   if (sharePublicBtn) sharePublicBtn.textContent = t("shareToProfile");
   if (discoverLoginHintEl) discoverLoginHintEl.textContent = t("discoverLoginHint");
   const authLoginBtn = document.getElementById("auth-login-btn");
@@ -2011,42 +2005,45 @@ async function updateQuizFinishedExtra() {
   extra.classList.remove("hidden");
   if (addBtn) {
     addBtn.textContent = t("addToMyQuizzes");
+    addBtn.style.display = currentAuthUser ? "" : "none";
     addBtn.onclick = async () => {
       const ok = await copyQuizToMyQuizzes(currentQuiz);
       if (ok) addBtn.disabled = true;
     };
   }
-  if (rateLabel) rateLabel.textContent = t("rateThisQuiz");
+  if (rateLabel) {
+    if (currentAuthUser && supabaseClient) {
+      rateLabel.textContent = t("rateThisQuiz");
+    } else {
+      rateLabel.textContent = currentLang === "tr" ? "Puan verebilmek için giriş yapın (üyelik gerekir)" : "Log in to rate (membership required)";
+    }
+  }
   if (starsWrap && currentQuiz) {
     if (!currentAuthUser || !supabaseClient) {
       starsWrap.innerHTML = "";
-      const hint = document.createElement("p");
-      hint.className = "quiz-finished-rate-hint hint";
-      hint.textContent = t("rateLoginHint");
-      starsWrap.appendChild(hint);
-    } else {
-      const myRating = await getMyQuizRating(currentQuiz.id);
-      starsWrap.innerHTML = "";
-      for (let i = 1; i <= 5; i++) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "quiz-finished-star-btn" + (myRating !== null && i <= myRating ? " rated" : "");
-        btn.setAttribute("aria-label", `${i} yıldız`);
-        btn.textContent = "★";
-        btn.dataset.rating = String(i);
-        if (myRating === null) {
-          btn.addEventListener("click", async () => {
-            if (!currentAuthUser || !supabaseClient || !currentQuiz) return;
-            await submitQuizRating(currentQuiz.id, i);
-            starsWrap.querySelectorAll("button").forEach((b) => b.classList.remove("rated"));
-            btn.classList.add("rated");
-            btn.disabled = true;
-          });
-        } else {
+      return;
+    }
+    const myRating = await getMyQuizRating(currentQuiz.id);
+    starsWrap.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "quiz-finished-star-btn" + (myRating !== null && i <= myRating ? " rated" : "");
+      btn.setAttribute("aria-label", `${i} yıldız`);
+      btn.textContent = "★";
+      btn.dataset.rating = String(i);
+      if (myRating === null) {
+        btn.addEventListener("click", async () => {
+          if (!currentAuthUser || !supabaseClient || !currentQuiz) return;
+          await submitQuizRating(currentQuiz.id, i);
+          starsWrap.querySelectorAll("button").forEach((b) => b.classList.remove("rated"));
+          btn.classList.add("rated");
           btn.disabled = true;
-        }
-        starsWrap.appendChild(btn);
+        });
+      } else {
+        btn.disabled = true;
       }
+      starsWrap.appendChild(btn);
     }
   }
 }
@@ -2466,9 +2463,8 @@ if (settingsBtnNav) settingsBtnNav.addEventListener("click", () => showView("set
 const discoverQuizBtn = document.getElementById("discover-quiz-btn");
 if (discoverQuizBtn) discoverQuizBtn.addEventListener("click", () => {
   showView("discover");
-  document.getElementById("discover-list-wrap")?.classList.remove("hidden");
-  document.getElementById("discover-login-hint")?.classList.add("hidden");
-  ensureSupabaseThen(() => { if (supabaseClient) loadDiscoverQuizzes(); });
+  if (supabaseClient) loadDiscoverQuizzes();
+  else ensureSupabaseThenRun(() => loadDiscoverQuizzes());
 });
 
 if (document.getElementById("auth-nickname-btn")) {
@@ -2940,6 +2936,29 @@ function getQuizTextForProfanityCheck(quiz) {
   });
   return s;
 }
+document.getElementById("share-quiz-link-btn")?.addEventListener("click", () => {
+  if (!shareQuizModalQuizId) return;
+  const base = window.location.origin + (window.location.pathname || "/");
+  const link = base.replace(/\/?$/, "") + "#/play/" + shareQuizModalQuizId;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(() => {
+      alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied.");
+    }).catch(() => { fallbackCopyLink(link); });
+  } else { fallbackCopyLink(link); }
+});
+function fallbackCopyLink(link) {
+  const ta = document.createElement("textarea");
+  ta.value = link;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied.");
+  } catch (e) { alert(link); }
+  document.body.removeChild(ta);
+}
 document.getElementById("share-quiz-public-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
   const quiz = quizzes.find((q) => q.id === shareQuizModalQuizId);
@@ -2951,20 +2970,6 @@ document.getElementById("share-quiz-public-btn")?.addEventListener("click", asyn
   await supabaseClient.from("public_quizzes").upsert({ user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId }, { onConflict: "user_id,quiz_id" });
   closeShareQuizModal();
   alert(currentLang === "tr" ? "Profilinde paylaşıldı." : "Shared on profile.");
-});
-
-document.getElementById("share-quiz-link-btn")?.addEventListener("click", () => {
-  if (!shareQuizModalQuizId) return;
-  const url = new URL(location.href);
-  url.searchParams.set("quiz", shareQuizModalQuizId);
-  const link = url.toString();
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(link).then(() => {
-      alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied.");
-    }).catch(() => { if (window.prompt) window.prompt(currentLang === "tr" ? "Linki kopyalamak için Ctrl+C:" : "Copy link (Ctrl+C):", link); });
-  } else if (window.prompt) {
-    window.prompt(currentLang === "tr" ? "Linki kopyalamak için Ctrl+C:" : "Copy link (Ctrl+C):", link);
-  }
 });
 
 // Puan gösterimi: tam sayıda "5", küsürlüde "4.2" (0.1 katları)
@@ -3003,55 +3008,63 @@ async function submitQuizRating(quizId, rating) {
   await supabaseClient.from("quiz_ratings").upsert({ user_id: currentAuthUser.id, quiz_id: quizId, rating }, { onConflict: "user_id,quiz_id" });
 }
 
-// Quizleri keşfet: giriş zorunlu değil; girişsiz görüntüleme/oynama, paylaş ve puan için üyelik gerekir
+// Quizleri keşfet: Reddit tarzı kartlar (başlık, açıklama, yanda puan), tıklanınca önizleme popup
 let discoverPreviewQuiz = null;
+function ensureSupabaseThenRun(fn) {
+  if (supabaseClient) { fn(); return; }
+  if (typeof window.supabase !== "undefined") { initSupabase(); if (supabaseClient) fn(); return; }
+  const s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+  s.async = false;
+  s.onload = function () { initSupabase(); if (supabaseClient) fn(); };
+  document.head.appendChild(s);
+}
 async function loadDiscoverQuizzes() {
+  if (!supabaseClient) return;
   const wrap = document.getElementById("discover-list-wrap");
   const feed = document.getElementById("discover-feed");
   const empty = document.getElementById("discover-empty");
   if (!wrap || !feed) return;
-  if (!supabaseClient) { empty?.classList.remove("hidden"); empty.textContent = t("discoverEmpty"); return; }
-  const { data: rows } = await supabaseClient.from("public_quizzes").select("user_id,quiz_id").order("created_at", { ascending: false }).limit(50);
+  wrap.classList.remove("hidden");
+  const { data: rows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count").order("created_at", { ascending: false }).limit(50);
   feed.innerHTML = "";
   if (!rows?.length) { empty?.classList.remove("hidden"); empty.textContent = t("discoverEmpty"); return; }
   empty?.classList.add("hidden");
   const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
-  const [quizDataResult, ratingsMap, playCountsResult] = await Promise.all([
+  const [quizDataResult, ratingsMap] = await Promise.all([
     supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds),
-    getQuizRatings(quizIds),
-    supabaseClient.from("quiz_play_counts").select("quiz_id,count").in("quiz_id", quizIds)
+    getQuizRatings(quizIds)
   ]);
   const quizData = quizDataResult?.data || [];
   const byId = {};
   for (const q of quizData) byId[q.id] = q;
-  const playCountByQuiz = {};
-  if (playCountsResult?.data) for (const row of playCountsResult.data) playCountByQuiz[row.quiz_id] = Number(row.count) || 0;
   const authorCache = {};
-  if (currentAuthUser) {
-    const userIds = [...new Set(rows.map((r) => r.user_id))];
-    const { data: profiles } = await supabaseClient.from("profiles").select("id,nickname").in("id", userIds);
-    if (profiles) for (const p of profiles) authorCache[p.id] = p.nickname || "";
-  }
   for (const r of rows) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
-    const author = currentAuthUser ? (authorCache[r.user_id] || "") : "—";
+    if (currentAuthUser && !authorCache[r.user_id]) {
+      const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", r.user_id).single();
+      authorCache[r.user_id] = prof?.nickname || "";
+    }
+    const author = currentAuthUser ? (authorCache[r.user_id] || "—") : "—";
     const ratingInfo = ratingsMap[quiz.id];
     const avgStr = formatRating(ratingInfo ? ratingInfo.avg : null);
-    const playCount = playCountByQuiz[quiz.id] || 0;
-    const countStr = playCount > 0 ? " (" + playCount + ")" : "";
+    const viewCount = r.view_count != null ? r.view_count : 0;
+    const viewStr = currentLang === "tr" ? `(${viewCount} kez girildi)` : `(${viewCount} views)`;
     const card = document.createElement("article");
     card.className = "discover-card";
     card.dataset.quizId = quiz.id;
+    card.dataset.publicRowId = r.id;
     card.innerHTML = `
       <div class="discover-card-main">
-        <h3 class="discover-card-title">${escapeHtml(quiz.name)}${escapeHtml(countStr)}</h3>
+        <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
         <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
         <span class="discover-card-author">${escapeHtml(author)}</span>
+        <span class="discover-card-views">${escapeHtml(viewStr)}</span>
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
     `;
-    card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingsMap[quiz.id]));
+    card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id));
     feed.appendChild(card);
   }
 }
@@ -3061,8 +3074,11 @@ function updateDiscoverPreviewShuffleUi() {
   if (shuf) shuf.classList.toggle("active", !!shuffleEnabled);
   if (shufOpt) shufOpt.classList.toggle("active", !!shuffleOptionsEnabled);
 }
-function openDiscoverPreview(quiz, author, ratingInfo) {
+function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   discoverPreviewQuiz = quiz;
+  if (publicRowId && supabaseClient) {
+    supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId }).catch(() => {});
+  }
   const overlay = document.getElementById("discover-preview-overlay");
   const titleEl = document.getElementById("discover-preview-title");
   const descEl = document.getElementById("discover-preview-desc");
@@ -3086,16 +3102,13 @@ function openDiscoverPreview(quiz, author, ratingInfo) {
   });
   const addToMineBtn = document.getElementById("discover-preview-add-to-mine-btn");
   if (addToMineBtn) {
-    if (currentAuthUser && supabaseClient) {
-      addToMineBtn.classList.remove("hidden");
-      addToMineBtn.textContent = t("addToMyQuizzes");
-      addToMineBtn.onclick = async () => {
-        const ok = await copyQuizToMyQuizzes(quiz);
-        if (ok) { closeDiscoverPreview(); alert(currentLang === "tr" ? "Quizlerinize eklendi." : "Added to your quizzes."); }
-      };
-    } else {
-      addToMineBtn.classList.add("hidden");
-    }
+    addToMineBtn.textContent = t("addToMyQuizzes");
+    addToMineBtn.style.display = currentAuthUser ? "" : "none";
+    addToMineBtn.onclick = async () => {
+      if (!currentAuthUser || !supabaseClient) return;
+      const ok = await copyQuizToMyQuizzes(quiz);
+      if (ok) { closeDiscoverPreview(); alert(currentLang === "tr" ? "Quizlerinize eklendi." : "Added to your quizzes."); }
+    };
   }
 }
 async function renderPreviewRating(container, quizId, ratingInfo) {
@@ -3109,10 +3122,10 @@ async function renderPreviewRating(container, quizId, ratingInfo) {
   label.innerHTML = `<span class="discover-rating-stars">★</span> ${escapeHtml(avgStr)}/5${count ? ` (${count})` : ""}`;
   container.appendChild(label);
   if (!currentAuthUser || !supabaseClient) {
-    const hint = document.createElement("p");
-    hint.className = "discover-preview-rate-hint hint";
-    hint.textContent = t("rateLoginHint");
-    container.appendChild(hint);
+    const loginHint = document.createElement("p");
+    loginHint.className = "discover-preview-rating-login-hint";
+    loginHint.textContent = currentLang === "tr" ? "Puan verebilmek için giriş yapın (üyelik gerekir)" : "Log in to rate (membership required)";
+    container.appendChild(loginHint);
     return;
   }
   const myRating = await getMyQuizRating(quizId);
@@ -3144,24 +3157,10 @@ function closeDiscoverPreview() {
   discoverPreviewQuiz = null;
   document.getElementById("discover-preview-overlay")?.classList.add("hidden");
 }
-function ensureQuestionsArray(questions) {
-  if (Array.isArray(questions)) return questions;
-  if (typeof questions === "string") {
-    try { const p = JSON.parse(questions); return Array.isArray(p) ? p : []; } catch (e) { return []; }
-  }
-  return [];
-}
 function playDiscoverQuiz(quiz) {
   lastPlayedQuizFromShared = true;
   const id = quiz.id;
-  const questions = ensureQuestionsArray(quiz.questions);
-  const existing = quizzes.find((q) => q.id === id);
-  if (existing) {
-    if (questions.length) existing.questions = questions;
-  } else {
-    quizzes.push({ id: quiz.id, name: quiz.name || "", description: quiz.description || "", questions });
-  }
-  if (supabaseClient) supabaseClient.rpc("increment_quiz_play_count", { p_quiz_id: id }).catch(() => {});
+  if (!quizzes.find((q) => q.id === id)) quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
   startQuiz(id);
 }
 async function copyQuizToMyQuizzes(quiz) {
@@ -3277,27 +3276,6 @@ function loadSupabaseSdkThenOpenModal(mode) {
     } else alert(getAuthErrorMessage());
   };
   s.onerror = function () { alert(getAuthErrorMessage()); };
-  document.head.appendChild(s);
-}
-
-function ensureSupabaseThen(callback) {
-  if (supabaseClient) { callback(); return; }
-  const url = (typeof window !== "undefined" && window.SUPABASE_URL) ? String(window.SUPABASE_URL).trim() : "";
-  const key = (typeof window !== "undefined" && window.SUPABASE_ANON_KEY) ? String(window.SUPABASE_ANON_KEY).trim() : "";
-  if (!url || !key) { callback(); return; }
-  if (typeof window.supabase !== "undefined") {
-    initSupabase();
-    callback();
-    return;
-  }
-  var s = document.createElement("script");
-  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
-  s.async = false;
-  s.onload = function () {
-    initSupabase();
-    callback();
-  };
-  s.onerror = function () { callback(); };
   document.head.appendChild(s);
 }
 
@@ -3968,22 +3946,43 @@ async function initAuthAndQuizzes() {
   updateShuffleToggleUi();
   updateShuffleOptionsToggleUi();
   initStandalone();
-  const quizIdFromUrl = new URLSearchParams(location.search).get("quiz");
-  if (quizIdFromUrl) {
-    ensureSupabaseThen(async () => {
-      if (!supabaseClient) { showView("mainMenu"); return; }
-      const { data: quiz } = await supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizIdFromUrl).single();
-      if (!quiz) { showView("mainMenu"); return; }
-      showView("discover");
-      await loadDiscoverQuizzes();
-      openDiscoverPreview(quiz, "—", null);
-      try { history.replaceState({}, "", location.pathname + (location.hash || "")); } catch (_) {}
-    });
-  } else {
-    showView("mainMenu");
-  }
+  showView("mainMenu");
 }
 initAuthAndQuizzes();
+
+function handlePlayHash() {
+  const hash = (window.location.hash || "").replace(/^#\/?/, "");
+  const m = /^play\/([a-f0-9-]{36})$/i.exec(hash);
+  if (!m) return;
+  const quizId = m[1];
+  function openQuizByLink() {
+    if (!supabaseClient) return;
+    Promise.all([
+      supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).maybeSingle(),
+      supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle()
+    ]).then(([quizRes, rowRes]) => {
+      const quiz = quizRes?.data;
+      if (!quiz) {
+        alert(currentLang === "tr" ? "Quiz bulunamadı veya erişim yok." : "Quiz not found or access denied.");
+        return;
+      }
+      showView("discover");
+      loadDiscoverQuizzes();
+      const publicRowId = rowRes?.data?.id || null;
+      const ratingInfo = null;
+      setTimeout(() => openDiscoverPreview(quiz, "—", ratingInfo, publicRowId), 100);
+    }).catch(() => {
+      alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
+    });
+  }
+  if (supabaseClient) openQuizByLink();
+  else ensureSupabaseThenRun(openQuizByLink);
+}
+if (/^#\/?play\//.test(window.location.hash || "")) {
+  setTimeout(handlePlayHash, 50);
+}
+window.addEventListener("hashchange", handlePlayHash);
+
 window.addEventListener("load", function () { checkStandaloneAgain(); });
 setTimeout(checkStandaloneAgain, 500);
 

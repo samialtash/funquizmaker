@@ -14,7 +14,6 @@ create table if not exists public.friend_requests (
   unique(from_user_id, to_user_id)
 );
 alter table public.friend_requests enable row level security;
-drop policy if exists "friend_requests_own" on public.friend_requests;
 create policy "friend_requests_own" on public.friend_requests for all using (auth.uid() = from_user_id or auth.uid() = to_user_id);
 
 -- 3) Arkadaşlıklar (kabul edilince her iki yön için bir satır)
@@ -27,7 +26,6 @@ create table if not exists public.friendships (
   check (user_id != friend_id)
 );
 alter table public.friendships enable row level security;
-drop policy if exists "friendships_own" on public.friendships;
 create policy "friendships_own" on public.friendships for all using (auth.uid() = user_id or auth.uid() = friend_id);
 
 -- 4) Quiz arkadaşa paylaşım
@@ -39,8 +37,6 @@ create table if not exists public.quiz_shared_to (
   created_at timestamptz default now()
 );
 alter table public.quiz_shared_to enable row level security;
-drop policy if exists "quiz_shared_to_insert_own" on public.quiz_shared_to;
-drop policy if exists "quiz_shared_to_select_own" on public.quiz_shared_to;
 create policy "quiz_shared_to_insert_own" on public.quiz_shared_to for insert with check (auth.uid() = from_user_id);
 create policy "quiz_shared_to_select_own" on public.quiz_shared_to for select using (auth.uid() = from_user_id or auth.uid() = to_user_id);
 
@@ -53,12 +49,18 @@ create table if not exists public.public_quizzes (
   unique(user_id, quiz_id)
 );
 alter table public.public_quizzes enable row level security;
-drop policy if exists "public_quizzes_insert_own" on public.public_quizzes;
-drop policy if exists "public_quizzes_select_all" on public.public_quizzes;
-drop policy if exists "public_quizzes_delete_own" on public.public_quizzes;
 create policy "public_quizzes_insert_own" on public.public_quizzes for insert with check (auth.uid() = user_id);
 create policy "public_quizzes_select_all" on public.public_quizzes for select using (true);
 create policy "public_quizzes_delete_own" on public.public_quizzes for delete using (auth.uid() = user_id);
+
+-- 5b) Giriş sayısı (keşfet / link ile açılış)
+alter table public.public_quizzes add column if not exists view_count int not null default 0;
+create or replace function public.increment_public_quiz_view(pid uuid) returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.public_quizzes set view_count = view_count + 1 where id = pid;
+end;
+$$;
+grant execute on function public.increment_public_quiz_view(uuid) to anon, authenticated;
 
 -- 6) Quiz okuma: kendi quizlerin + sana paylaşılanlar + herkese açık olanlar
 drop policy if exists "quizzes_select_own" on public.quizzes;
@@ -70,31 +72,11 @@ create policy "quizzes_select_own" on public.quizzes for select using (
 
 -- 7) Profilleri giriş yapan herkes okuyabilsin (nickname ile arama için)
 drop policy if exists "profiles_select_own" on public.profiles;
-drop policy if exists "profiles_select_authenticated" on public.profiles;
 create policy "profiles_select_authenticated" on public.profiles for select using (auth.uid() is not null);
 
 -- 8) Avatar için storage bucket (Supabase Dashboard > Storage'ta da oluşturabilirsiniz)
 insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict (id) do nothing;
-drop policy if exists "avatars_public_read" on storage.objects;
-drop policy if exists "avatars_own_upload" on storage.objects;
-drop policy if exists "avatars_own_update" on storage.objects;
-drop policy if exists "avatars_own_delete" on storage.objects;
 create policy "avatars_public_read" on storage.objects for select using (bucket_id = 'avatars');
 create policy "avatars_own_upload" on storage.objects for insert with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 create policy "avatars_own_update" on storage.objects for update using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 create policy "avatars_own_delete" on storage.objects for delete using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
-
--- 9) Herkese açık quiz giriş sayısı (keşfette kaç kere girildiği)
-create table if not exists public.quiz_play_counts (
-  quiz_id uuid primary key references public.quizzes(id) on delete cascade,
-  count bigint not null default 0
-);
-alter table public.quiz_play_counts enable row level security;
-drop policy if exists "quiz_play_counts_select" on public.quiz_play_counts;
-create policy "quiz_play_counts_select" on public.quiz_play_counts for select using (true);
--- Artırma için RPC (anon da çağırabilir; sadece +1 yapıyor)
-create or replace function public.increment_quiz_play_count(p_quiz_id uuid)
-returns void language sql security definer set search_path = public as $$
-  insert into public.quiz_play_counts (quiz_id, count) values (p_quiz_id, 1)
-  on conflict (quiz_id) do update set count = quiz_play_counts.count + 1;
-$$;

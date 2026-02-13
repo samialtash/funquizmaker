@@ -419,6 +419,7 @@ body.standalone .app-logo {
 .discover-preview-desc { margin: 0 0 16px 0; color: var(--muted); line-height: 1.5; white-space: pre-wrap; }
 .discover-preview-rating { margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .discover-preview-rating-label { font-weight: 600; }
+.discover-preview-rating-login-hint { font-size: 0.9rem; color: var(--muted); margin: 8px 0 0 0; }
 .discover-preview-stars { display: flex; gap: 4px; }
 .discover-star-btn { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0 2px; transition: color 0.15s; }
 .discover-star-btn:hover { color: var(--accent); }
@@ -427,8 +428,6 @@ body.standalone .app-logo {
 .discover-preview-toggles { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .discover-preview-toggles .toggle-pill { width: 100%; }
 .discover-rating-stars { color: #fbbf24; margin-right: 2px; }
-.discover-preview-rate-hint { margin: 4px 0 0 0; font-size: 0.9rem; }
-.quiz-finished-rate-hint { margin: 6px 0 0 0; font-size: 0.9rem; }
 
 /* Profil: çizgi, paylaşılan quizler, düzenle formu */
 .profile-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
