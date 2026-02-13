@@ -66,6 +66,27 @@
               </li>
             </ul>
           </div>
+          <p class="main-menu-footer">
+            <button type="button" id="terms-link-btn" class="terms-link">Kullanıcı Sözleşmesi</button>
+          </p>
+        </div>
+      </div>
+
+      <!-- Kullanıcı Sözleşmesi modal -->
+      <div id="terms-modal-overlay" class="auth-overlay hidden" aria-hidden="true">
+        <div class="auth-modal terms-modal">
+          <button type="button" id="terms-modal-close" class="auth-modal-close" aria-label="Kapat">×</button>
+          <h2 class="terms-modal-title">Kullanıcı Sözleşmesi</h2>
+          <div id="terms-modal-body" class="terms-modal-body">
+            <p><strong>1. Taraflar ve Hizmet</strong><br>Bu sözleşme, "Fun Quiz Maker" / "Eğlenceli Quiz Oluşturucu" uygulamasını kullanan kullanıcı ile hizmeti sunan taraf arasında elektronik ortamda akdedilmiş sayılır. Uygulama, kullanıcıların quiz oluşturmasına, oynamasına ve belirli koşullarda paylaşmasına olanak tanır.</p>
+            <p><strong>2. Kabul</strong><br>Uygulamayı kullanmakla bu sözleşmeyi okuduğunuzu ve kabul ettiğinizi kabul etmiş sayılırsınız. Kabul etmiyorsanız uygulamayı kullanmayınız.</p>
+            <p><strong>3. Kullanıcı Yükümlülükleri</strong><br>Oluşturduğunuz ve paylaştığınız tüm içeriklerden yalnızca siz sorumlusunuz. Herkese açık (keşfet) alanda küfür, argo ve genel ahlak kurallarına aykırı ifadeler yasaktır; uygulama bu tür içerikleri tespit edip engelleyebilir veya kaldırabilir. Arkadaşlarınızla özel paylaştığınız quizlerde uygulama içeriği denetlemeyebilir; bu içeriklerin sorumluluğu size aittir. Yasalara ve üçüncü kişi haklarına aykırı içerik oluşturmak veya yaymak yasaktır.</p>
+            <p><strong>4. Fikri Mülkiyet</strong><br>Oluşturduğunuz quiz ve içeriklerin fikri mülkiyet hakları size aittir. Uygulama bu içerikler üzerinde mülkiyet iddia etmez.</p>
+            <p><strong>5. Sorumluluk Reddi</strong><br>Hizmet "olduğu gibi" sunulmaktadır. Hizmet sağlayıcı, kesintisiz veya hatasız çalışma taahhüdü vermez. Yasalarca müsaade edilen ölçüde dolaylı, arızi veya cezai zararlardan sorumluluk kabul edilmez. Kullanıcı içeriklerinden doğan taleplerde öncelikle içeriği oluşturan kullanıcı sorumludur.</p>
+            <p><strong>6. Kişisel Veriler</strong><br>Kişisel verileriniz, 6698 sayılı KVKK ve ilgili mevzuata uygun işlenir.</p>
+            <p><strong>7. Uygulanacak Hukuk</strong><br>Bu sözleşmeye Türkiye Cumhuriyeti kanunları uygulanır. Uyuşmazlıklarda Türkiye mahkemeleri yetkilidir.</p>
+            <p><strong>8. Değişiklik</strong><br>Sözleşme metni güncellenebilir. Güncel metin uygulama içinden erişilebilir olacaktır. Kullanıma devam etmekle güncel metni kabul etmiş sayılırsınız.</p>
+          </div>
         </div>
       </div>
 
@@ -86,14 +107,24 @@
         <div id="lang-select-list" class="lang-select-list"></div>
       </div>
 
-      <!-- Quizleri keşfet: herkese açık quizler, giriş zorunlu -->
+      <!-- Quizleri keşfet: Reddit tarzı kartlar, puanlama, önizleme popup -->
       <div id="discover-view" class="view">
         <button id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="discover-title" class="main-menu-title">Quizleri keşfet</h1>
         <p id="discover-login-hint" class="info-box main-menu-info hidden">Giriş yaparak keşfet sayfasındaki quizlere erişebilirsiniz.</p>
         <div id="discover-list-wrap" class="discover-list-wrap hidden">
           <p id="discover-empty" class="hint hidden"></p>
-          <ul id="discover-list" class="discover-list"></ul>
+          <div id="discover-feed" class="discover-feed"></div>
+        </div>
+      </div>
+      <!-- Keşfet: quiz önizleme popup (başlık, açıklama, Quiz'i Başlat) -->
+      <div id="discover-preview-overlay" class="auth-overlay hidden" aria-hidden="true">
+        <div class="auth-modal discover-preview-modal">
+          <button type="button" id="discover-preview-close" class="auth-modal-close" aria-label="Kapat">×</button>
+          <h2 id="discover-preview-title" class="discover-preview-title"></h2>
+          <p id="discover-preview-desc" class="discover-preview-desc"></p>
+          <div id="discover-preview-rating" class="discover-preview-rating"></div>
+          <button type="button" id="discover-preview-start-btn" class="primary-btn">Quiz'i Başlat</button>
         </div>
       </div>
 
@@ -106,9 +137,14 @@
             <img id="profile-avatar-img" class="profile-avatar-img hidden" alt="" />
             <div id="profile-avatar-placeholder" class="profile-avatar-placeholder" aria-hidden="true"></div>
             <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
-            <button type="button" id="profile-avatar-upload-btn" class="secondary-btn small-btn">Fotoğraf yükle</button>
+            <button type="button" id="profile-avatar-upload-btn" class="secondary-btn small-btn">Profil resmi yükle</button>
           </div>
           <p id="profile-nickname" class="profile-nickname"></p>
+          <div id="profile-nickname-edit" class="profile-nickname-edit">
+            <input type="text" id="profile-nickname-input" class="auth-form input" placeholder="Nickname" maxlength="50" />
+            <button type="button" id="profile-nickname-save-btn" class="secondary-btn small-btn">Kaydet</button>
+            <p id="profile-nickname-cooldown" class="hint profile-nickname-cooldown hidden"></p>
+          </div>
         </div>
         <div class="profile-actions main-menu-buttons">
           <button type="button" id="profile-friends-btn" class="secondary-btn main-btn-secondary">Arkadaşlar</button>
@@ -417,6 +453,6 @@
     <script>window.SUPABASE_URL=window.SUPABASE_URL||"";window.SUPABASE_ANON_KEY=window.SUPABASE_ANON_KEY||"";</script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="script.js?v=8"></script>
+    <script src="script.js?v=9"></script>
   </body>
 </html>

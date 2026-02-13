@@ -133,6 +133,12 @@ const translations = {
     shareToProfile: "Share on profile (public)",
     discoverLoginHint: "Log in to discover and play quizzes shared by others.",
     discoverEmpty: "No public quizzes yet.",
+    discoverPreviewStart: "Start quiz",
+    nicknameCooldown: "You can change your nickname once every 20 days. Next change in {days} days.",
+    nicknameCooldownReady: "You can change your nickname now.",
+    nicknameSave: "Save",
+    ratingOutOf5: "{avg}/5",
+    termsLink: "Terms of Service",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -260,6 +266,12 @@ const translations = {
     shareToProfile: "Profilinde Paylaş (herkese açık)",
     discoverLoginHint: "Başkalarının paylaştığı quizleri keşfetmek ve oynamak için giriş yapın.",
     discoverEmpty: "Henüz herkese açık quiz yok.",
+    discoverPreviewStart: "Quiz'i Başlat",
+    nicknameCooldown: "Nickname'i 20 günde bir değiştirebilirsiniz. Sonraki değişiklik: {days} gün sonra.",
+    nicknameCooldownReady: "Nickname'i şimdi değiştirebilirsiniz.",
+    nicknameSave: "Kaydet",
+    ratingOutOf5: "{avg}/5",
+    termsLink: "Kullanıcı Sözleşmesi",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -290,9 +302,11 @@ function initSupabase() {
     supabaseClient.auth.onAuthStateChange((event, session) => {
       currentAuthUser = session?.user ?? null;
       if (event === "SIGNED_IN" && session) {
-        fetchUserQuizzes().then(() => {
-          refreshQuizSelect();
-          refreshEditQuizSelect();
+        ensureProfileNicknameAfterSignIn(session).then(() => {
+          fetchUserQuizzes().then(() => {
+            refreshQuizSelect();
+            refreshEditQuizSelect();
+          });
         });
       } else if (event === "SIGNED_OUT") {
         loadQuizzes();
@@ -307,6 +321,19 @@ function initSupabase() {
 }
 initSupabase();
 
+const NICKNAME_COOLDOWN_DAYS = 20;
+
+async function ensureProfileNicknameAfterSignIn(session) {
+  if (!session?.user || !supabaseClient) return;
+  const u = session.user;
+  const { data: profile } = await supabaseClient.from("profiles").select("nickname").eq("id", u.id).single();
+  const existing = profile?.nickname?.trim();
+  if (existing) return;
+  const nick = (u.user_metadata?.full_name || u.user_metadata?.name || u.user_metadata?.nickname || (u.email && u.email.split("@")[0]) || "").trim().slice(0, 50);
+  if (!nick) return;
+  await supabaseClient.from("profiles").upsert({ id: u.id, nickname: nick }, { onConflict: "id" });
+}
+
 function updateAuthUI() {
   const guest = document.getElementById("main-menu-auth");
   const logged = document.getElementById("main-menu-auth-logged-in");
@@ -315,8 +342,14 @@ function updateAuthUI() {
   if (currentAuthUser) {
     guest.classList.add("hidden");
     logged.classList.remove("hidden");
-    const nick = currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "";
-    if (nicknameEl) nicknameEl.textContent = nick || currentAuthUser.email;
+    const fallbackNick = (currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "").trim() || currentAuthUser.email || "";
+    if (nicknameEl) nicknameEl.textContent = fallbackNick;
+    if (supabaseClient) {
+      supabaseClient.from("profiles").select("nickname").eq("id", currentAuthUser.id).single().then(({ data: p }) => {
+        const nick = (p?.nickname || "").trim() || fallbackNick;
+        if (nicknameEl) nicknameEl.textContent = nick || currentAuthUser?.email || "";
+      }).catch(() => {});
+    }
   } else {
     guest.classList.remove("hidden");
     logged.classList.add("hidden");
@@ -894,6 +927,8 @@ function applyTranslations() {
   const discoverLoginHintEl = document.getElementById("discover-login-hint");
   if (profileTitleEl) profileTitleEl.textContent = t("profileTitle");
   if (profileUploadBtn) profileUploadBtn.textContent = t("uploadPhoto");
+  const profileNicknameSaveBtn = document.getElementById("profile-nickname-save-btn");
+  if (profileNicknameSaveBtn) profileNicknameSaveBtn.textContent = t("nicknameSave");
   if (friendsTitleEl) friendsTitleEl.textContent = t("friendsTitle");
   if (friendsPendingTitle) friendsPendingTitle.textContent = t("pendingRequests");
   if (friendsListTitle) friendsListTitle.textContent = t("myFriends");
@@ -913,6 +948,8 @@ function applyTranslations() {
   if (discoverDesc) discoverDesc.textContent = t("discoverDesc");
   const discoverQuizBtn = document.getElementById("discover-quiz-btn");
   if (discoverQuizBtn) discoverQuizBtn.textContent = t("discoverQuizzes");
+  const termsLinkBtn = document.getElementById("terms-link-btn");
+  if (termsLinkBtn) termsLinkBtn.textContent = t("termsLink");
   const authEmailLabelLogin = document.getElementById("auth-email-label-login");
   const authPasswordLabelLogin = document.getElementById("auth-password-label-login");
   const authEmailLabelSignup = document.getElementById("auth-email-label-signup");
@@ -1127,9 +1164,21 @@ function renderQuizSelectPagination() {
 }
 
 function escapeHtml(s) {
+  if (s == null) return "";
   const div = document.createElement("div");
-  div.textContent = s;
+  div.textContent = String(s);
   return div.innerHTML;
+}
+
+// XSS önlemi: sadece güvenli resim URL'leri (data:image png/jpeg/webp/gif, blob:, https:). SVG kabul edilmez (script riski).
+function sanitizeImageSrc(url) {
+  if (typeof url !== "string" || !url.trim()) return "";
+  const u = url.trim().toLowerCase();
+  if (u.startsWith("data:image/svg")) return "";
+  if (u.startsWith("data:image/png") || u.startsWith("data:image/jpeg") || u.startsWith("data:image/jpg") || u.startsWith("data:image/webp") || u.startsWith("data:image/gif")) return url;
+  if (u.startsWith("blob:")) return url;
+  if (u.startsWith("https://")) return url;
+  return "";
 }
 
 function refreshQuizSelect() {
@@ -1273,8 +1322,8 @@ function renderOptionRows() {
       <div class="option-row">
         <label for="single-option-${letter}">${letterLabel}</label>
         <input type="text" id="single-option-${letter}" placeholder="${letterLabel}" class="option-text-input" />
-        <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="${letter}" data-index="${i}">${t("addPhoto")}</button>
-        ${n > MIN_OPTIONS ? `<button type="button" class="secondary-btn small-btn remove-option-row-btn" data-index="${i}" title="${t("delete")}">×</button>` : ""}
+        <button type="button" class="secondary-btn small-btn add-photo-btn option-photo-btn" data-option="${letter}" data-index="${i}">${escapeHtml(t("addPhoto"))}</button>
+        ${n > MIN_OPTIONS ? `<button type="button" class="secondary-btn small-btn remove-option-row-btn" data-index="${i}" title="${escapeHtml(t("delete"))}">×</button>` : ""}
       </div>
       <div id="single-option-image-wrap-${letter}" class="option-image-wrap hidden">
         <input type="file" id="single-option-image-${letter}" accept="image/jpeg,image/png,image/webp" class="image-input small input-trigger-only" tabindex="-1" aria-hidden="true" />
@@ -1403,8 +1452,9 @@ function updateQuestionImagePreview() {
   const fileInput = document.getElementById("single-question-image");
   const addBtn = document.getElementById("single-question-image-add");
   if (!preview || !fileInput) return;
-  if (editFormQuestionImage) {
-    if (preview) preview.innerHTML = `<img src="${editFormQuestionImage}" alt="" />`;
+  const safeSrc = sanitizeImageSrc(editFormQuestionImage);
+  if (safeSrc) {
+    if (preview) preview.innerHTML = `<img src="${safeSrc.replace(/"/g, "&quot;")}" alt="" />`;
     if (wrap) wrap.classList.remove("hidden");
     if (addBtn) addBtn.classList.add("hidden");
     fileInput.value = "";
@@ -1425,8 +1475,9 @@ function updateOptionImagePreview(optionIndex) {
   const addBtn = document.querySelector(`.option-photo-btn[data-option="${id}"]`);
   if (!preview || !fileInput) return;
   const data = editFormOptionImages[optionIndex];
-  if (data) {
-    preview.innerHTML = `<img src="${data}" alt="" />`;
+  const safeOptSrc = sanitizeImageSrc(data);
+  if (safeOptSrc) {
+    preview.innerHTML = `<img src="${safeOptSrc.replace(/"/g, "&quot;")}" alt="" />`;
     if (wrap) wrap.classList.remove("hidden");
     if (addBtn) addBtn.classList.add("hidden");
     fileInput.value = "";
@@ -1803,11 +1854,12 @@ function renderCurrentQuestion() {
   }
 
   questionTextEl.innerHTML = "";
-  if (q.image) {
+  const safeQImage = sanitizeImageSrc(q.image);
+  if (safeQImage) {
     const wrap = document.createElement("div");
     wrap.className = "question-image-wrap";
     const img = document.createElement("img");
-    img.src = q.image;
+    img.src = safeQImage;
     img.alt = "";
     wrap.appendChild(img);
     questionTextEl.appendChild(wrap);
@@ -1819,15 +1871,16 @@ function renderCurrentQuestion() {
 
   displayOrder.forEach((originalIdx, displayedIdx) => {
     const opt = optsRaw[originalIdx];
+    const safeOptImage = sanitizeImageSrc(opt && opt.image);
     const btn = document.createElement("button");
-    btn.className = "option-btn" + (opt.image ? " has-image" : "");
+    btn.className = "option-btn" + (safeOptImage ? " has-image" : "");
     btn.dataset.index = String(displayedIdx);
     btn.dataset.originalIndex = String(originalIdx);
     btn.dataset.label = String.fromCharCode(65 + displayedIdx);
-    if (opt.image) {
+    if (safeOptImage) {
       const img = document.createElement("img");
       img.className = "option-image-inline";
-      img.src = opt.image;
+      img.src = safeOptImage;
       img.alt = "";
       btn.appendChild(img);
     }
@@ -2189,19 +2242,17 @@ function handleParseQuestions() {
 
   parsedQuestionsSummaryEl.classList.remove("hidden");
   const sample = draftQuestions.slice(0, 3);
-  let html = `<strong>Preview (${draftQuestions.length} total):</strong><br/>`;
+  let html = `<strong>Preview (${escapeHtml(String(draftQuestions.length))} total):</strong><br/>`;
   html += sample
     .map(
       (q, index) =>
-        `${index + 1}. ${q.text} <span class="hint">(Answer: ${
-          String.fromCharCode(65 + q.correctIndex)
+        `${escapeHtml(String(index + 1))}. ${escapeHtml(q.text || "")} <span class="hint">(Answer: ${
+          escapeHtml(String.fromCharCode(65 + (q.correctIndex ?? 0)))
         })</span>`
     )
     .join("<br/>");
   if (parsed.length > 3) {
-    html += `<br/><span class="hint">...and ${
-      parsed.length - 3
-    } more question(s).</span>`;
+    html += `<br/><span class="hint">...and ${escapeHtml(String(parsed.length - 3))} more question(s).</span>`;
   }
   parsedQuestionsSummaryEl.innerHTML = html;
 }
@@ -2341,17 +2392,35 @@ if (document.getElementById("auth-nickname-btn")) {
   });
 }
 
-// Profil: avatar + nickname yükle
+// Profil: avatar + nickname yükle, nickname düzenleme (20 günde bir)
 async function loadProfile() {
   if (!supabaseClient || !currentAuthUser) return;
   const nickEl = document.getElementById("profile-nickname");
   const imgEl = document.getElementById("profile-avatar-img");
   const placeEl = document.getElementById("profile-avatar-placeholder");
-  const nick = currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "";
-  if (nickEl) nickEl.textContent = nick || currentAuthUser.email;
-  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname").eq("id", currentAuthUser.id).single();
-  if (profile?.avatar_url && imgEl && placeEl) { imgEl.src = profile.avatar_url; imgEl.classList.remove("hidden"); placeEl.classList.add("hidden"); }
+  const inputEl = document.getElementById("profile-nickname-input");
+  const cooldownEl = document.getElementById("profile-nickname-cooldown");
+  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname,last_nickname_change").eq("id", currentAuthUser.id).single();
+  const nick = (profile?.nickname || currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "").trim() || currentAuthUser.email || "";
+  if (nickEl) nickEl.textContent = nick;
+  const headerNick = document.getElementById("auth-nickname");
+  if (headerNick) headerNick.textContent = nick;
+  const safeAvatar = profile?.avatar_url ? sanitizeImageSrc(profile.avatar_url) : "";
+  if (safeAvatar && imgEl && placeEl) { imgEl.src = safeAvatar; imgEl.classList.remove("hidden"); placeEl.classList.add("hidden"); }
   else if (imgEl && placeEl) { imgEl.classList.add("hidden"); placeEl.classList.remove("hidden"); }
+  if (inputEl) inputEl.value = nick;
+  if (cooldownEl) {
+    const last = profile?.last_nickname_change ? new Date(profile.last_nickname_change) : null;
+    const now = new Date();
+    const daysSince = last ? Math.floor((now - last) / (24 * 60 * 60 * 1000)) : 999;
+    const canChange = !last || daysSince >= NICKNAME_COOLDOWN_DAYS;
+    cooldownEl.classList.toggle("hidden", false);
+    if (canChange) cooldownEl.textContent = t("nicknameCooldownReady");
+    else {
+      const daysLeft = Math.max(0, NICKNAME_COOLDOWN_DAYS - daysSince);
+      cooldownEl.textContent = (t("nicknameCooldown") || "").replace("{days}", String(daysLeft));
+    }
+  }
 }
 
 if (document.getElementById("profile-avatar-upload-btn")) {
@@ -2369,6 +2438,25 @@ if (document.getElementById("profile-avatar-input")) {
     loadProfile();
     updateAuthUI();
     e.target.value = "";
+  });
+}
+if (document.getElementById("profile-nickname-save-btn")) {
+  document.getElementById("profile-nickname-save-btn").addEventListener("click", async () => {
+    if (!supabaseClient || !currentAuthUser) return;
+    const inputEl = document.getElementById("profile-nickname-input");
+    const newNick = inputEl?.value?.trim()?.slice(0, 50) || "";
+    if (!newNick) return;
+    const { data: profile } = await supabaseClient.from("profiles").select("last_nickname_change").eq("id", currentAuthUser.id).single();
+    const last = profile?.last_nickname_change ? new Date(profile.last_nickname_change) : null;
+    const daysSince = last ? Math.floor((new Date() - last) / (24 * 60 * 60 * 1000)) : 999;
+    if (last && daysSince < NICKNAME_COOLDOWN_DAYS) {
+      alert(currentLang === "tr" ? "Nickname 20 günde bir değiştirilebilir. Henüz süre dolmadı." : "Nickname can only be changed once every 20 days.");
+      return;
+    }
+    const { error } = await supabaseClient.from("profiles").update({ nickname: newNick, last_nickname_change: new Date().toISOString() }).eq("id", currentAuthUser.id);
+    if (error) { console.warn(error); return; }
+    loadProfile();
+    updateAuthUI();
   });
 }
 if (document.getElementById("profile-friends-btn")) {
@@ -2492,6 +2580,17 @@ document.getElementById("share-quiz-search-user")?.addEventListener("input", asy
 });
 document.getElementById("share-quiz-modal-close")?.addEventListener("click", closeShareQuizModal);
 document.getElementById("share-quiz-modal-overlay")?.addEventListener("click", (e) => { if (e.target.id === "share-quiz-modal-overlay") closeShareQuizModal(); });
+
+// Kullanıcı Sözleşmesi modal
+document.getElementById("terms-link-btn")?.addEventListener("click", () => {
+  document.getElementById("terms-modal-overlay")?.classList.remove("hidden");
+});
+document.getElementById("terms-modal-close")?.addEventListener("click", () => {
+  document.getElementById("terms-modal-overlay")?.classList.add("hidden");
+});
+document.getElementById("terms-modal-overlay")?.addEventListener("click", (e) => {
+  if (e.target.id === "terms-modal-overlay") document.getElementById("terms-modal-overlay")?.classList.add("hidden");
+});
 document.getElementById("share-quiz-send-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
   for (const toId of shareQuizSelectedUserIds) {
@@ -2500,46 +2599,182 @@ document.getElementById("share-quiz-send-btn")?.addEventListener("click", async 
   closeShareQuizModal();
   if (shareQuizSelectedUserIds.length) alert(currentLang === "tr" ? "Gönderildi." : "Sent.");
 });
+// Herkese açık paylaşımda küfür/argo kontrolü (sadece "Profilinde Paylaş"; arkadaşa paylaşımda yok)
+function normalizeForProfanityCheck(s) {
+  if (typeof s !== "string") return "";
+  const t = s.toLowerCase()
+    .replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ş/g, "s").replace(/ç/g, "c")
+    .replace(/[^a-z0-9\s]/g, " ");
+  return " " + t + " ";
+}
+const BANNED_WORDS_PUBLIC = ["amk","aq","sik","sike","göt","orospu","piç","kahpe","mal","gerizekalı","salak","aptal","fuck","shit","bitch","ass","damn","crap","dick","pussy","wtf","fck","sht"]; // genişletilebilir
+function containsProfanity(text) {
+  const norm = normalizeForProfanityCheck(text);
+  for (let i = 0; i < BANNED_WORDS_PUBLIC.length; i++) {
+    const w = BANNED_WORDS_PUBLIC[i];
+    const idx = norm.indexOf(" " + w + " ");
+    if (idx !== -1) return true;
+    if (norm.startsWith(w + " ") || norm.endsWith(" " + w)) return true;
+  }
+  return false;
+}
+function getQuizTextForProfanityCheck(quiz) {
+  if (!quiz) return "";
+  let s = (quiz.name || "") + " " + (quiz.description || "");
+  const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+  questions.forEach((q) => {
+    s += " " + (q.text || "");
+    (q.options || []).forEach((opt) => {
+      s += " " + (typeof opt === "string" ? opt : (opt && opt.text) || "");
+    });
+  });
+  return s;
+}
 document.getElementById("share-quiz-public-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
+  const quiz = quizzes.find((q) => q.id === shareQuizModalQuizId);
+  const fullText = getQuizTextForProfanityCheck(quiz);
+  if (containsProfanity(fullText)) {
+    alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Lütfen quiz adı, açıklama ve soru/cevapları kontrol edin." : "The quiz contains inappropriate language. Please remove offensive content before sharing publicly.");
+    return;
+  }
   await supabaseClient.from("public_quizzes").upsert({ user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId }, { onConflict: "user_id,quiz_id" });
   closeShareQuizModal();
   alert(currentLang === "tr" ? "Profilinde paylaşıldı." : "Shared on profile.");
 });
 
-// Quizleri keşfet: herkese açık liste, tıklanınca oyna
+// Quiz puanlama: ortalamaları al, puan gönder
+async function getQuizRatings(quizIds) {
+  if (!supabaseClient || !quizIds?.length) return {};
+  const { data: ratings } = await supabaseClient.from("quiz_ratings").select("quiz_id,rating").in("quiz_id", quizIds);
+  const byQuiz = {};
+  if (ratings) for (const row of ratings) {
+    if (!byQuiz[row.quiz_id]) byQuiz[row.quiz_id] = { sum: 0, count: 0 };
+    byQuiz[row.quiz_id].sum += row.rating;
+    byQuiz[row.quiz_id].count += 1;
+  }
+  const out = {};
+  for (const id of Object.keys(byQuiz)) {
+    const o = byQuiz[id];
+    out[id] = { avg: o.sum / o.count, count: o.count };
+  }
+  return out;
+}
+async function submitQuizRating(quizId, rating) {
+  if (!supabaseClient || !currentAuthUser || rating < 1 || rating > 5) return;
+  await supabaseClient.from("quiz_ratings").upsert({ user_id: currentAuthUser.id, quiz_id: quizId, rating }, { onConflict: "user_id,quiz_id" });
+}
+
+// Quizleri keşfet: Reddit tarzı kartlar (başlık, açıklama, yanda puan), tıklanınca önizleme popup
+let discoverPreviewQuiz = null;
 async function loadDiscoverQuizzes() {
   const wrap = document.getElementById("discover-list-wrap");
   const hint = document.getElementById("discover-login-hint");
-  const list = document.getElementById("discover-list");
+  const feed = document.getElementById("discover-feed");
   const empty = document.getElementById("discover-empty");
-  if (!wrap || !list) return;
+  if (!wrap || !feed) return;
   hint?.classList.add("hidden");
   wrap.classList.remove("hidden");
   const { data: rows } = await supabaseClient.from("public_quizzes").select("user_id,quiz_id").order("created_at", { ascending: false }).limit(50);
-  list.innerHTML = "";
+  feed.innerHTML = "";
   if (!rows?.length) { empty?.classList.remove("hidden"); empty.textContent = t("discoverEmpty"); return; }
   empty?.classList.add("hidden");
   const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
-  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds);
+  const [quizDataResult, ratingsMap] = await Promise.all([
+    supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds),
+    getQuizRatings(quizIds)
+  ]);
+  const quizData = quizDataResult?.data || [];
   const byId = {};
-  if (quizData) for (const q of quizData) byId[q.id] = q;
+  for (const q of quizData) byId[q.id] = q;
+  const authorCache = {};
   for (const r of rows) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
-    const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", r.user_id).single();
-    const li = document.createElement("li");
-    li.dataset.quizId = quiz.id;
-    li.innerHTML = `<span class="discover-quiz-name">${escapeHtml(quiz.name)}</span><span class="discover-quiz-author">${escapeHtml(prof?.nickname || "")}</span>`;
-    li.addEventListener("click", () => playDiscoverQuiz(quiz));
-    list.appendChild(li);
+    if (!authorCache[r.user_id]) {
+      const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", r.user_id).single();
+      authorCache[r.user_id] = prof?.nickname || "";
+    }
+    const author = authorCache[r.user_id];
+    const ratingInfo = ratingsMap[quiz.id];
+    const avgStr = ratingInfo ? ratingInfo.avg.toFixed(1) : "—";
+    const card = document.createElement("article");
+    card.className = "discover-card";
+    card.dataset.quizId = quiz.id;
+    card.innerHTML = `
+      <div class="discover-card-main">
+        <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
+        <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
+        <span class="discover-card-author">${escapeHtml(author)}</span>
+      </div>
+      <div class="discover-card-rating" aria-label="Puan">${avgStr}/5</div>
+    `;
+    card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingsMap[quiz.id]));
+    feed.appendChild(card);
   }
+}
+function openDiscoverPreview(quiz, author, ratingInfo) {
+  discoverPreviewQuiz = quiz;
+  const overlay = document.getElementById("discover-preview-overlay");
+  const titleEl = document.getElementById("discover-preview-title");
+  const descEl = document.getElementById("discover-preview-desc");
+  const ratingEl = document.getElementById("discover-preview-rating");
+  const startBtn = document.getElementById("discover-preview-start-btn");
+  if (titleEl) titleEl.textContent = quiz.name;
+  if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
+  renderPreviewRating(ratingEl, quiz.id, ratingInfo);
+  overlay?.classList.remove("hidden");
+  startBtn?.replaceWith(startBtn.cloneNode(true));
+  const newStart = document.getElementById("discover-preview-start-btn");
+  if (newStart) newStart.textContent = t("discoverPreviewStart") || "Quiz'i Başlat";
+  newStart?.addEventListener("click", () => {
+    closeDiscoverPreview();
+    playDiscoverQuiz(quiz);
+  });
+}
+function renderPreviewRating(container, quizId, ratingInfo) {
+  if (!container) return;
+  container.innerHTML = "";
+  const avg = ratingInfo ? ratingInfo.avg : 0;
+  const count = ratingInfo ? ratingInfo.count : 0;
+  const avgStr = avg > 0 ? avg.toFixed(1) : "—";
+  const label = document.createElement("span");
+  label.className = "discover-preview-rating-label";
+  label.textContent = (t("ratingOutOf5") || "{avg}/5").replace("{avg}", avgStr) + (count ? ` (${count})` : "");
+  container.appendChild(label);
+  const starsWrap = document.createElement("div");
+  starsWrap.className = "discover-preview-stars";
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "discover-star-btn";
+    btn.setAttribute("aria-label", `${i} yıldız`);
+    btn.textContent = "★";
+    btn.dataset.rating = String(i);
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!currentAuthUser || !supabaseClient) return;
+      await submitQuizRating(quizId, i);
+      const newRatings = await getQuizRatings([quizId]);
+      renderPreviewRating(container, quizId, newRatings[quizId]);
+    });
+    starsWrap.appendChild(btn);
+  }
+  container.appendChild(starsWrap);
+}
+function closeDiscoverPreview() {
+  discoverPreviewQuiz = null;
+  document.getElementById("discover-preview-overlay")?.classList.add("hidden");
 }
 function playDiscoverQuiz(quiz) {
   const id = quiz.id;
-  if (!quizzes.find((q) => q.id === id)) quizzes.push(quiz);
+  if (!quizzes.find((q) => q.id === id)) quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
   startQuiz(id);
 }
+if (document.getElementById("discover-preview-close")) {
+  document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
+}
+document.getElementById("discover-preview-overlay")?.addEventListener("click", (e) => { if (e.target.id === "discover-preview-overlay") closeDiscoverPreview(); });
 
 // Auth modal
 const authOverlay = document.getElementById("auth-modal-overlay");
@@ -3159,10 +3394,13 @@ if (shuffleOptionsToggleBtn) {
 // Settings: Dil seç menüsüne git
 const settingsOpenLangSelect = document.getElementById("settings-open-lang-select");
 if (settingsOpenLangSelect) {
-  settingsOpenLangSelect.addEventListener("click", () => showView("langSelect"));
+  settingsOpenLangSelect.addEventListener("click", () => {
+    renderLangSelectList();
+    showView("langSelect");
+  });
 }
 
-// Dil seç listesi: SUPPORTED_LANG_CODES ile doldur, tıklanınca dili ayarla
+// Dil seç listesi: seçili dil primary (dolu mavi), diğerleri secondary
 function renderLangSelectList() {
   const list = document.getElementById("lang-select-list");
   if (!list) return;
@@ -3171,13 +3409,15 @@ function renderLangSelectList() {
     const name = (translations[code] && translations[code].languageName) || code;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "secondary-btn main-btn-secondary lang-select-option";
+    const isSelected = code === currentLang;
+    btn.className = (isSelected ? "primary-btn main-btn-primary" : "secondary-btn main-btn-secondary") + " lang-select-option";
     btn.dataset.lang = code;
     btn.textContent = name;
     btn.addEventListener("click", () => {
       currentLang = code;
       saveSettings();
       applyTranslations();
+      renderLangSelectList();
     });
     list.appendChild(btn);
   });
