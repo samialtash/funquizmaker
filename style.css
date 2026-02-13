@@ -428,7 +428,13 @@ body.standalone .app-logo {
 .discover-card-author { font-size: 0.8rem; color: var(--muted); }
 .discover-card-rating { flex-shrink: 0; font-weight: 700; color: var(--accent); font-size: 1rem; }
 
-/* Keşfet önizleme popup */
+/* Keşfet önizleme popup – her zaman en üstte görünsün */
+#discover-preview-overlay:not(.hidden) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
+}
 .discover-preview-modal { max-width: 420px; }
 .discover-preview-title { margin: 0 0 12px 0; font-size: 1.25rem; }
 .discover-preview-desc { margin: 0 0 16px 0; color: var(--muted); line-height: 1.5; white-space: pre-wrap; }
