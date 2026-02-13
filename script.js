@@ -3179,11 +3179,28 @@ if (discoverFeedEl) {
     if (!card) return;
     var quizId = card.getAttribute("data-quiz-id") || card.dataset.quizId;
     if (!quizId) return;
-    var data = discoverCardCache[quizId];
-    if (!data) return;
     e.preventDefault();
     e.stopPropagation();
-    openDiscoverPreview(data.quiz, data.author, data.ratingInfo, data.publicRowId);
+    var data = discoverCardCache[quizId];
+    if (data) {
+      openDiscoverPreview(data.quiz, data.author, data.ratingInfo, data.publicRowId);
+      return;
+    }
+    if (!supabaseClient) return;
+    Promise.all([
+      supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).single(),
+      supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle(),
+      getQuizRatings([quizId])
+    ]).then(function (results) {
+      var quizRes = results[0];
+      var rowRes = results[1];
+      var ratingsMap = results[2];
+      var quiz = quizRes && quizRes.data;
+      if (!quiz) return;
+      var publicRowId = (rowRes && rowRes.data && rowRes.data.id) || null;
+      var ratingInfo = (ratingsMap && ratingsMap[quizId]) || null;
+      openDiscoverPreview(quiz, "—", ratingInfo, publicRowId);
+    }).catch(function () {});
   }, true);
 }
 if (document.getElementById("discover-preview-close")) {
