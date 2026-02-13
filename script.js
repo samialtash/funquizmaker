@@ -3087,6 +3087,7 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   if (overlay) {
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
+    overlay.style.display = "flex";
   }
   startBtn?.replaceWith(startBtn.cloneNode(true));
   const newStart = document.getElementById("discover-preview-start-btn");
@@ -3169,13 +3170,21 @@ async function copyQuizToMyQuizzes(quiz) {
 var discoverFeedEl = document.getElementById("discover-feed");
 if (discoverFeedEl) {
   discoverFeedEl.addEventListener("click", function (e) {
-    var card = e.target.closest && e.target.closest(".discover-card");
+    var node = e.target;
+    var card = null;
+    while (node && node !== discoverFeedEl) {
+      if (node.classList && node.classList.contains("discover-card")) { card = node; break; }
+      node = node.parentNode;
+    }
     if (!card) return;
-    var quizId = card.getAttribute("data-quiz-id");
+    var quizId = card.getAttribute("data-quiz-id") || card.dataset.quizId;
     if (!quizId) return;
     var data = discoverCardCache[quizId];
-    if (data) openDiscoverPreview(data.quiz, data.author, data.ratingInfo, data.publicRowId);
-  });
+    if (!data) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openDiscoverPreview(data.quiz, data.author, data.ratingInfo, data.publicRowId);
+  }, true);
 }
 if (document.getElementById("discover-preview-close")) {
   document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
