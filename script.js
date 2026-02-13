@@ -3054,8 +3054,12 @@ async function loadDiscoverQuizzes() {
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
     `;
-    // Profil paylaşılan sorular ile birebir aynı: karta tıklanınca openDiscoverPreview(quiz, ..., ratingInfo, publicRowId)
-    card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingInfo, r.id));
+    // Profil paylaşılan quizlerdeki gibi: karta tıklanınca önizleme popup'ı aç, oradan "Quiz'i Başlat" ile quize girilir
+    card.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openDiscoverPreview(quiz, author, ratingInfo, r.id);
+    });
     feed.appendChild(card);
   }
 }
