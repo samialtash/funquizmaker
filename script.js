@@ -3052,20 +3052,16 @@ async function loadDiscoverQuizzes() {
         <span class="discover-card-views">${escapeHtml(viewStr)}</span>
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
+      <button type="button" class="discover-card-hit" aria-label="${escapeHtml(quiz.name)}"></button>
     `;
-    card.setAttribute("role", "button");
-    card.setAttribute("tabindex", "0");
-    card.addEventListener("click", function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id);
-    });
-    card.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === " ") {
+    const hitBtn = card.querySelector(".discover-card-hit");
+    if (hitBtn) {
+      hitBtn.addEventListener("click", function (e) {
         e.preventDefault();
+        e.stopPropagation();
         openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id);
-      }
-    });
+      });
+    }
     feed.appendChild(card);
   }
 }
