@@ -3047,6 +3047,7 @@ async function loadDiscoverQuizzes() {
     card.className = "discover-card";
     card.dataset.quizId = quiz.id;
     card.dataset.publicRowId = r.id;
+    var safeQuizId = (quiz.id || "").replace(/"/g, "");
     card.innerHTML = `
       <div class="discover-card-main">
         <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
@@ -3055,8 +3056,10 @@ async function loadDiscoverQuizzes() {
         <span class="discover-card-views">${escapeHtml(viewStr)}</span>
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
-      <button type="button" class="discover-card-hit" aria-label="${escapeHtml(quiz.name)}"></button>
+      <button type="button" class="discover-card-hit" aria-label="${escapeHtml(quiz.name)}" data-quiz-id="${escapeHtml(safeQuizId)}"></button>
     `;
+    var hitBtn = card.querySelector(".discover-card-hit");
+    if (hitBtn) hitBtn.addEventListener("click", function () { openDiscoverByQuizId(safeQuizId); });
     feed.appendChild(card);
   }
 }
@@ -3107,6 +3110,26 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
     };
   }
 }
+
+function openDiscoverByQuizId(quizId) {
+  if (!quizId || !supabaseClient) return;
+  supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).single()
+    .then(function (res) {
+      var quiz = res && res.data;
+      if (!quiz) return;
+      return supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle()
+        .then(function (rowRes) {
+          var publicRowId = (rowRes && rowRes.data && rowRes.data.id) || null;
+          return getQuizRatings([quizId]).then(function (ratingsMap) {
+            var ratingInfo = (ratingsMap && ratingsMap[quizId]) || null;
+            openDiscoverPreview(quiz, "—", ratingInfo, publicRowId);
+          });
+        });
+    })
+    .catch(function () {});
+}
+window.openDiscoverByQuizId = openDiscoverByQuizId;
+
 async function renderPreviewRating(container, quizId, ratingInfo) {
   if (!container) return;
   container.innerHTML = "";
@@ -3167,42 +3190,30 @@ async function copyQuizToMyQuizzes(quiz) {
   if (data?.id) quizzes.push({ id: data.id, name: row.name, description: row.description, questions: row.questions });
   return true;
 }
-var discoverFeedEl = document.getElementById("discover-feed");
-if (discoverFeedEl) {
-  discoverFeedEl.addEventListener("click", function (e) {
-    var node = e.target;
-    var card = null;
-    while (node && node !== discoverFeedEl) {
-      if (node.classList && node.classList.contains("discover-card")) { card = node; break; }
-      node = node.parentNode;
-    }
-    if (!card) return;
-    var quizId = card.getAttribute("data-quiz-id") || card.dataset.quizId;
-    if (!quizId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var data = discoverCardCache[quizId];
-    if (data) {
-      openDiscoverPreview(data.quiz, data.author, data.ratingInfo, data.publicRowId);
+document.body.addEventListener("click", function (e) {
+  var btn = e.target;
+  while (btn && btn !== document.body) {
+    if (btn.classList && btn.classList.contains("discover-card-hit")) {
+      var quizId = btn.getAttribute("data-quiz-id") || btn.dataset.quizId;
+      if (quizId) {
+        e.preventDefault();
+        e.stopPropagation();
+        openDiscoverByQuizId(quizId);
+      }
       return;
     }
-    if (!supabaseClient) return;
-    Promise.all([
-      supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).single(),
-      supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle(),
-      getQuizRatings([quizId])
-    ]).then(function (results) {
-      var quizRes = results[0];
-      var rowRes = results[1];
-      var ratingsMap = results[2];
-      var quiz = quizRes && quizRes.data;
-      if (!quiz) return;
-      var publicRowId = (rowRes && rowRes.data && rowRes.data.id) || null;
-      var ratingInfo = (ratingsMap && ratingsMap[quizId]) || null;
-      openDiscoverPreview(quiz, "—", ratingInfo, publicRowId);
-    }).catch(function () {});
-  }, true);
-}
+    if (btn.classList && btn.classList.contains("discover-card")) {
+      var qid = btn.getAttribute("data-quiz-id") || btn.dataset.quizId;
+      if (qid) {
+        e.preventDefault();
+        e.stopPropagation();
+        openDiscoverByQuizId(qid);
+      }
+      return;
+    }
+    btn = btn.parentNode;
+  }
+}, true);
 if (document.getElementById("discover-preview-close")) {
   document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
 }
