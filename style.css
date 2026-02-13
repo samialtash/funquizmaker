@@ -388,6 +388,9 @@ body.standalone .app-logo {
 
 /* Quiz paylaş modal */
 .share-quiz-modal { max-width: 400px; }
+.share-quiz-preview { margin-bottom: 14px; padding: 12px; border-radius: var(--radius-md); background: rgba(15,23,42,0.5); border: 1px solid var(--border); }
+.share-quiz-preview-name { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+.share-quiz-preview-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .share-quiz-section { margin-bottom: 12px; }
 .share-quiz-section .input { width: 100%; padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border); background: rgba(15,23,42,0.85); color: var(--text); margin-bottom: 8px; box-sizing: border-box; }
 .share-quiz-user-list { max-height: 200px; overflow-y: auto; }

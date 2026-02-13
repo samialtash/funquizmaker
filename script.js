@@ -2822,6 +2822,20 @@ function openShareQuizModal(quizId) {
   shareQuizModalQuizId = quizId;
   shareQuizSelectedUserIds = [];
   document.getElementById("share-quiz-modal-overlay")?.classList.remove("hidden");
+  var quiz = quizzes.find(function (q) { return q.id === quizId; });
+  var previewWrap = document.getElementById("share-quiz-preview");
+  var previewName = document.getElementById("share-quiz-preview-name");
+  var previewDesc = document.getElementById("share-quiz-preview-desc");
+  if (previewWrap && previewName && previewDesc) {
+    if (quiz) {
+      previewName.textContent = quiz.name || "";
+      previewDesc.textContent = (quiz.description || "").trim().slice(0, 200) || "—";
+      if ((quiz.description || "").trim().length > 200) previewDesc.textContent += "…";
+      previewWrap.classList.remove("hidden");
+    } else {
+      previewWrap.classList.add("hidden");
+    }
+  }
   renderShareQuizFriendsList();
   document.getElementById("share-quiz-search-user").value = "";
   document.getElementById("share-quiz-search-results").classList.add("hidden");
@@ -2921,17 +2935,42 @@ function getQuizTextForProfanityCheck(quiz) {
   });
   return s;
 }
+function generateShortCode() {
+  var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  var code = "";
+  for (var i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
+}
 document.getElementById("share-quiz-link-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId) return;
-  const base = window.location.origin + (window.location.pathname || "/");
-  const link = base.replace(/\/?$/, "") + "#/play/" + shareQuizModalQuizId;
+  var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
+  var link = base + "#/play/" + shareQuizModalQuizId;
+  var shortCode = null;
   if (supabaseClient && currentAuthUser) {
-    const quiz = quizzes.find((q) => q.id === shareQuizModalQuizId);
-    const fullText = getQuizTextForProfanityCheck(quiz);
+    var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
+    var fullText = getQuizTextForProfanityCheck(quiz);
     if (containsProfanity(fullText)) {
-      alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Link yine kopyalandı; açan kişi giriş yapmak zorunda kalabilir." : "Quiz contains inappropriate language. Link was still copied; opener may need to log in.");
+      alert(currentLang === "tr" ? "İçerik kontrolü uygun değil. Link yine kopyalandı; açan giriş yapmak zorunda kalabilir." : "Content check failed. Link was still copied; opener may need to log in.");
     } else {
-      await supabaseClient.from("public_quizzes").upsert({ user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId }, { onConflict: "user_id,quiz_id" });
+      var existing = await supabaseClient.from("public_quizzes").select("show_in_discover, short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
+      var row = existing?.data;
+      var showInDiscover = row && row.show_in_discover === true;
+      for (var tries = 0; tries < 8; tries++) {
+        var code = row?.short_code || generateShortCode();
+        if (!row?.short_code) {
+          var conflict = await supabaseClient.from("public_quizzes").select("id").eq("short_code", code).maybeSingle();
+          if (conflict?.data) continue;
+        }
+        await supabaseClient.from("public_quizzes").upsert({
+          user_id: currentAuthUser.id,
+          quiz_id: shareQuizModalQuizId,
+          show_in_discover: showInDiscover,
+          short_code: code
+        }, { onConflict: "user_id,quiz_id" });
+        shortCode = code;
+        break;
+      }
+      if (shortCode) link = base + "#/play/short/" + shortCode;
     }
   }
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2955,15 +2994,18 @@ function fallbackCopyLink(link) {
 }
 document.getElementById("share-quiz-public-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
-  const quiz = quizzes.find((q) => q.id === shareQuizModalQuizId);
-  const fullText = getQuizTextForProfanityCheck(quiz);
+  var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
+  var fullText = getQuizTextForProfanityCheck(quiz);
   if (containsProfanity(fullText)) {
     alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Lütfen quiz adı, açıklama ve soru/cevapları kontrol edin." : "The quiz contains inappropriate language. Please remove offensive content before sharing publicly.");
     return;
   }
-  await supabaseClient.from("public_quizzes").upsert({ user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId }, { onConflict: "user_id,quiz_id" });
+  var existing = await supabaseClient.from("public_quizzes").select("short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
+  var payload = { user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId, show_in_discover: true };
+  if (existing?.data?.short_code) payload.short_code = existing.data.short_code;
+  await supabaseClient.from("public_quizzes").upsert(payload, { onConflict: "user_id,quiz_id" });
   closeShareQuizModal();
-  alert(currentLang === "tr" ? "Profilinde paylaşıldı." : "Shared on profile.");
+  alert(currentLang === "tr" ? "Profilinde paylaşıldı. Keşfet'te görünecek." : "Shared on profile. It will appear in Discover.");
 });
 
 // Puan gösterimi: tam sayıda "5", küsürlüde "4.2" (0.1 katları)
@@ -3026,8 +3068,9 @@ async function loadDiscoverQuizzes() {
     emptyEl.classList.remove("hidden");
     return;
   }
-  const { data: rows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count").order("created_at", { ascending: false }).limit(50);
-  if (!rows || !rows.length) {
+  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count,show_in_discover").order("created_at", { ascending: false }).limit(80);
+  const rows = (rawRows || []).filter(function (r) { return r.show_in_discover !== false; }).slice(0, 50);
+  if (!rows.length) {
     emptyEl.textContent = t("discoverEmpty");
     emptyEl.classList.remove("hidden");
     return;
@@ -4041,27 +4084,52 @@ async function initAuthAndQuizzes() {
 initAuthAndQuizzes();
 
 function handlePlayHash() {
-  const hash = (window.location.hash || "").replace(/^#\/?/, "");
-  const m = /^play\/([a-f0-9-]{36})$/i.exec(hash);
-  if (!m) return;
-  const quizId = m[1];
+  var hash = (window.location.hash || "").replace(/^#\/?/, "");
+  var shortMatch = /^play\/short\/([a-zA-Z0-9]+)$/.exec(hash);
+  var uuidMatch = /^play\/([a-f0-9-]{36})$/i.exec(hash);
+  var quizId = null;
+  var resolveShort = false;
+  if (shortMatch) {
+    resolveShort = true;
+    quizId = shortMatch[1];
+  } else if (uuidMatch) {
+    quizId = uuidMatch[1];
+  }
+  if (!quizId) return;
   function openQuizByLink() {
     if (!supabaseClient) return;
-    Promise.all([
-      supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).maybeSingle(),
-      supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle()
-    ]).then(([quizRes, rowRes]) => {
-      const quiz = quizRes?.data;
+    function openWithQuiz(quiz, publicRowId) {
       if (!quiz) {
         alert(currentLang === "tr" ? "Quiz bulunamadı veya erişim yok." : "Quiz not found or access denied.");
         return;
       }
       showView("discover");
       loadDiscoverQuizzes();
-      const publicRowId = rowRes?.data?.id || null;
-      const ratingInfo = null;
-      setTimeout(() => openDiscoverPreview(quiz, "—", ratingInfo, publicRowId), 100);
-    }).catch(() => {
+      var ratingInfo = null;
+      setTimeout(function () { openDiscoverPreview(quiz, "—", ratingInfo, publicRowId); }, 100);
+    }
+    if (resolveShort) {
+      supabaseClient.from("public_quizzes").select("quiz_id, id").eq("short_code", quizId).limit(1).maybeSingle()
+        .then(function (rowRes) {
+          var row = rowRes?.data;
+          if (!row) {
+            alert(currentLang === "tr" ? "Link geçersiz veya süresi dolmuş." : "Invalid or expired link.");
+            return;
+          }
+          return supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", row.quiz_id).maybeSingle()
+            .then(function (quizRes) { openWithQuiz(quizRes?.data, row.id); });
+        })
+        .catch(function () { alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found."); });
+      return;
+    }
+    Promise.all([
+      supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).maybeSingle(),
+      supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle()
+    ]).then(function (results) {
+      var quiz = results[0]?.data;
+      var publicRowId = results[1]?.data?.id || null;
+      openWithQuiz(quiz, publicRowId);
+    }).catch(function () {
       alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
     });
   }
