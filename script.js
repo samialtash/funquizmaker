@@ -2999,6 +2999,7 @@ async function submitQuizRating(quizId, rating) {
 
 // Quizleri keşfet: Reddit tarzı kartlar (başlık, açıklama, yanda puan), tıklanınca önizleme popup
 let discoverPreviewQuiz = null;
+var discoverCardCache = {};
 function ensureSupabaseThenRun(fn) {
   if (supabaseClient) { fn(); return; }
   if (typeof window.supabase !== "undefined") { initSupabase(); if (supabaseClient) fn(); return; }
@@ -3017,6 +3018,7 @@ async function loadDiscoverQuizzes() {
   wrap.classList.remove("hidden");
   const { data: rows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count").order("created_at", { ascending: false }).limit(50);
   feed.innerHTML = "";
+  discoverCardCache = {};
   if (!rows?.length) { empty?.classList.remove("hidden"); empty.textContent = t("discoverEmpty"); return; }
   empty?.classList.add("hidden");
   const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
@@ -3040,6 +3042,7 @@ async function loadDiscoverQuizzes() {
     const avgStr = formatRating(ratingInfo ? ratingInfo.avg : null);
     const viewCount = r.view_count != null ? r.view_count : 0;
     const viewStr = currentLang === "tr" ? `(${viewCount} kez girildi)` : `(${viewCount} views)`;
+    discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id };
     const card = document.createElement("article");
     card.className = "discover-card";
     card.dataset.quizId = quiz.id;
@@ -3054,14 +3057,6 @@ async function loadDiscoverQuizzes() {
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
       <button type="button" class="discover-card-hit" aria-label="${escapeHtml(quiz.name)}"></button>
     `;
-    const hitBtn = card.querySelector(".discover-card-hit");
-    if (hitBtn) {
-      hitBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id);
-      });
-    }
     feed.appendChild(card);
   }
 }
@@ -3170,6 +3165,17 @@ async function copyQuizToMyQuizzes(quiz) {
   if (error) { console.warn(error); return false; }
   if (data?.id) quizzes.push({ id: data.id, name: row.name, description: row.description, questions: row.questions });
   return true;
+}
+var discoverFeedEl = document.getElementById("discover-feed");
+if (discoverFeedEl) {
+  discoverFeedEl.addEventListener("click", function (e) {
+    var card = e.target.closest && e.target.closest(".discover-card");
+    if (!card) return;
+    var quizId = card.getAttribute("data-quiz-id");
+    if (!quizId) return;
+    var data = discoverCardCache[quizId];
+    if (data) openDiscoverPreview(data.quiz, data.author, data.ratingInfo, data.publicRowId);
+  });
 }
 if (document.getElementById("discover-preview-close")) {
   document.getElementById("discover-preview-close").addEventListener("click", closeDiscoverPreview);
