@@ -25,11 +25,18 @@ alter table public.profiles enable row level security;
 alter table public.quizzes enable row level security;
 
 -- Profiller: sadece kendi satırını okuyup güncelleyebilir
+drop policy if exists "profiles_select_own" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles for select using (auth.uid() = id);
 create policy "profiles_insert_own" on public.profiles for insert with check (auth.uid() = id);
 create policy "profiles_update_own" on public.profiles for update using (auth.uid() = id);
 
 -- Quizler: sadece kendi quizlerini crud
+drop policy if exists "quizzes_select_own" on public.quizzes;
+drop policy if exists "quizzes_insert_own" on public.quizzes;
+drop policy if exists "quizzes_update_own" on public.quizzes;
+drop policy if exists "quizzes_delete_own" on public.quizzes;
 create policy "quizzes_select_own" on public.quizzes for select using (auth.uid() = user_id);
 create policy "quizzes_insert_own" on public.quizzes for insert with check (auth.uid() = user_id);
 create policy "quizzes_update_own" on public.quizzes for update using (auth.uid() = user_id);

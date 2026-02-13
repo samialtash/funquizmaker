@@ -16,6 +16,8 @@ create table if not exists public.quiz_ratings (
 );
 create index if not exists quiz_ratings_quiz_id on public.quiz_ratings(quiz_id);
 alter table public.quiz_ratings enable row level security;
-create policy "quiz_ratings_select" on public.quiz_ratings for select using (auth.uid() is not null);
+-- Keşfet girişsiz açıldığında ortalama puan görünsün diye select herkese açık
+drop policy if exists "quiz_ratings_select" on public.quiz_ratings;
+create policy "quiz_ratings_select" on public.quiz_ratings for select using (true);
 create policy "quiz_ratings_insert_own" on public.quiz_ratings for insert with check (auth.uid() = user_id);
 create policy "quiz_ratings_update_own" on public.quiz_ratings for update using (auth.uid() = user_id);

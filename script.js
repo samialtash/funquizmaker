@@ -2639,18 +2639,7 @@ document.getElementById("notification-all-messages")?.addEventListener("click", 
 document.addEventListener("click", (e) => { if (!e.target.closest(".header-notif-wrap")) closeNotificationDropdown(); });
 document.getElementById("notification-dropdown")?.addEventListener("click", (e) => e.stopPropagation());
 
-// Kaydırma sırasında parmak butona değince sayfa açılmasın; sadece gerçek tap ile tıklansın (iPhone vb.)
-(function () {
-  var touchMoved = false;
-  document.addEventListener("touchmove", function () { touchMoved = true; }, { passive: true });
-  document.addEventListener("click", function (e) {
-    if (touchMoved) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    touchMoved = false;
-  }, true);
-})();
+// Kaydırma sırasında yanlış tıklamayı engelleme devre dışı (keşfet kartı tıklamasını bozuyordu)
 
 async function openChatWith(otherUserId) {
   chatWithUserId = otherUserId;
@@ -3064,7 +3053,19 @@ async function loadDiscoverQuizzes() {
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
     `;
-    card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id));
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id);
+    });
+    card.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openDiscoverPreview(quiz, author, ratingsMap[quiz.id], r.id);
+      }
+    });
     feed.appendChild(card);
   }
 }
@@ -3092,7 +3093,10 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   const shuffleOptLabel = document.getElementById("discover-preview-shuffle-options-label");
   if (shuffleLabel) shuffleLabel.textContent = t("randomOrder");
   if (shuffleOptLabel) shuffleOptLabel.textContent = t("shuffleOptions");
-  overlay?.classList.remove("hidden");
+  if (overlay) {
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+  }
   startBtn?.replaceWith(startBtn.cloneNode(true));
   const newStart = document.getElementById("discover-preview-start-btn");
   if (newStart) newStart.textContent = t("discoverPreviewStart") || "Quiz'i Başlat";
