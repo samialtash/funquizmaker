@@ -3078,7 +3078,10 @@ function updateDiscoverPreviewShuffleUi() {
 function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   discoverPreviewQuiz = quiz;
   if (publicRowId && supabaseClient) {
-    supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId }).catch(() => {});
+    try {
+      var rpcRet = supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId });
+      if (rpcRet && typeof rpcRet.catch === "function") rpcRet.catch(function () {});
+    } catch (err) {}
   }
   const overlay = document.getElementById("discover-preview-overlay");
   const titleEl = document.getElementById("discover-preview-title");
@@ -3095,7 +3098,8 @@ function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   if (shuffleOptLabel) shuffleOptLabel.textContent = t("shuffleOptions");
   if (overlay) {
     overlay.classList.remove("hidden");
-    overlay.setAttribute("aria-hidden", "false");
+    overlay.removeAttribute("inert");
+    overlay.removeAttribute("aria-hidden");
     overlay.style.display = "flex";
     overlay.style.visibility = "visible";
     overlay.style.opacity = "1";
@@ -3195,8 +3199,9 @@ function closeDiscoverPreview() {
   discoverPreviewQuiz = null;
   var ov = document.getElementById("discover-preview-overlay");
   if (ov) {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    ov.setAttribute("inert", "");
     ov.classList.add("hidden");
-    ov.setAttribute("aria-hidden", "true");
     ov.style.display = "";
     ov.style.visibility = "";
     ov.style.opacity = "";
