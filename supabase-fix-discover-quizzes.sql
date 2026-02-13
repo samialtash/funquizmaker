@@ -1,11 +1,13 @@
--- KEŞFET İÇİN ZORUNLU: Giriş yapmadan / başka hesapla quizlerin görünmesi
+-- KEŞFET İÇİN ZORUNLU: Giriş yapmadan / başka hesapla quizlerin listelenmesi ve tıklanınca açılması
 -- Supabase Dashboard > SQL Editor > New query > yapıştır > Run
+-- (public_quizzes ve quiz_shared_to tabloları schema v2 ile oluşturulmuş olmalı)
 
--- 1) public_quizzes: herkes (anon dahil) okuyabilsin
+-- 1) public_quizzes: herkes (anon dahil) okuyabilsin – keşfet listesi için
 drop policy if exists "public_quizzes_select_all" on public.public_quizzes;
 create policy "public_quizzes_select_all" on public.public_quizzes for select using (true);
 
 -- 2) quizzes: kendi quizlerin + sana paylaşılanlar + herkese açık (public_quizzes'ta olan) quizler okunabilsin
+--    Bu sayede keşfet listesi dolar VE tıklanınca quiz detayı (name, description, questions) okunabilir
 drop policy if exists "quizzes_select_own" on public.quizzes;
 create policy "quizzes_select_own" on public.quizzes for select using (
   auth.uid() = user_id

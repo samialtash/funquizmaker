@@ -3044,11 +3044,7 @@ async function loadDiscoverQuizzes() {
     const viewStr = currentLang === "tr" ? `(${viewCount} kez girildi)` : `(${viewCount} views)`;
     discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id };
     const card = document.createElement("article");
-    card.className = "discover-card";
-    var safeQuizId = (quiz.id || "").replace(/"/g, "");
-    card.setAttribute("data-quiz-id", safeQuizId);
-    card.dataset.quizId = quiz.id;
-    card.dataset.publicRowId = r.id;
+    card.className = "discover-card discover-feed-card";
     card.innerHTML = `
       <div class="discover-card-main">
         <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
@@ -3057,10 +3053,9 @@ async function loadDiscoverQuizzes() {
         <span class="discover-card-views">${escapeHtml(viewStr)}</span>
       </div>
       <div class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
-      <button type="button" class="discover-card-hit" aria-label="${escapeHtml(quiz.name)}" data-quiz-id="${escapeHtml(safeQuizId)}"></button>
     `;
-    var hitBtn = card.querySelector(".discover-card-hit");
-    if (hitBtn) hitBtn.addEventListener("click", function () { openDiscoverByQuizId(safeQuizId); });
+    // Profil paylaşılan sorular ile birebir aynı: karta tıklanınca openDiscoverPreview(quiz, ..., ratingInfo, publicRowId)
+    card.addEventListener("click", () => openDiscoverPreview(quiz, author, ratingInfo, r.id));
     feed.appendChild(card);
   }
 }
@@ -3203,21 +3198,12 @@ async function copyQuizToMyQuizzes(quiz) {
   if (data?.id) quizzes.push({ id: data.id, name: row.name, description: row.description, questions: row.questions });
   return true;
 }
+// Keşfet kartları profil paylaşılan sorular gibi kendi click listener'ı ile açılıyor; body'de müdahale etmiyoruz
 document.body.addEventListener("click", function (e) {
   var el = e.target;
   while (el && el !== document.body) {
-    var isHit = el.classList && el.classList.contains("discover-card-hit");
-    var isCard = el.classList && el.classList.contains("discover-card");
-    if (isHit || isCard) {
-      var quizId = el.getAttribute("data-quiz-id") || (el.dataset && el.dataset.quizId) || (el.closest && el.closest("[data-quiz-id]") && (el.closest("[data-quiz-id]").getAttribute("data-quiz-id") || el.closest("[data-quiz-id]").dataset.quizId));
-      if (!quizId && el.parentElement && el.parentElement.getAttribute) quizId = el.parentElement.getAttribute("data-quiz-id") || el.parentElement.dataset.quizId;
-      if (quizId) {
-        e.preventDefault();
-        e.stopPropagation();
-        openDiscoverByQuizId(quizId);
-      }
-      return;
-    }
+    if (el.classList && (el.classList.contains("discover-card-hit") || el.classList.contains("discover-feed-card"))) return;
+    if (el.classList && el.classList.contains("discover-card")) return;
     el = el.parentNode;
   }
 }, true);
