@@ -141,8 +141,12 @@
           <button type="button" id="profile-edit-btn" class="secondary-btn small-btn hidden">Profili düzenle</button>
         </div>
         <hr class="profile-divider" />
-        <div class="profile-actions main-menu-buttons">
+        <div class="profile-actions main-menu-buttons" id="profile-own-actions">
           <button type="button" id="profile-friends-btn" class="secondary-btn main-btn-secondary">Arkadaşlar</button>
+        </div>
+        <div class="profile-actions main-menu-buttons hidden" id="profile-other-actions">
+          <button type="button" id="profile-add-friend-btn" class="secondary-btn main-btn-secondary">Arkadaş ekle</button>
+          <span id="profile-friend-status" class="hint hidden"></span>
         </div>
         <h2 id="profile-shared-title" class="profile-section-title hidden">Profilinde paylaşılan quizler</h2>
         <div id="profile-shared-list" class="profile-shared-list"></div>
@@ -346,10 +350,17 @@
         <div id="messages-list-pagination" class="pagination-row hidden"></div>
       </div>
 
-      <!-- Sohbet (tek kişiyle) -->
+      <!-- Sohbet (tek kişiyle): üstte avatar + isim (tıklanınca profil) + Arkadaş ekle -->
       <div id="chat-view" class="view">
         <button id="back-btn-chat" class="back-btn" data-back="messages-list">← Back</button>
-        <h1 id="chat-title" class="main-menu-title chat-title"></h1>
+        <div id="chat-header" class="chat-header">
+          <div id="chat-header-user" class="chat-header-user">
+            <img id="chat-header-avatar" class="chat-header-avatar hidden" alt="" />
+            <div id="chat-header-avatar-placeholder" class="chat-header-avatar-placeholder" aria-hidden="true"></div>
+            <h1 id="chat-title" class="main-menu-title chat-title chat-title-clickable"></h1>
+          </div>
+          <button type="button" id="chat-add-friend-btn" class="secondary-btn small-btn hidden">Arkadaş ekle</button>
+        </div>
         <div id="chat-messages" class="chat-messages"></div>
       </div>
 

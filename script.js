@@ -147,6 +147,11 @@ const translations = {
     messages: "Messages",
     noNewNotifications: "No new notifications.",
     noMessagesYet: "No messages yet.",
+    unpublishFromDiscover: "Remove from Discover",
+    linkOnlyShare: "Link only (not in Discover)",
+    addFriend: "Add friend",
+    requestSent: "Request sent",
+    alreadyFriends: "Friends",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -288,6 +293,11 @@ const translations = {
     messages: "Mesajlar",
     noNewNotifications: "Yeni bildirim yok.",
     noMessagesYet: "Henüz mesaj yok.",
+    unpublishFromDiscover: "Yayından kaldır",
+    linkOnlyShare: "Sadece link (Keşfet'te yok)",
+    addFriend: "Arkadaş ekle",
+    requestSent: "İstek gönderildi",
+    alreadyFriends: "Arkadaş",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -478,6 +488,7 @@ let currentScore = 0;
 let lastRunQuizId = null;
 let lastPlayedQuizFromShared = false;
 let chatWithUserId = null;
+let viewingProfileUserId = null;
 const MESSAGES_PER_PAGE = 10;
 let messagesListCurrentPage = 0;
 let soundEnabled = true;
@@ -2465,35 +2476,80 @@ if (discoverQuizBtn) discoverQuizBtn.addEventListener("click", () => {
 
 if (document.getElementById("auth-nickname-btn")) {
   document.getElementById("auth-nickname-btn").addEventListener("click", () => {
-    if (currentAuthUser) { showView("profile"); loadProfile(); }
+    if (currentAuthUser) { viewingProfileUserId = null; showView("profile"); loadProfile(); }
   });
 }
 
-// Profil: avatar + isim, Profili düzenle butonu (kendi profilinde), paylaşılan quizler
-async function loadProfile() {
+// Profil: avatar + isim; kendi profilinde düzenle + arkadaşlar, başkasınınkinde Arkadaş ekle
+async function loadProfile(optionalUserId) {
   if (!supabaseClient || !currentAuthUser) return;
+  const isOwn = !optionalUserId || optionalUserId === currentAuthUser.id;
+  const profileUserId = isOwn ? currentAuthUser.id : optionalUserId;
   const nickEl = document.getElementById("profile-nickname");
   const imgEl = document.getElementById("profile-avatar-img");
   const placeEl = document.getElementById("profile-avatar-placeholder");
   const editBtn = document.getElementById("profile-edit-btn");
-  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname").eq("id", currentAuthUser.id).single();
-  const nick = (profile?.nickname || currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "").trim() || currentAuthUser.email || "";
+  const ownActions = document.getElementById("profile-own-actions");
+  const otherActions = document.getElementById("profile-other-actions");
+  const addFriendBtn = document.getElementById("profile-add-friend-btn");
+  const friendStatus = document.getElementById("profile-friend-status");
+  const { data: profile } = await supabaseClient.from("profiles").select("avatar_url,nickname").eq("id", profileUserId).single();
+  let nick = (profile?.nickname || "").trim();
+  if (isOwn) nick = nick || (currentAuthUser.user_metadata?.nickname || currentAuthUser.user_metadata?.name || currentAuthUser.email?.split("@")[0] || "").trim() || currentAuthUser.email || "";
+  else nick = nick || profileUserId.slice(0, 8);
   if (nickEl) nickEl.textContent = nick;
-  const headerNick = document.getElementById("auth-nickname");
-  if (headerNick) headerNick.textContent = nick;
+  if (isOwn) {
+    const headerNick = document.getElementById("auth-nickname");
+    if (headerNick) headerNick.textContent = nick;
+  }
   const safeAvatar = profile?.avatar_url ? sanitizeImageSrc(profile.avatar_url) : "";
   if (safeAvatar && imgEl && placeEl) { imgEl.src = safeAvatar; imgEl.classList.remove("hidden"); placeEl.classList.add("hidden"); }
   else if (imgEl && placeEl) { imgEl.classList.add("hidden"); placeEl.classList.remove("hidden"); }
-  if (editBtn) { editBtn.classList.remove("hidden"); editBtn.textContent = t("editProfile"); }
-  await loadProfileSharedQuizzes();
+  if (ownActions) ownActions.classList.toggle("hidden", !isOwn);
+  if (otherActions) otherActions.classList.add("hidden");
+  if (editBtn) { editBtn.classList.toggle("hidden", !isOwn); if (isOwn) editBtn.textContent = t("editProfile"); }
+  if (isOwn) {
+    await loadProfileSharedQuizzes();
+    return;
+  }
+  viewingProfileUserId = profileUserId;
+  if (otherActions) otherActions.classList.remove("hidden");
+  if (addFriendBtn) addFriendBtn.classList.add("hidden");
+  if (friendStatus) { friendStatus.classList.remove("hidden"); friendStatus.textContent = ""; }
+  const [friendRows, reqRows] = await Promise.all([
+    supabaseClient.from("friendships").select("friend_id").eq("user_id", currentAuthUser.id).eq("friend_id", profileUserId),
+    supabaseClient.from("friend_requests").select("id,from_user_id,to_user_id").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${profileUserId}),and(from_user_id.eq.${profileUserId},to_user_id.eq.${currentAuthUser.id})`)
+  ]);
+  const isFriend = friendRows?.data?.length > 0;
+  const existingReq = reqRows?.data?.find(function (r) { return r.from_user_id === currentAuthUser.id; });
+  const theySentReq = reqRows?.data?.find(function (r) { return r.from_user_id === profileUserId; });
+  if (isFriend) {
+    if (friendStatus) friendStatus.textContent = t("alreadyFriends");
+  } else if (existingReq || theySentReq) {
+    if (friendStatus) friendStatus.textContent = t("requestSent");
+  } else {
+    if (addFriendBtn) {
+      addFriendBtn.classList.remove("hidden");
+      addFriendBtn.textContent = t("addFriend");
+      addFriendBtn.onclick = async function () {
+        if (!supabaseClient || !currentAuthUser) return;
+        await supabaseClient.from("friend_requests").upsert({ from_user_id: currentAuthUser.id, to_user_id: profileUserId, status: "pending" }, { onConflict: "from_user_id,to_user_id" });
+        addFriendBtn.classList.add("hidden");
+        if (friendStatus) friendStatus.textContent = t("requestSent");
+      };
+    }
+  }
+  await loadProfileSharedQuizzes(profileUserId);
 }
-async function loadProfileSharedQuizzes() {
+async function loadProfileSharedQuizzes(optionalUserId) {
   const titleEl = document.getElementById("profile-shared-title");
   const listEl = document.getElementById("profile-shared-list");
-  if (!listEl || !currentAuthUser || !supabaseClient) return;
+  if (!listEl || !supabaseClient) return;
+  const userId = optionalUserId || (currentAuthUser && currentAuthUser.id);
+  if (!userId) return;
   listEl.innerHTML = "";
   titleEl?.classList.add("hidden");
-  const { data: rows } = await supabaseClient.from("public_quizzes").select("quiz_id").eq("user_id", currentAuthUser.id).order("created_at", { ascending: false });
+  const { data: rows } = await supabaseClient.from("public_quizzes").select("id,quiz_id,show_in_discover").eq("user_id", userId).order("created_at", { ascending: false });
   if (!rows?.length) return;
   titleEl?.classList.remove("hidden");
   if (titleEl) titleEl.textContent = t("profileSharedQuizzes");
@@ -2501,21 +2557,39 @@ async function loadProfileSharedQuizzes() {
   const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds);
   const byId = {};
   if (quizData) for (const q of quizData) byId[q.id] = q;
-  const ratingsMap = await getQuizRatings(quizIds);
+  const ratingsMap = currentAuthUser ? await getQuizRatings(quizIds) : {};
+  const isOwnProfile = userId === (currentAuthUser && currentAuthUser.id);
   for (const r of rows) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
     const avgStr = formatRating(ratingsMap[r.quiz_id] ? ratingsMap[r.quiz_id].avg : null);
+    const showInDiscover = r.show_in_discover !== false;
     const card = document.createElement("article");
     card.className = "discover-card profile-shared-card";
     card.innerHTML = `
       <div class="discover-card-main">
         <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
         <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
+        <div class="profile-shared-card-actions">
+          ${isOwnProfile && showInDiscover ? `<button type="button" class="secondary-btn small-btn profile-unpublish-btn">${escapeHtml(t("unpublishFromDiscover"))}</button>` : isOwnProfile && !showInDiscover ? `<span class="hint small">${escapeHtml(t("linkOnlyShare"))}</span>` : ""}
+        </div>
       </div>
       <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
     `;
-    card.addEventListener("click", () => openDiscoverPreview(quiz, "", ratingsMap[r.quiz_id]));
+    card.addEventListener("click", function (ev) {
+      if (ev.target.closest(".profile-unpublish-btn")) return;
+      openDiscoverPreview(quiz, "", ratingsMap[r.quiz_id] || null);
+    });
+    const unpubBtn = card.querySelector(".profile-unpublish-btn");
+    if (unpubBtn) {
+      unpubBtn.addEventListener("click", async function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (!supabaseClient || !currentAuthUser) return;
+        await supabaseClient.from("public_quizzes").update({ show_in_discover: false }).eq("id", r.id).eq("user_id", currentAuthUser.id);
+        loadProfileSharedQuizzes();
+      });
+    }
     listEl.appendChild(card);
   }
 }
@@ -2706,9 +2780,46 @@ async function loadMessagesList(page) {
 async function loadChatView() {
   const titleEl = document.getElementById("chat-title");
   const messagesEl = document.getElementById("chat-messages");
+  const headerUser = document.getElementById("chat-header-user");
+  const headerAvatar = document.getElementById("chat-header-avatar");
+  const headerPlaceholder = document.getElementById("chat-header-avatar-placeholder");
+  const addFriendBtn = document.getElementById("chat-add-friend-btn");
   if (!messagesEl || !chatWithUserId || !supabaseClient || !currentAuthUser) return;
-  const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", chatWithUserId).single();
-  if (titleEl) titleEl.textContent = prof?.nickname || chatWithUserId.slice(0, 8);
+  const { data: prof } = await supabaseClient.from("profiles").select("nickname,avatar_url").eq("id", chatWithUserId).single();
+  const nick = prof?.nickname || chatWithUserId.slice(0, 8);
+  if (titleEl) titleEl.textContent = nick;
+  if (headerUser) {
+    headerUser.onclick = function () {
+      viewingProfileUserId = chatWithUserId;
+      showView("profile");
+      loadProfile(chatWithUserId);
+    };
+  }
+  if (headerAvatar && headerPlaceholder) {
+    const safeAvatar = prof?.avatar_url ? sanitizeImageSrc(prof.avatar_url) : "";
+    if (safeAvatar) { headerAvatar.src = safeAvatar; headerAvatar.classList.remove("hidden"); headerPlaceholder.classList.add("hidden"); }
+    else { headerAvatar.classList.add("hidden"); headerPlaceholder.classList.remove("hidden"); }
+  }
+  if (addFriendBtn) {
+    const [friendRows, reqRows] = await Promise.all([
+      supabaseClient.from("friendships").select("friend_id").eq("user_id", currentAuthUser.id).eq("friend_id", chatWithUserId),
+      supabaseClient.from("friend_requests").select("from_user_id").eq("status", "pending").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${chatWithUserId}),and(from_user_id.eq.${chatWithUserId},to_user_id.eq.${currentAuthUser.id})`)
+    ]);
+    const isFriend = friendRows?.data?.length > 0;
+    const hasRequest = (reqRows?.data?.length || 0) > 0;
+    if (isFriend || hasRequest) {
+      addFriendBtn.classList.add("hidden");
+      addFriendBtn.textContent = t("addFriend");
+    } else {
+      addFriendBtn.classList.remove("hidden");
+      addFriendBtn.textContent = t("addFriend");
+      addFriendBtn.onclick = async function () {
+        if (!supabaseClient || !currentAuthUser) return;
+        await supabaseClient.from("friend_requests").upsert({ from_user_id: currentAuthUser.id, to_user_id: chatWithUserId, status: "pending" }, { onConflict: "from_user_id,to_user_id" });
+        addFriendBtn.classList.add("hidden");
+      };
+    }
+  }
   const { data: rows } = await supabaseClient.from("quiz_shared_to").select("id,from_user_id,to_user_id,quiz_id,created_at").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${chatWithUserId}),and(from_user_id.eq.${chatWithUserId},to_user_id.eq.${currentAuthUser.id})`).order("created_at", { ascending: true });
   messagesEl.innerHTML = "";
   if (!rows?.length) { messagesEl.innerHTML = "<p class=\"hint\">" + escapeHtml(t("noMessagesYet")) + "</p>"; return; }
@@ -3567,6 +3678,7 @@ if (importQuizzesFile) {
 
 Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
   btn.addEventListener("click", () => {
+    if (btn.closest("#profile-view")) viewingProfileUserId = null;
     const rawTarget = btn.dataset.back || "mainMenu";
     let targetViewKey = rawTarget;
     if (rawTarget === "main-menu") targetViewKey = "mainMenu";
@@ -4133,6 +4245,7 @@ function handlePlayHash() {
       alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
     });
   }
+  // Giriş yapmadan da link açılır: ensureSupabaseThenRun anon client oluşturur; RLS public_quizzes + quizzes (public’te olan) okumaya izin vermeli
   if (supabaseClient) openQuizByLink();
   else ensureSupabaseThenRun(openQuizByLink);
 }
