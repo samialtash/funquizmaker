@@ -2217,3 +2217,50 @@ pre.format-example {
   flex-direction: column;
   align-items: flex-start;
 }
+
+/* Çerez onayı: ekranın altında, alttan yukarı animasyon */
+.cookie-consent-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  background: var(--bg-alt);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+  padding: 14px 16px;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.cookie-consent-bar.cookie-consent-bar-visible {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.cookie-consent-bar.cookie-consent-bar-hidden {
+  visibility: hidden;
+}
+.cookie-consent-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cookie-consent-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text);
+  flex: 1;
+  min-width: 200px;
+}
+.cookie-consent-btn {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .cookie-consent-inner { flex-direction: column; align-items: stretch; text-align: center; }
+  .cookie-consent-text { min-width: 0; }
+}

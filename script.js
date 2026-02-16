@@ -4,6 +4,7 @@ const SOUND_ENABLED_KEY = "quiz_sound_enabled_v1";
 const SHUFFLE_ENABLED_KEY = "quiz_shuffle_enabled_v1";
 const SHUFFLE_OPTIONS_ENABLED_KEY = "quiz_shuffle_options_enabled_v1";
 const LANG_KEY = "quiz_lang_v1";
+const COOKIE_CONSENT_KEY = "quiz_cookie_consent_v1";
 
 // Translations: en + tr
 const translations = {
@@ -158,6 +159,8 @@ const translations = {
     addFriend: "Add friend",
     requestSent: "Request sent",
     alreadyFriends: "Friends",
+    cookieConsentMessage: "We use cookies to provide the service and show ads. By continuing, you accept our use of cookies.",
+    cookieConsentAccept: "Accept",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -310,6 +313,8 @@ const translations = {
     addFriend: "Arkadaş ekle",
     requestSent: "İstek gönderildi",
     alreadyFriends: "Arkadaş",
+    cookieConsentMessage: "Hizmeti sunmak ve reklam göstermek için çerezler kullanıyoruz. Devam ederek çerez kullanımını kabul etmiş olursunuz.",
+    cookieConsentAccept: "Kabul et",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -938,6 +943,10 @@ function applyTranslations() {
   if (addOptionRowBtnTr) addOptionRowBtnTr.textContent = t("addOptionRow");
   const sectionLabel = document.querySelector(".two-options-section .section-label");
   if (sectionLabel) sectionLabel.textContent = t("addQuestionsBoth");
+  const cookieConsentText = document.getElementById("cookie-consent-text");
+  const cookieConsentBtn = document.getElementById("cookie-consent-accept");
+  if (cookieConsentText) cookieConsentText.textContent = t("cookieConsentMessage");
+  if (cookieConsentBtn) cookieConsentBtn.textContent = t("cookieConsentAccept");
   const backQuestionsList = document.getElementById("back-btn-questions-list");
   const backQuestionEdit = document.getElementById("back-btn-question-edit");
   if (backQuestionsList) backQuestionsList.textContent = t("back");
@@ -3120,7 +3129,14 @@ function getQuizTextForProfanityCheck(quiz) {
 function generateShortCode() {
   var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   var code = "";
-  for (var i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  var len = 12;
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    var arr = new Uint8Array(len);
+    crypto.getRandomValues(arr);
+    for (var i = 0; i < len; i++) code += chars.charAt(arr[i] % chars.length);
+  } else {
+    for (var i = 0; i < len; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
   return code;
 }
 document.getElementById("share-quiz-link-btn")?.addEventListener("click", async () => {
@@ -3132,18 +3148,23 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     var existing = await supabaseClient.from("public_quizzes").select("show_in_discover, short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
     var row = existing?.data;
     var showInDiscover = row && row.show_in_discover === true;
-    for (var tries = 0; tries < 8; tries++) {
+    for (var tries = 0; tries < 20; tries++) {
       var code = row?.short_code || generateShortCode();
       if (!row?.short_code) {
         var conflict = await supabaseClient.from("public_quizzes").select("id").eq("short_code", code).maybeSingle();
         if (conflict?.data) continue;
       }
-      await supabaseClient.from("public_quizzes").upsert({
+      var upsertRes = await supabaseClient.from("public_quizzes").upsert({
         user_id: currentAuthUser.id,
         quiz_id: shareQuizModalQuizId,
         show_in_discover: showInDiscover,
         short_code: code
       }, { onConflict: "user_id,quiz_id" });
+      if (upsertRes.error) {
+        if (upsertRes.error.code === "23505" && !row?.short_code) continue;
+        console.warn("public_quizzes upsert", upsertRes.error);
+        break;
+      }
       shortCode = code;
       break;
     }
@@ -4266,8 +4287,34 @@ async function initAuthAndQuizzes() {
   updateShuffleToggleUi();
   updateShuffleOptionsToggleUi();
   initStandalone();
+  initCookieConsent();
   showView("mainMenu");
 }
+
+function initCookieConsent() {
+  var bar = document.getElementById("cookie-consent-bar");
+  var textEl = document.getElementById("cookie-consent-text");
+  var btn = document.getElementById("cookie-consent-accept");
+  if (!bar || !textEl || !btn) return;
+  if (localStorage.getItem(COOKIE_CONSENT_KEY) === "true") {
+    bar.classList.add("cookie-consent-bar-hidden");
+    bar.classList.remove("cookie-consent-bar-visible");
+    return;
+  }
+  textEl.textContent = t("cookieConsentMessage");
+  btn.textContent = t("cookieConsentAccept");
+  bar.classList.remove("cookie-consent-bar-hidden");
+  requestAnimationFrame(function () { bar.classList.add("cookie-consent-bar-visible"); });
+  btn.addEventListener("click", function () {
+    localStorage.setItem(COOKIE_CONSENT_KEY, "true");
+    bar.classList.remove("cookie-consent-bar-visible");
+    bar.addEventListener("transitionend", function onEnd() {
+      bar.removeEventListener("transitionend", onEnd);
+      bar.classList.add("cookie-consent-bar-hidden");
+    }, { once: true });
+  });
+}
+
 initAuthAndQuizzes();
 
 function handlePlayHash() {
@@ -4296,17 +4343,39 @@ function handlePlayHash() {
       setTimeout(function () { openDiscoverPreview(quiz, "—", ratingInfo, publicRowId); }, 100);
     }
     if (resolveShort) {
-      supabaseClient.from("public_quizzes").select("quiz_id, id").eq("short_code", quizId).limit(1).maybeSingle()
-        .then(function (rowRes) {
-          var row = rowRes?.data;
-          if (!row) {
-            alert(currentLang === "tr" ? "Link geçersiz veya süresi dolmuş." : "Invalid or expired link.");
-            return;
-          }
-          return supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", row.quiz_id).maybeSingle()
-            .then(function (quizRes) { openWithQuiz(quizRes?.data, row.id); });
-        })
-        .catch(function () { alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found."); });
+      function tryOpenByShortCode(retry) {
+        supabaseClient.from("public_quizzes").select("quiz_id, id").eq("short_code", quizId).limit(1).maybeSingle()
+          .then(function (rowRes) {
+            var row = rowRes?.data;
+            var err = rowRes?.error;
+            if (err && retry) {
+              setTimeout(function () { tryOpenByShortCode(false); }, 800);
+              return;
+            }
+            if (err) {
+              console.warn("public_quizzes by short_code", err);
+              alert(currentLang === "tr" ? "Bağlantı hatası. İnterneti kontrol edip tekrar deneyin veya linki atan kişiden yeni link isteyin." : "Connection error. Check internet and try again, or ask the sender for a new link.");
+              return;
+            }
+            if (!row) {
+              alert(currentLang === "tr" ? "Link geçersiz veya süresi dolmuş. Linki atan kişiden yeni bir link isteyin." : "Invalid or expired link. Ask the sender for a new link.");
+              return;
+            }
+            return supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", row.quiz_id).maybeSingle()
+              .then(function (quizRes) {
+                if (quizRes?.error && retry) {
+                  setTimeout(function () { tryOpenByShortCode(false); }, 800);
+                  return;
+                }
+                openWithQuiz(quizRes?.data, row.id);
+              });
+          })
+          .catch(function (e) {
+            if (retry) setTimeout(function () { tryOpenByShortCode(false); }, 800);
+            else alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
+          });
+      }
+      tryOpenByShortCode(true);
       return;
     }
     Promise.all([

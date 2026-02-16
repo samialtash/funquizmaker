@@ -2,7 +2,8 @@
 -- Supabase Dashboard > SQL Editor > New query > yapıştır > Run
 -- (public_quizzes ve quiz_shared_to tabloları schema v2 ile oluşturulmuş olmalı)
 
--- 1) public_quizzes: herkes (anon dahil) okuyabilsin – keşfet listesi için
+-- 1) public_quizzes: herkes (anon dahil) okuyabilsin – keşfet listesi + link ile açılan quizler (#/play/short/XXX)
+--    Bu policy OLMADAN link açan kişi "Link geçersiz veya süresi dolmuş" görür.
 drop policy if exists "public_quizzes_select_all" on public.public_quizzes;
 create policy "public_quizzes_select_all" on public.public_quizzes for select using (true);
 
