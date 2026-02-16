@@ -149,6 +149,12 @@ const translations = {
     noMessagesYet: "No messages yet.",
     unpublishFromDiscover: "Remove from Discover",
     linkOnlyShare: "Link only (not in Discover)",
+    edit: "Edit",
+    privacy: "Privacy",
+    onlyMe: "Only me",
+    friends: "Friends",
+    everyone: "Everyone",
+    remove: "Remove",
     addFriend: "Add friend",
     requestSent: "Request sent",
     alreadyFriends: "Friends",
@@ -295,6 +301,12 @@ const translations = {
     noMessagesYet: "Henüz mesaj yok.",
     unpublishFromDiscover: "Yayından kaldır",
     linkOnlyShare: "Sadece link (Keşfet'te yok)",
+    edit: "Düzenle",
+    privacy: "Gizlilik durumu",
+    onlyMe: "Sadece ben",
+    friends: "Arkadaşlar",
+    everyone: "Herkese açık",
+    remove: "Kaldır",
     addFriend: "Arkadaş ekle",
     requestSent: "İstek gönderildi",
     alreadyFriends: "Arkadaş",
@@ -2563,35 +2575,94 @@ async function loadProfileSharedQuizzes(optionalUserId) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
     const avgStr = formatRating(ratingsMap[r.quiz_id] ? ratingsMap[r.quiz_id].avg : null);
-    const showInDiscover = r.show_in_discover !== false;
     const card = document.createElement("article");
     card.className = "discover-card profile-shared-card";
     card.innerHTML = `
       <div class="discover-card-main">
         <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
         <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
-        <div class="profile-shared-card-actions">
-          ${isOwnProfile && showInDiscover ? `<button type="button" class="secondary-btn small-btn profile-unpublish-btn">${escapeHtml(t("unpublishFromDiscover"))}</button>` : isOwnProfile && !showInDiscover ? `<span class="hint small">${escapeHtml(t("linkOnlyShare"))}</span>` : ""}
-        </div>
       </div>
-      <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
+      <div class="profile-shared-card-right">
+        <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
+        ${isOwnProfile ? `<button type="button" class="profile-card-menu-btn icon-btn" aria-label="${escapeHtml(t("privacy"))}">⋮</button>` : ""}
+      </div>
     `;
     card.addEventListener("click", function (ev) {
-      if (ev.target.closest(".profile-unpublish-btn")) return;
+      if (ev.target.closest(".profile-card-menu-btn") || ev.target.closest(".profile-shared-dropdown")) return;
       openDiscoverPreview(quiz, "", ratingsMap[r.quiz_id] || null);
     });
-    const unpubBtn = card.querySelector(".profile-unpublish-btn");
-    if (unpubBtn) {
-      unpubBtn.addEventListener("click", async function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (!supabaseClient || !currentAuthUser) return;
-        await supabaseClient.from("public_quizzes").update({ show_in_discover: false }).eq("id", r.id).eq("user_id", currentAuthUser.id);
-        loadProfileSharedQuizzes();
-      });
+    if (isOwnProfile) {
+      const menuBtn = card.querySelector(".profile-card-menu-btn");
+      if (menuBtn) {
+        menuBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          openProfileSharedDropdown(ev.currentTarget, card, quiz, r, listEl);
+        });
+      }
     }
     listEl.appendChild(card);
   }
+}
+
+function openProfileSharedDropdown(anchor, card, quiz, publicRow, listEl) {
+  const existing = document.querySelector(".profile-shared-dropdown");
+  if (existing) existing.remove();
+  const showInDiscover = publicRow.show_in_discover !== false;
+  const drop = document.createElement("div");
+  drop.className = "profile-shared-dropdown";
+  drop.innerHTML = `
+    <button type="button" class="profile-dropdown-item" data-action="edit">${escapeHtml(t("edit"))}</button>
+    <div class="profile-dropdown-sub">
+      <span class="profile-dropdown-label">${escapeHtml(t("privacy"))}</span>
+      <button type="button" class="profile-dropdown-item" data-privacy="only_me">${escapeHtml(t("onlyMe"))}</button>
+      <button type="button" class="profile-dropdown-item" data-privacy="friends">${escapeHtml(t("friends"))}</button>
+      <button type="button" class="profile-dropdown-item" data-privacy="everyone">${escapeHtml(t("everyone"))}</button>
+    </div>
+    <button type="button" class="profile-dropdown-item profile-dropdown-remove" data-action="remove">${escapeHtml(t("remove"))}</button>
+  `;
+  const rect = anchor.getBoundingClientRect();
+  drop.style.position = "fixed";
+  drop.style.left = rect.right - 200 + "px";
+  drop.style.top = rect.bottom + 4 + "px";
+  drop.style.zIndex = "10000";
+  document.body.appendChild(drop);
+  const close = function () { drop.remove(); document.removeEventListener("click", close); };
+  setTimeout(function () { document.addEventListener("click", close); }, 0);
+  drop.addEventListener("click", function (e) {
+    const item = e.target.closest(".profile-dropdown-item");
+    if (!item) return;
+    e.stopPropagation();
+    const action = item.dataset.action;
+    const privacy = item.dataset.privacy;
+    if (action === "edit") {
+      close();
+      if (!quizzes.find(function (q) { return q.id === quiz.id; })) quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
+      doLoadEditQuiz(quiz.id);
+      return;
+    }
+    if (action === "remove") {
+      close();
+      (async function () {
+        if (!supabaseClient || !currentAuthUser) return;
+        await supabaseClient.from("public_quizzes").delete().eq("id", publicRow.id).eq("user_id", currentAuthUser.id);
+        loadProfileSharedQuizzes();
+      })();
+      return;
+    }
+    if (privacy) {
+      close();
+      (async function () {
+        if (!supabaseClient || !currentAuthUser) return;
+        if (privacy === "only_me") {
+          await supabaseClient.from("public_quizzes").delete().eq("id", publicRow.id).eq("user_id", currentAuthUser.id);
+        } else {
+          await supabaseClient.from("public_quizzes").update({ show_in_discover: privacy === "everyone" }).eq("id", publicRow.id).eq("user_id", currentAuthUser.id);
+        }
+        loadProfileSharedQuizzes();
+      })();
+    }
+  });
 }
 document.getElementById("profile-edit-btn")?.addEventListener("click", () => { showView("profileEdit"); loadProfileEdit(); });
 
@@ -3058,30 +3129,34 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var link = base + "#/play/" + shareQuizModalQuizId;
   var shortCode = null;
   if (supabaseClient && currentAuthUser) {
+    var existing = await supabaseClient.from("public_quizzes").select("show_in_discover, short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
+    var row = existing?.data;
+    var showInDiscover = row && row.show_in_discover === true;
+    for (var tries = 0; tries < 8; tries++) {
+      var code = row?.short_code || generateShortCode();
+      if (!row?.short_code) {
+        var conflict = await supabaseClient.from("public_quizzes").select("id").eq("short_code", code).maybeSingle();
+        if (conflict?.data) continue;
+      }
+      await supabaseClient.from("public_quizzes").upsert({
+        user_id: currentAuthUser.id,
+        quiz_id: shareQuizModalQuizId,
+        show_in_discover: showInDiscover,
+        short_code: code
+      }, { onConflict: "user_id,quiz_id" });
+      shortCode = code;
+      break;
+    }
+    if (shortCode) link = base + "#/play/short/" + shortCode;
     var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
     var fullText = getQuizTextForProfanityCheck(quiz);
     if (containsProfanity(fullText)) {
-      alert(currentLang === "tr" ? "İçerik kontrolü uygun değil. Link yine kopyalandı; açan giriş yapmak zorunda kalabilir." : "Content check failed. Link was still copied; opener may need to log in.");
-    } else {
-      var existing = await supabaseClient.from("public_quizzes").select("show_in_discover, short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
-      var row = existing?.data;
-      var showInDiscover = row && row.show_in_discover === true;
-      for (var tries = 0; tries < 8; tries++) {
-        var code = row?.short_code || generateShortCode();
-        if (!row?.short_code) {
-          var conflict = await supabaseClient.from("public_quizzes").select("id").eq("short_code", code).maybeSingle();
-          if (conflict?.data) continue;
-        }
-        await supabaseClient.from("public_quizzes").upsert({
-          user_id: currentAuthUser.id,
-          quiz_id: shareQuizModalQuizId,
-          show_in_discover: showInDiscover,
-          short_code: code
-        }, { onConflict: "user_id,quiz_id" });
-        shortCode = code;
-        break;
-      }
-      if (shortCode) link = base + "#/play/short/" + shortCode;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(() => {
+          alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
+        }).catch(() => { fallbackCopyLink(link); });
+      } else { fallbackCopyLink(link); }
+      return;
     }
   }
   if (navigator.clipboard && navigator.clipboard.writeText) {
