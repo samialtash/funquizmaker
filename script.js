@@ -131,6 +131,7 @@ const translations = {
     shareQuiz: "Share quiz",
     shareQuizTitle: "Share quiz",
     send: "Send",
+    shareQuizAsLink: "Share quiz as link",
     shareToProfile: "Share on profile (public)",
     discoverLoginHint: "Log in to discover and play quizzes shared by others.",
     discoverEmpty: "No public quizzes yet.",
@@ -291,6 +292,7 @@ const translations = {
     shareQuiz: "Quiz'i Paylaş",
     shareQuizTitle: "Quiz'i Paylaş",
     send: "Gönder",
+    shareQuizAsLink: "Quizi link olarak gönder",
     shareToProfile: "Profilinde Paylaş (herkese açık)",
     discoverLoginHint: "Başkalarının paylaştığı quizleri keşfetmek ve oynamak için giriş yapın.",
     discoverEmpty: "Henüz herkese açık quiz yok.",
@@ -1005,6 +1007,8 @@ function applyTranslations() {
   if (friendsListTitle) friendsListTitle.textContent = t("myFriends");
   if (shareModalTitle) shareModalTitle.textContent = t("shareQuizTitle");
   if (shareSendBtn) shareSendBtn.textContent = t("send");
+  const shareLinkBtn = document.getElementById("share-quiz-link-btn");
+  if (shareLinkBtn) shareLinkBtn.textContent = t("shareQuizAsLink");
   if (sharePublicBtn) sharePublicBtn.textContent = t("shareToProfile");
   const authLoginBtn = document.getElementById("auth-login-btn");
   const authSignupBtn = document.getElementById("auth-signup-btn");
@@ -3109,7 +3113,7 @@ document.getElementById("share-quiz-send-btn")?.addEventListener("click", async 
   closeShareQuizModal();
   if (shareQuizSelectedUserIds.length) alert(currentLang === "tr" ? "Gönderildi." : "Sent.");
 });
-// Herkese açık paylaşımda küfür/argo kontrolü (sadece "Profilinde Paylaş"; arkadaşa paylaşımda yok)
+// Herkese açık paylaşımda küfür/argo kontrolü: bağlam duyarlı yapay zeka (TF Toxicity) + yedek kelime listesi
 function normalizeForProfanityCheck(s) {
   if (typeof s !== "string") return "";
   const t = s.toLowerCase()
@@ -3117,14 +3121,44 @@ function normalizeForProfanityCheck(s) {
     .replace(/[^a-z0-9\s]/g, " ");
   return " " + t + " ";
 }
-const BANNED_WORDS_PUBLIC = ["amk","aq","sik","sike","göt","orospu","piç","kahpe","mal","gerizekalı","salak","aptal","fuck","shit","bitch","ass","damn","crap","dick","pussy","wtf","fck","sht"]; // genişletilebilir
-function containsProfanity(text) {
+const BANNED_WORDS_PUBLIC = ["amk","aq","sik","sike","göt","orospu","piç","kahpe","mal","gerizekalı","salak","aptal","fuck","shit","bitch","ass","damn","crap","dick","pussy","wtf","fck","sht"];
+function containsProfanityWordList(text) {
   const norm = normalizeForProfanityCheck(text);
   for (let i = 0; i < BANNED_WORDS_PUBLIC.length; i++) {
     const w = BANNED_WORDS_PUBLIC[i];
     const idx = norm.indexOf(" " + w + " ");
     if (idx !== -1) return true;
     if (norm.startsWith(w + " ") || norm.endsWith(" " + w)) return true;
+  }
+  return false;
+}
+var toxicityModelPromise = null;
+function getToxicityModel() {
+  if (typeof toxicity === "undefined" || !toxicity.load) return null;
+  if (!toxicityModelPromise) toxicityModelPromise = toxicity.load(0.85, ["toxicity", "severe_toxicity", "identity_attack", "insult", "threat", "sexual_explicit", "obscene"]);
+  return toxicityModelPromise;
+}
+function splitIntoSentences(text) {
+  if (typeof text !== "string" || !text.trim()) return [];
+  var parts = text.split(/[.!?\n]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 2; });
+  return parts.slice(0, 25);
+}
+async function containsProfanity(text) {
+  if (typeof text !== "string" || !text.trim()) return false;
+  if (containsProfanityWordList(text)) return true;
+  try {
+    var model = await getToxicityModel();
+    if (!model) return containsProfanityWordList(text);
+    var sentences = splitIntoSentences(text);
+    if (sentences.length === 0) return false;
+    var predictions = await model.classify(sentences);
+    for (var p = 0; p < predictions.length; p++) {
+      var res = predictions[p].results;
+      for (var i = 0; i < res.length; i++) if (res[i].match === true) return true;
+    }
+  } catch (e) {
+    console.warn("Toxicity check failed, using word list", e);
+    return containsProfanityWordList(text);
   }
   return false;
 }
@@ -3171,7 +3205,11 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     if (shortCode) link = base + "#/play/short/" + shortCode;
     var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
     var fullText = getQuizTextForProfanityCheck(quiz);
-    if (containsProfanity(fullText) && navigator.clipboard?.writeText) {
+    var linkBtn = document.getElementById("share-quiz-link-btn");
+    if (linkBtn) { linkBtn.disabled = true; linkBtn.textContent = currentLang === "tr" ? "Kontrol ediliyor…" : "Checking…"; }
+    var hasProfanity = await containsProfanity(fullText);
+    if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
+    if (hasProfanity && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(link).then(() => {
         alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
       }).catch(() => { fallbackCopyLink(link); });
@@ -3203,7 +3241,11 @@ document.getElementById("share-quiz-public-btn")?.addEventListener("click", asyn
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
   var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
   var fullText = getQuizTextForProfanityCheck(quiz);
-  if (containsProfanity(fullText)) {
+  var pubBtn = document.getElementById("share-quiz-public-btn");
+  if (pubBtn) { pubBtn.disabled = true; pubBtn.textContent = currentLang === "tr" ? "Kontrol ediliyor…" : "Checking…"; }
+  var hasProfanity = await containsProfanity(fullText);
+  if (pubBtn) { pubBtn.disabled = false; pubBtn.textContent = t("shareToProfile"); }
+  if (hasProfanity) {
     alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Lütfen quiz adı, açıklama ve soru/cevapları kontrol edin." : "The quiz contains inappropriate language. Please remove offensive content before sharing publicly.");
     return;
   }
