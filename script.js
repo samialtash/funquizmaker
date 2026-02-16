@@ -1134,7 +1134,9 @@ function renderQuizSelectList(page, _direction) {
   startQuizBtn.disabled = !selectedPlayQuizId;
   // Her sayfada tam 5 quiz: sayfa sayısı = ceil(quiz sayısı / 5), en az 1 sayfa
   const totalPages = listToShow.length === 0 ? 1 : Math.ceil(listToShow.length / QUIZ_PER_PAGE);
-  const wrapWidth = Math.max(quizSelectWrapEl.offsetWidth || 320, 280);
+  let wrapWidth = quizSelectWrapEl.offsetWidth || 0;
+  if (wrapWidth <= 0 && quizSelectWrapEl.offsetParent) wrapWidth = quizSelectWrapEl.offsetParent.clientWidth || 0;
+  wrapWidth = Math.max(wrapWidth || 320, 280);
 
   for (let p = 0; p < totalPages; p++) {
     const slide = document.createElement("div");
@@ -1584,7 +1586,9 @@ function renderEditQuizList(page, _direction) {
   editQuizStripEl.innerHTML = "";
   // Her sayfada tam 5 quiz: sayfa sayısı = ceil(quiz sayısı / 5), en az 1 sayfa
   const totalPages = quizzes.length === 0 ? 1 : Math.ceil(quizzes.length / QUIZ_PER_PAGE);
-  const wrapWidth = Math.max(editQuizWrapEl.offsetWidth || 320, 280);
+  let wrapWidth = editQuizWrapEl.offsetWidth || 0;
+  if (wrapWidth <= 0 && editQuizWrapEl.offsetParent) wrapWidth = editQuizWrapEl.offsetParent.clientWidth || 0;
+  wrapWidth = Math.max(wrapWidth || 320, 280);
 
   for (let p = 0; p < totalPages; p++) {
     const slide = document.createElement("div");
@@ -2441,13 +2445,18 @@ async function handleSaveQuiz() {
     saveQuizzes();
   }
   refreshQuizSelect();
-  refreshEditQuizSelect();
 
   const count = draftQuestions.length;
   const msg = (t("saveQuizSuccess") || "Quiz saved with {count} question(s).").replace("{count}", String(count));
   alert(msg);
   resetCreateQuizForm();
   showView("createQuiz");
+  // Liste, createQuiz görünür olduktan sonra çizilsin; yoksa wrap genişliği 0 olur ve quizler yan yana sıkışır
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      refreshEditQuizSelect();
+    });
+  });
 }
 
 // iOS Safari: touch events for buttons (click sometimes not firing)
@@ -3327,8 +3336,8 @@ async function loadDiscoverQuizzes() {
     emptyEl.classList.remove("hidden");
     return;
   }
-  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count,show_in_discover").order("created_at", { ascending: false }).limit(80);
-  const rows = (rawRows || []).filter(function (r) { return r.show_in_discover !== false; }).slice(0, 50);
+  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count,show_in_discover,short_code").order("created_at", { ascending: false }).limit(80);
+  const rows = (rawRows || []).filter(function (r) { return r.show_in_discover === true; }).slice(0, 50);
   if (!rows.length) {
     emptyEl.textContent = t("discoverEmpty");
     emptyEl.classList.remove("hidden");
@@ -3356,27 +3365,74 @@ async function loadDiscoverQuizzes() {
     const avgStr = formatRating(ratingInfo ? ratingInfo.avg : null);
     const viewCount = r.view_count != null ? r.view_count : 0;
     const viewStr = currentLang === "tr" ? `(${viewCount} kez girildi)` : `(${viewCount} views)`;
-    discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id };
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "discover-card discover-feed-card";
-    btn.setAttribute("role", "listitem");
-    btn.dataset.quizId = quiz.id;
-    btn.innerHTML = `
-      <span class="discover-card-main">
-        <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
-        <span class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</span>
-        <span class="discover-card-meta">${escapeHtml(author)} · ${escapeHtml(viewStr)}</span>
-      </span>
-      <span class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</span>
+    discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id, shortCode: r.short_code || null };
+    const wrap = document.createElement("div");
+    wrap.className = "discover-feed-card-wrap";
+    wrap.setAttribute("role", "listitem");
+    wrap.dataset.quizId = quiz.id;
+    const menuLabel = currentLang === "tr" ? "Menü" : "Menu";
+    wrap.innerHTML = `
+      <button type="button" class="discover-card discover-feed-card">
+        <span class="discover-card-main">
+          <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
+          <span class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</span>
+          <span class="discover-card-meta">${escapeHtml(author)} · ${escapeHtml(viewStr)}</span>
+        </span>
+        <span class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</span>
+      </button>
+      <button type="button" class="discover-card-menu-btn" aria-label="${escapeHtml(menuLabel)}">⋮</button>
+      <div class="discover-card-dropdown hidden">
+        <button type="button" class="discover-dropdown-item" data-action="share">${currentLang === "tr" ? "Quizi paylaş" : "Share quiz"}</button>
+        <button type="button" class="discover-dropdown-item" data-action="add">${currentLang === "tr" ? "Kütüphaneme ekle" : "Add to my library"}</button>
+        <button type="button" class="discover-dropdown-item" data-action="report">${currentLang === "tr" ? "Quizi rapor et" : "Report quiz"}</button>
+      </div>
     `;
-    btn.addEventListener("click", function (e) {
+    const cardBtn = wrap.querySelector(".discover-feed-card");
+    const menuBtn = wrap.querySelector(".discover-card-menu-btn");
+    const dropdown = wrap.querySelector(".discover-card-dropdown");
+    cardBtn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
       openDiscoverPreview(quiz, author, ratingInfo, r.id);
     });
-    feed.appendChild(btn);
+    menuBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAllDiscoverMenus();
+      dropdown.classList.toggle("hidden", false);
+    });
+    wrap.querySelectorAll(".discover-dropdown-item").forEach(function (item) {
+      item.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var action = item.dataset.action;
+        dropdown.classList.add("hidden");
+        if (action === "share") {
+          var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
+          var link = r.short_code ? base + "#/play/short/" + r.short_code : base + "#/play/" + quiz.id;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link).then(function () { alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied."); }).catch(function () { alert(link); });
+          } else { alert(link); }
+        } else if (action === "add") {
+          if (!currentAuthUser || !supabaseClient) { alert(currentLang === "tr" ? "Giriş yapın." : "Please log in."); return; }
+          copyQuizToMyQuizzes(quiz).then(function (ok) { if (ok) alert(currentLang === "tr" ? "Quizlerinize eklendi." : "Added to your quizzes."); });
+        } else if (action === "report") {
+          reportDiscoverQuiz(quiz.id);
+        }
+      });
+    });
+    feed.appendChild(wrap);
   }
+}
+function closeAllDiscoverMenus() {
+  document.querySelectorAll(".discover-card-dropdown").forEach(function (d) { d.classList.add("hidden"); });
+}
+function reportDiscoverQuiz(quizId) {
+  if (!currentAuthUser || !supabaseClient) { alert(currentLang === "tr" ? "Giriş yapın." : "Please log in."); return; }
+  var reason = window.prompt(currentLang === "tr" ? "Rapor nedeni (isteğe bağlı):" : "Report reason (optional):");
+  supabaseClient.from("quiz_reports").insert({ quiz_id: quizId, reporter_id: currentAuthUser.id, reason: (reason && reason.trim()) || null }).then(function (res) {
+    if (res.error) { alert(currentLang === "tr" ? "Rapor gönderilemedi." : "Report could not be sent."); return; }
+    alert(currentLang === "tr" ? "Raporunuz alındı." : "Report received.");
+  }).catch(function () { alert(currentLang === "tr" ? "Rapor gönderilemedi." : "Report could not be sent."); });
 }
 
 function updateDiscoverPreviewShuffleUi() {
@@ -3386,12 +3442,11 @@ function updateDiscoverPreviewShuffleUi() {
   if (shufOpt) shufOpt.classList.toggle("active", !!shuffleOptionsEnabled);
 }
 
-function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
+async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   discoverPreviewQuiz = quiz;
   if (publicRowId && supabaseClient) {
     try {
-      var rpcRet = supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId });
-      if (rpcRet && typeof rpcRet.catch === "function") rpcRet.catch(function () {});
+      await supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId });
     } catch (err) {}
   }
   const overlay = document.getElementById("discover-preview-overlay");
@@ -3545,9 +3600,11 @@ async function copyQuizToMyQuizzes(quiz) {
   var feed = document.getElementById("discover-feed");
   if (feed) {
     feed.addEventListener("click", function (e) {
-      var card = e.target.closest && e.target.closest(".discover-feed-card");
-      if (!card) return;
-      var quizId = card.dataset && card.dataset.quizId;
+      if (e.target.closest && e.target.closest(".discover-card-menu-btn")) return;
+      if (e.target.closest && e.target.closest(".discover-card-dropdown")) return;
+      var wrap = e.target.closest && e.target.closest(".discover-feed-card-wrap");
+      if (!wrap) return;
+      var quizId = wrap.dataset && wrap.dataset.quizId;
       if (!quizId) return;
       var cached = discoverCardCache[quizId];
       if (!cached || !cached.quiz) return;
@@ -3556,6 +3613,7 @@ async function copyQuizToMyQuizzes(quiz) {
       openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
     }, true);
   }
+  document.addEventListener("click", closeAllDiscoverMenus);
   var overlay = document.getElementById("discover-preview-overlay");
   var closeBtn = document.getElementById("discover-preview-close");
   var backdrop = document.getElementById("discover-preview-backdrop");

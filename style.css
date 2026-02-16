@@ -405,6 +405,74 @@ body.standalone .app-logo {
 .discover-list-wrap { margin-top: 16px; }
 .discover-empty { margin: 12px 0; }
 .discover-feed { display: flex; flex-direction: column; gap: 12px; }
+.discover-feed-card-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-radius: var(--radius-md);
+  background: rgba(15,23,42,0.6);
+  border: 1px solid var(--border);
+  overflow: visible;
+}
+.discover-feed-card-wrap .discover-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.discover-feed-card-wrap .discover-card:hover { background: var(--accent-soft); }
+.discover-card-menu-btn {
+  flex-shrink: 0;
+  width: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.discover-card-menu-btn:hover { background: var(--accent-soft); color: var(--text); }
+.discover-card-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 160px;
+  padding: 6px 0;
+  border-radius: var(--radius-md);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 10;
+}
+.discover-card-dropdown.hidden { display: none !important; }
+.discover-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.discover-dropdown-item:hover { background: var(--accent-soft); }
 .discover-card {
   display: flex;
   align-items: flex-start;
