@@ -3113,29 +3113,30 @@ document.getElementById("share-quiz-send-btn")?.addEventListener("click", async 
   closeShareQuizModal();
   if (shareQuizSelectedUserIds.length) alert(currentLang === "tr" ? "Gönderildi." : "Sent.");
 });
-// Herkese açık paylaşımda küfür/argo kontrolü: bağlam duyarlı yapay zeka (TF Toxicity) + yedek kelime listesi
+// Herkese açık paylaşımda küfür/argo: önce bağlam duyarlı AI (TF Toxicity), yalnızca model yoksa dar kelime listesi
 function normalizeForProfanityCheck(s) {
   if (typeof s !== "string") return "";
-  const t = s.toLowerCase()
+  var t = s.toLowerCase()
     .replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ş/g, "s").replace(/ç/g, "c")
     .replace(/[^a-z0-9\s]/g, " ");
   return " " + t + " ";
 }
-const BANNED_WORDS_PUBLIC = ["amk","aq","sik","sike","göt","orospu","piç","kahpe","mal","gerizekalı","salak","aptal","fuck","shit","bitch","ass","damn","crap","dick","pussy","wtf","fck","sht"];
+// Sadece açık küfür (masum kelimeler çıkarıldı: mal, ass, damn, crap, salak, aptal)
+var BANNED_WORDS_FALLBACK = ["amk","aq","sik","sike","göt","orospu","piç","kahpe","gerizekalı","fuck","shit","bitch","dick","pussy","wtf","fck","sht"];
 function containsProfanityWordList(text) {
-  const norm = normalizeForProfanityCheck(text);
-  for (let i = 0; i < BANNED_WORDS_PUBLIC.length; i++) {
-    const w = BANNED_WORDS_PUBLIC[i];
-    const idx = norm.indexOf(" " + w + " ");
-    if (idx !== -1) return true;
+  var norm = normalizeForProfanityCheck(text);
+  for (var i = 0; i < BANNED_WORDS_FALLBACK.length; i++) {
+    var w = BANNED_WORDS_FALLBACK[i];
+    if (norm.indexOf(" " + w + " ") !== -1) return true;
     if (norm.startsWith(w + " ") || norm.endsWith(" " + w)) return true;
   }
   return false;
 }
 var toxicityModelPromise = null;
 function getToxicityModel() {
-  if (typeof toxicity === "undefined" || !toxicity.load) return null;
-  if (!toxicityModelPromise) toxicityModelPromise = toxicity.load(0.85, ["toxicity", "severe_toxicity", "identity_attack", "insult", "threat", "sexual_explicit", "obscene"]);
+  var tox = (typeof window !== "undefined" && window.toxicity) || (typeof toxicity !== "undefined" && toxicity);
+  if (!tox || typeof tox.load !== "function") return null;
+  if (!toxicityModelPromise) toxicityModelPromise = tox.load(0.85, ["toxicity", "severe_toxicity", "identity_attack", "insult", "threat", "sexual_explicit", "obscene"]);
   return toxicityModelPromise;
 }
 function splitIntoSentences(text) {
@@ -3145,22 +3146,22 @@ function splitIntoSentences(text) {
 }
 async function containsProfanity(text) {
   if (typeof text !== "string" || !text.trim()) return false;
-  if (containsProfanityWordList(text)) return true;
   try {
     var model = await getToxicityModel();
-    if (!model) return containsProfanityWordList(text);
-    var sentences = splitIntoSentences(text);
-    if (sentences.length === 0) return false;
-    var predictions = await model.classify(sentences);
-    for (var p = 0; p < predictions.length; p++) {
-      var res = predictions[p].results;
-      for (var i = 0; i < res.length; i++) if (res[i].match === true) return true;
+    if (model) {
+      var sentences = splitIntoSentences(text);
+      if (sentences.length === 0) return false;
+      var predictions = await model.classify(sentences);
+      for (var p = 0; p < predictions.length; p++) {
+        var res = predictions[p].results;
+        for (var i = 0; i < res.length; i++) if (res[i].match === true) return true;
+      }
+      return false;
     }
   } catch (e) {
-    console.warn("Toxicity check failed, using word list", e);
-    return containsProfanityWordList(text);
+    console.warn("Toxicity check failed, using fallback word list", e);
   }
-  return false;
+  return containsProfanityWordList(text);
 }
 function getQuizTextForProfanityCheck(quiz) {
   if (!quiz) return "";
@@ -3189,6 +3190,9 @@ function generateShortCode() {
 }
 document.getElementById("share-quiz-link-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId) return;
+  var linkBtn = document.getElementById("share-quiz-link-btn");
+  var waitText = currentLang === "tr" ? "Lütfen bekleyiniz…" : "Please wait…";
+  if (linkBtn) { linkBtn.disabled = true; linkBtn.textContent = waitText; }
   var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
   var link = base + "#/play/" + shareQuizModalQuizId;
   var shortCode = null;
@@ -3198,6 +3202,7 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     var rpcRes = await supabaseClient.rpc("ensure_public_quiz_link", { p_quiz_id: shareQuizModalQuizId, p_show_in_discover: showInDiscover });
     if (rpcRes.error) {
       console.warn("ensure_public_quiz_link", rpcRes.error);
+      if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
       alert(currentLang === "tr" ? "Link oluşturulamadı. Lütfen tekrar deneyin veya 'Profilinde Paylaş' kullanın." : "Could not create link. Please try again or use 'Share on profile'.");
       return;
     }
@@ -3205,9 +3210,10 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     if (shortCode) link = base + "#/play/short/" + shortCode;
     var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
     var fullText = getQuizTextForProfanityCheck(quiz);
-    var linkBtn = document.getElementById("share-quiz-link-btn");
-    if (linkBtn) { linkBtn.disabled = true; linkBtn.textContent = currentLang === "tr" ? "Kontrol ediliyor…" : "Checking…"; }
+    var waitStart = Date.now();
     var hasProfanity = await containsProfanity(fullText);
+    var elapsed = Date.now() - waitStart;
+    if (elapsed < 600) await new Promise(function (r) { setTimeout(r, 600 - elapsed); });
     if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
     if (hasProfanity && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(link).then(() => {
@@ -3239,11 +3245,15 @@ function fallbackCopyLink(link) {
 }
 document.getElementById("share-quiz-public-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
+  var pubBtn = document.getElementById("share-quiz-public-btn");
+  var waitText = currentLang === "tr" ? "Lütfen bekleyiniz…" : "Please wait…";
+  if (pubBtn) { pubBtn.disabled = true; pubBtn.textContent = waitText; }
+  var waitStart = Date.now();
   var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
   var fullText = getQuizTextForProfanityCheck(quiz);
-  var pubBtn = document.getElementById("share-quiz-public-btn");
-  if (pubBtn) { pubBtn.disabled = true; pubBtn.textContent = currentLang === "tr" ? "Kontrol ediliyor…" : "Checking…"; }
   var hasProfanity = await containsProfanity(fullText);
+  var elapsed = Date.now() - waitStart;
+  if (elapsed < 600) await new Promise(function (r) { setTimeout(r, 600 - elapsed); });
   if (pubBtn) { pubBtn.disabled = false; pubBtn.textContent = t("shareToProfile"); }
   if (hasProfanity) {
     alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Lütfen quiz adı, açıklama ve soru/cevapları kontrol edin." : "The quiz contains inappropriate language. Please remove offensive content before sharing publicly.");
