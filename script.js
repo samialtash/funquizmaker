@@ -319,7 +319,7 @@ const translations = {
     addFriend: "Arkadaş ekle",
     requestSent: "İstek gönderildi",
     alreadyFriends: "Arkadaş",
-    cookieConsentMessage: "Hizmetin sunulması, içerik ve reklamların kişiselleştirilmesi için çerezler kullanıyoruz. Kişisel verileriniz gizlilik politikamız ve 6698 sayılı KVKK kapsamında işlenebilir. \"Kabul et\"e tıklayarak çerez kullanımına ve verilerinizin bu amaçlarla işlenmesine açık rıza veriyorsunuz. İstediğiniz zaman \"Ayarlar\" ile tercihinizi değiştirebilirsiniz.",
+    cookieConsentMessage: "Hizmetin sunulması, içerik ve reklamların kişiselleştirilmesi için çerezler kullanıyoruz. \"Kabul et\"e tıklayarak onay veriyorsunuz. İstediğiniz zaman \"Ayarlar\" ile tercihinizi değiştirebilirsiniz.",
     cookieConsentAccept: "Kabul et",
     cookieConsentManage: "Ayarlar",
     cookieSettingsTitle: "Çerez ayarları",
@@ -3159,46 +3159,22 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var link = base + "#/play/" + shareQuizModalQuizId;
   var shortCode = null;
   if (supabaseClient && currentAuthUser) {
-    var existing = await supabaseClient.from("public_quizzes").select("show_in_discover, short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
-    var row = existing?.data;
-    var showInDiscover = row && row.show_in_discover === true;
-    for (var tries = 0; tries < 20; tries++) {
-      var code = row?.short_code || generateShortCode();
-      if (!row?.short_code) {
-        var conflict = await supabaseClient.from("public_quizzes").select("id").eq("short_code", code).maybeSingle();
-        if (conflict?.data) continue;
-      }
-      var upsertRes = await supabaseClient.from("public_quizzes").upsert({
-        user_id: currentAuthUser.id,
-        quiz_id: shareQuizModalQuizId,
-        show_in_discover: showInDiscover,
-        short_code: code
-      }, { onConflict: "user_id,quiz_id" });
-      if (upsertRes.error) {
-        if (upsertRes.error.code === "23505" && !row?.short_code) continue;
-        console.warn("public_quizzes upsert", upsertRes.error);
-        break;
-      }
-      shortCode = code;
-      break;
-    }
-    if (shortCode) link = base + "#/play/short/" + shortCode;
-    else if (supabaseClient && currentAuthUser) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(() => {
-          alert(currentLang === "tr" ? "Link kopyalandı ancak sunucuya kaydedilemedi; açılmayabilir. Lütfen tekrar 'Quizi link olarak gönder' deneyin veya 'Profilinde Paylaş' kullanın." : "Link copied but could not be saved to the server; it may not open. Please try 'Share as link' again or use 'Share on profile'.");
-        }).catch(() => { fallbackCopyLink(link); });
-      } else { fallbackCopyLink(link); }
+    var existing = await supabaseClient.from("public_quizzes").select("show_in_discover").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
+    var showInDiscover = existing?.data?.show_in_discover === true;
+    var rpcRes = await supabaseClient.rpc("ensure_public_quiz_link", { p_quiz_id: shareQuizModalQuizId, p_show_in_discover: showInDiscover });
+    if (rpcRes.error) {
+      console.warn("ensure_public_quiz_link", rpcRes.error);
+      alert(currentLang === "tr" ? "Link oluşturulamadı. Lütfen tekrar deneyin veya 'Profilinde Paylaş' kullanın." : "Could not create link. Please try again or use 'Share on profile'.");
       return;
     }
+    shortCode = rpcRes.data;
+    if (shortCode) link = base + "#/play/short/" + shortCode;
     var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
     var fullText = getQuizTextForProfanityCheck(quiz);
-    if (containsProfanity(fullText)) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(() => {
-          alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
-        }).catch(() => { fallbackCopyLink(link); });
-      } else { fallbackCopyLink(link); }
+    if (containsProfanity(fullText) && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(link).then(() => {
+        alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
+      }).catch(() => { fallbackCopyLink(link); });
       return;
     }
   }
@@ -3206,7 +3182,9 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     navigator.clipboard.writeText(link).then(() => {
       alert(currentLang === "tr" ? "Link kopyalandı. Linki açan herkes giriş yapmadan quizi görebilir." : "Link copied. Anyone can open the quiz without logging in.");
     }).catch(() => { fallbackCopyLink(link); });
-  } else { fallbackCopyLink(link); }
+  } else {
+    fallbackCopyLink(link);
+  }
 });
 function fallbackCopyLink(link) {
   const ta = document.createElement("textarea");
