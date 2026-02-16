@@ -159,8 +159,14 @@ const translations = {
     addFriend: "Add friend",
     requestSent: "Request sent",
     alreadyFriends: "Friends",
-    cookieConsentMessage: "We use cookies to provide the service and show ads. By continuing, you accept our use of cookies.",
+    cookieConsentMessage: "We use cookies to run the service, personalise content and show ads. Your data may be processed in line with our privacy policy. By clicking Accept you consent to the use of cookies and the processing of your data for these purposes. You can change your mind later via your browser settings.",
     cookieConsentAccept: "Accept",
+    cookieConsentManage: "Manage settings",
+    cookieSettingsTitle: "Cookie settings",
+    cookieSettingsDetail: "This site uses cookies for the following purposes:\n\n• Essential: Required for the site to function (e.g. session, preferences). These cannot be disabled.\n• Advertising: To show you relevant ads and measure ad performance. These may process your data for personalised advertising.\n\nYour data may be processed in accordance with our privacy policy and applicable data protection laws. You have the right to withdraw consent at any time. Choosing \"Reject\" will only allow essential cookies; advertising and non-essential cookies will not be used. You can change your choice later by clearing site data or via your browser settings.",
+    cookieAcceptAll: "Accept all",
+    cookieOnlyNecessary: "Only necessary",
+    cookieRejectAll: "Reject",
   },
   tr: {
     mainTitle: "Eğlenceli Quiz Oluşturucu",
@@ -313,8 +319,14 @@ const translations = {
     addFriend: "Arkadaş ekle",
     requestSent: "İstek gönderildi",
     alreadyFriends: "Arkadaş",
-    cookieConsentMessage: "Hizmeti sunmak ve reklam göstermek için çerezler kullanıyoruz. Devam ederek çerez kullanımını kabul etmiş olursunuz.",
+    cookieConsentMessage: "Hizmetin sunulması, içerik ve reklamların kişiselleştirilmesi için çerezler kullanıyoruz. Kişisel verileriniz gizlilik politikamız ve 6698 sayılı KVKK kapsamında işlenebilir. \"Kabul et\"e tıklayarak çerez kullanımına ve verilerinizin bu amaçlarla işlenmesine açık rıza veriyorsunuz. İstediğiniz zaman \"Ayarlar\" ile tercihinizi değiştirebilirsiniz.",
     cookieConsentAccept: "Kabul et",
+    cookieConsentManage: "Ayarlar",
+    cookieSettingsTitle: "Çerez ayarları",
+    cookieSettingsDetail: "Bu site aşağıdaki amaçlarla çerez kullanmaktadır:\n\n• Zorunlu çerezler: Sitenin çalışması için gereklidir (oturum, tercihler vb.). Bunlar kapatılamaz.\n• Reklam çerezleri: Size uygun reklamlar göstermek ve reklam performansını ölçmek için kullanılır. Kişisel verileriniz kişiselleştirilmiş reklam amaçlı işlenebilir.\n\nKişisel verileriniz 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) ve gizlilik politikamız kapsamında işlenmektedir. Açık rızanızı istediğiniz zaman geri alabilirsiniz. \"Reddet\" seçeneği yalnızca zorunlu çerezleri kabul eder; reklam ve zorunlu olmayan çerezler kullanılmayacaktır. Tercihinizi daha sonra site verilerini temizleyerek veya tarayıcı ayarlarınızdan değiştirebilirsiniz.",
+    cookieAcceptAll: "Tümünü kabul et",
+    cookieOnlyNecessary: "Sadece gerekli",
+    cookieRejectAll: "Reddet",
   },
   es: { languageName: "Español", mainTitle: "Creador de Quiz Divertido", myQuizzes: "Mis Quizzes", createQuiz: "Crear / Editar Quiz", back: "← Atrás", settings: "Ajustes", language: "Idioma", selectLanguage: "Elegir idioma", selectQuiz: "Seleccionar Quiz", startQuiz: "Iniciar Quiz (Pantalla completa)", noQuizzes: "Sin quizzes guardados.", howItWorks: "Cómo funciona", storedLocally: "Los quizzes se guardan en tu navegador (sin servidor).", searchPlaceholder: "Buscar quizzes", searchNoResults: "No se encontraron resultados.", next: "Siguiente", exit: "Salir", leave: "Salir", quizFinished: "¡Quiz terminado!", retryQuiz: "Reintentar", backToMenu: "Volver al menú", fullscreen: "Pantalla completa", exitFullscreen: "Salir de pantalla completa" },
   zh: { languageName: "中文", mainTitle: "趣味测验制作", myQuizzes: "我的测验", createQuiz: "创建/编辑测验", back: "← 返回", settings: "设置", language: "语言", selectLanguage: "选择语言", selectQuiz: "选择测验", startQuiz: "开始测验（全屏）", noQuizzes: "暂无已保存测验。", howItWorks: "如何使用", storedLocally: "测验保存在您的浏览器中（无需服务器）。", searchPlaceholder: "搜索测验", searchNoResults: "未找到结果。", next: "下一步", exit: "退出", leave: "离开", quizFinished: "测验结束！", retryQuiz: "再试一次", backToMenu: "返回主菜单", fullscreen: "全屏", exitFullscreen: "退出全屏" },
@@ -945,8 +957,10 @@ function applyTranslations() {
   if (sectionLabel) sectionLabel.textContent = t("addQuestionsBoth");
   const cookieConsentText = document.getElementById("cookie-consent-text");
   const cookieConsentBtn = document.getElementById("cookie-consent-accept");
+  const cookieConsentManageBtn = document.getElementById("cookie-consent-manage");
   if (cookieConsentText) cookieConsentText.textContent = t("cookieConsentMessage");
   if (cookieConsentBtn) cookieConsentBtn.textContent = t("cookieConsentAccept");
+  if (cookieConsentManageBtn) cookieConsentManageBtn.textContent = t("cookieConsentManage");
   const backQuestionsList = document.getElementById("back-btn-questions-list");
   const backQuestionEdit = document.getElementById("back-btn-question-edit");
   if (backQuestionsList) backQuestionsList.textContent = t("back");
@@ -3169,6 +3183,14 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
       break;
     }
     if (shortCode) link = base + "#/play/short/" + shortCode;
+    else if (supabaseClient && currentAuthUser) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(() => {
+          alert(currentLang === "tr" ? "Link kopyalandı ancak sunucuya kaydedilemedi; açılmayabilir. Lütfen tekrar 'Quizi link olarak gönder' deneyin veya 'Profilinde Paylaş' kullanın." : "Link copied but could not be saved to the server; it may not open. Please try 'Share as link' again or use 'Share on profile'.");
+        }).catch(() => { fallbackCopyLink(link); });
+      } else { fallbackCopyLink(link); }
+      return;
+    }
     var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
     var fullText = getQuizTextForProfanityCheck(quiz);
     if (containsProfanity(fullText)) {
@@ -4291,28 +4313,87 @@ async function initAuthAndQuizzes() {
   showView("mainMenu");
 }
 
-function initCookieConsent() {
+function getCookieConsentValue() {
+  var v = localStorage.getItem(COOKIE_CONSENT_KEY);
+  if (v === "true") return "accepted";
+  return v || "";
+}
+
+function setCookieConsentAndClose(value) {
+  localStorage.setItem(COOKIE_CONSENT_KEY, value);
   var bar = document.getElementById("cookie-consent-bar");
-  var textEl = document.getElementById("cookie-consent-text");
-  var btn = document.getElementById("cookie-consent-accept");
-  if (!bar || !textEl || !btn) return;
-  if (localStorage.getItem(COOKIE_CONSENT_KEY) === "true") {
-    bar.classList.add("cookie-consent-bar-hidden");
-    bar.classList.remove("cookie-consent-bar-visible");
-    return;
-  }
-  textEl.textContent = t("cookieConsentMessage");
-  btn.textContent = t("cookieConsentAccept");
-  bar.classList.remove("cookie-consent-bar-hidden");
-  requestAnimationFrame(function () { bar.classList.add("cookie-consent-bar-visible"); });
-  btn.addEventListener("click", function () {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "true");
+  var overlay = document.getElementById("cookie-settings-overlay");
+  if (overlay) { overlay.classList.add("hidden"); overlay.setAttribute("aria-hidden", "true"); }
+  if (bar) {
     bar.classList.remove("cookie-consent-bar-visible");
     bar.addEventListener("transitionend", function onEnd() {
       bar.removeEventListener("transitionend", onEnd);
       bar.classList.add("cookie-consent-bar-hidden");
     }, { once: true });
+  }
+}
+
+var cookieSettingsModalReady = false;
+function initCookieSettingsModalOnce() {
+  if (cookieSettingsModalReady) return;
+  var overlay = document.getElementById("cookie-settings-overlay");
+  var acceptAllBtn = document.getElementById("cookie-settings-accept-all");
+  var necessaryBtn = document.getElementById("cookie-settings-necessary");
+  var rejectBtn = document.getElementById("cookie-settings-reject");
+  var closeBtn = document.getElementById("cookie-settings-close");
+  if (!overlay) return;
+  acceptAllBtn?.addEventListener("click", function () { setCookieConsentAndClose("accepted"); });
+  necessaryBtn?.addEventListener("click", function () { setCookieConsentAndClose("necessary"); });
+  rejectBtn?.addEventListener("click", function () { setCookieConsentAndClose("rejected"); });
+  closeBtn?.addEventListener("click", function () { overlay.classList.add("hidden"); overlay.setAttribute("aria-hidden", "true"); });
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) { overlay.classList.add("hidden"); overlay.setAttribute("aria-hidden", "true"); } });
+  cookieSettingsModalReady = true;
+}
+
+function openCookieSettingsModal() {
+  initCookieSettingsModalOnce();
+  var overlay = document.getElementById("cookie-settings-overlay");
+  var titleEl = document.getElementById("cookie-settings-title");
+  var detailEl = document.getElementById("cookie-settings-detail");
+  var acceptAllBtn = document.getElementById("cookie-settings-accept-all");
+  var necessaryBtn = document.getElementById("cookie-settings-necessary");
+  var rejectBtn = document.getElementById("cookie-settings-reject");
+  if (!overlay || !detailEl) return;
+  if (titleEl) titleEl.textContent = t("cookieSettingsTitle");
+  var detailText = t("cookieSettingsDetail") || "";
+  detailEl.textContent = detailText;
+  if (acceptAllBtn) acceptAllBtn.textContent = t("cookieAcceptAll");
+  if (necessaryBtn) necessaryBtn.textContent = t("cookieOnlyNecessary");
+  if (rejectBtn) rejectBtn.textContent = t("cookieRejectAll");
+  overlay.classList.remove("hidden");
+  overlay.setAttribute("aria-hidden", "false");
+}
+
+function initCookieConsent() {
+  var bar = document.getElementById("cookie-consent-bar");
+  var textEl = document.getElementById("cookie-consent-text");
+  var acceptBtn = document.getElementById("cookie-consent-accept");
+  var manageBtn = document.getElementById("cookie-consent-manage");
+  if (!bar || !textEl || !acceptBtn) return;
+  var consent = getCookieConsentValue();
+  if (consent === "accepted" || consent === "rejected" || consent === "necessary") {
+    bar.classList.add("cookie-consent-bar-hidden");
+    bar.classList.remove("cookie-consent-bar-visible");
+    return;
+  }
+  textEl.textContent = t("cookieConsentMessage");
+  acceptBtn.textContent = t("cookieConsentAccept");
+  if (manageBtn) manageBtn.textContent = t("cookieConsentManage");
+  bar.classList.remove("cookie-consent-bar-hidden");
+  requestAnimationFrame(function () { bar.classList.add("cookie-consent-bar-visible"); });
+  acceptBtn.addEventListener("click", function () {
+    setCookieConsentAndClose("accepted");
   });
+  if (manageBtn) {
+    manageBtn.addEventListener("click", function () {
+      openCookieSettingsModal();
+    });
+  }
 }
 
 initAuthAndQuizzes();
@@ -4343,18 +4424,22 @@ function handlePlayHash() {
       setTimeout(function () { openDiscoverPreview(quiz, "—", ratingInfo, publicRowId); }, 100);
     }
     if (resolveShort) {
-      function tryOpenByShortCode(retry) {
+      function tryOpenByShortCode(attempt) {
         supabaseClient.from("public_quizzes").select("quiz_id, id").eq("short_code", quizId).limit(1).maybeSingle()
           .then(function (rowRes) {
             var row = rowRes?.data;
             var err = rowRes?.error;
-            if (err && retry) {
-              setTimeout(function () { tryOpenByShortCode(false); }, 800);
+            if (err && attempt < 2) {
+              setTimeout(function () { tryOpenByShortCode(attempt + 1); }, attempt === 0 ? 1000 : 2500);
               return;
             }
             if (err) {
               console.warn("public_quizzes by short_code", err);
               alert(currentLang === "tr" ? "Bağlantı hatası. İnterneti kontrol edip tekrar deneyin veya linki atan kişiden yeni link isteyin." : "Connection error. Check internet and try again, or ask the sender for a new link.");
+              return;
+            }
+            if (!row && attempt < 2) {
+              setTimeout(function () { tryOpenByShortCode(attempt + 1); }, attempt === 0 ? 1000 : 2500);
               return;
             }
             if (!row) {
@@ -4363,19 +4448,19 @@ function handlePlayHash() {
             }
             return supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", row.quiz_id).maybeSingle()
               .then(function (quizRes) {
-                if (quizRes?.error && retry) {
-                  setTimeout(function () { tryOpenByShortCode(false); }, 800);
+                if (quizRes?.error && attempt < 2) {
+                  setTimeout(function () { tryOpenByShortCode(attempt + 1); }, 1000);
                   return;
                 }
                 openWithQuiz(quizRes?.data, row.id);
               });
           })
           .catch(function (e) {
-            if (retry) setTimeout(function () { tryOpenByShortCode(false); }, 800);
+            if (attempt < 2) setTimeout(function () { tryOpenByShortCode(attempt + 1); }, 1000);
             else alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
           });
       }
-      tryOpenByShortCode(true);
+      tryOpenByShortCode(0);
       return;
     }
     Promise.all([
@@ -4390,11 +4475,11 @@ function handlePlayHash() {
     });
   }
   // Giriş yapmadan da link açılır: ensureSupabaseThenRun anon client oluşturur; RLS public_quizzes + quizzes (public’te olan) okumaya izin vermeli
-  if (supabaseClient) openQuizByLink();
-  else ensureSupabaseThenRun(openQuizByLink);
+  if (supabaseClient) setTimeout(openQuizByLink, 150);
+  else ensureSupabaseThenRun(function () { setTimeout(openQuizByLink, 400); });
 }
 if (/^#\/?play\//.test(window.location.hash || "")) {
-  setTimeout(handlePlayHash, 50);
+  setTimeout(handlePlayHash, 200);
 }
 window.addEventListener("hashchange", handlePlayHash);
 

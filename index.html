@@ -528,11 +528,26 @@
       </div>
     </div>
 
-    <!-- Çerez onayı: alttan yukarı animasyonlu, kabul edilince tekrar aşağı inip gizlenir -->
+    <!-- Çerez onayı: bar + Ayarlar ile detaylı modal (Reddet seçeneği) -->
     <div id="cookie-consent-bar" class="cookie-consent-bar" aria-live="polite" role="dialog" aria-label="Çerez bildirimi">
       <div class="cookie-consent-inner">
         <p id="cookie-consent-text" class="cookie-consent-text"></p>
-        <button type="button" id="cookie-consent-accept" class="primary-btn cookie-consent-btn"></button>
+        <div class="cookie-consent-btns">
+          <button type="button" id="cookie-consent-manage" class="secondary-btn cookie-consent-btn"></button>
+          <button type="button" id="cookie-consent-accept" class="primary-btn cookie-consent-btn"></button>
+        </div>
+      </div>
+    </div>
+    <div id="cookie-settings-overlay" class="auth-overlay hidden" aria-hidden="true">
+      <div class="auth-modal cookie-settings-modal">
+        <button type="button" id="cookie-settings-close" class="auth-modal-close" aria-label="Kapat">×</button>
+        <h2 id="cookie-settings-title" class="auth-modal-title"></h2>
+        <div id="cookie-settings-detail" class="cookie-settings-detail"></div>
+        <div class="cookie-settings-actions">
+          <button type="button" id="cookie-settings-accept-all" class="primary-btn"></button>
+          <button type="button" id="cookie-settings-necessary" class="secondary-btn"></button>
+          <button type="button" id="cookie-settings-reject" class="secondary-btn cookie-settings-reject-btn"></button>
+        </div>
       </div>
     </div>
 
