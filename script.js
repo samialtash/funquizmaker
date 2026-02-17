@@ -4751,6 +4751,53 @@ window.addEventListener("hashchange", handlePlayHash);
 window.addEventListener("load", function () { checkStandaloneAgain(); });
 setTimeout(checkStandaloneAgain, 500);
 
+// Mobil: kaydırma veya uzun basmada buton tetiklenmesin (sadece kısa, hareketsiz dokunuş = tıklama)
+(function () {
+  const MOVE_THRESHOLD_PX = 12;
+  const LONG_PRESS_MS = 400;
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0, touchStartTarget = null;
+
+  function getInteractiveElement(el) {
+    if (!el) return null;
+    return el.closest("button, a, [role='button']") || null;
+  }
+
+  document.addEventListener("touchstart", function (e) {
+    const el = getInteractiveElement(e.target);
+    if (!el) return;
+    touchStartTarget = el;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: true });
+
+  document.addEventListener("touchend", function (e) {
+    if (!touchStartTarget || !e.changedTouches.length) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    const duration = Date.now() - touchStartTime;
+    const moved = Math.sqrt(dx * dx + dy * dy);
+    if (moved > MOVE_THRESHOLD_PX || duration > LONG_PRESS_MS) {
+      touchStartTarget.dataset.ignoreNextClick = "1";
+    }
+    touchStartTarget = null;
+  }, { passive: true });
+
+  document.addEventListener("touchcancel", function () {
+    touchStartTarget = null;
+  }, { passive: true });
+
+  document.addEventListener("click", function (e) {
+    const el = e.target.closest && e.target.closest("button, a, [role='button']");
+    if (el && el.dataset.ignoreNextClick === "1") {
+      e.preventDefault();
+      e.stopPropagation();
+      delete el.dataset.ignoreNextClick;
+    }
+  }, true);
+})();
+
 // PWA: register service worker only on secure origin (localhost / https)
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
