@@ -414,9 +414,6 @@
           </div>
           <div id="edit-quiz-pagination" class="pagination-row hidden"></div>
           <div class="inline-row edit-existing-row" style="margin-top: 8px; gap: 8px;">
-            <button id="load-edit-quiz-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true">Edit quiz</button>
-            <button id="edit-questions-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true" title="Edit questions of this quiz">Edit questions</button>
-            <button id="share-quiz-btn" class="secondary-btn small-btn hidden-if-row-actions" type="button" aria-hidden="true">Quiz'i Paylaş</button>
             <button id="clear-edit-quiz-btn" class="secondary-btn small-btn">Clear</button>
           </div>
           <div id="delete-quiz-wrap-edit" class="field delete-quiz-wrap hidden">
@@ -426,54 +423,68 @@
         </div>
       </div>
 
-      <!-- Soru hazırlama ekranı (isim sonrası / quiz yükleyince) -->
-      <div id="quiz-edit-questions-view" class="view">
-        <button id="back-btn-edit-questions" class="back-btn" data-back="create-quiz-view">← Back</button>
-        <h1 id="edit-questions-screen-title" class="title">Prepare questions</h1>
-
-        <div class="field">
-          <label id="quiz-name-label" for="quiz-name-input">Quiz Name</label>
-          <input id="quiz-name-input" type="text" placeholder="e.g. General Knowledge" />
+      <!-- Quiz düzenleme hub: üstte Quizi düzenle / Soruları düzenle sekmeleri, altta ilgili panel -->
+      <div id="quiz-edit-hub-view" class="view">
+        <button id="back-btn-edit-hub" class="back-btn" data-back="create-quiz-view">← Back</button>
+        <h1 id="quiz-edit-hub-title" class="title">Düzenle</h1>
+        <div class="quiz-edit-hub-tabs" role="tablist">
+          <button type="button" id="hub-tab-quiz-form" class="hub-tab active" role="tab" aria-selected="true">Quizi düzenle</button>
+          <button type="button" id="hub-tab-questions" class="hub-tab" role="tab" aria-selected="false">Soruları düzenle</button>
         </div>
-
-        <div class="field">
-          <label id="description-label" for="quiz-description-input">Description (optional)</label>
-          <textarea id="quiz-description-input" rows="2" placeholder="Short description of this quiz."></textarea>
-        </div>
-
-        <div class="field two-options-section">
-          <p class="section-label">Add questions: manual or bulk paste (both available)</p>
-        </div>
-
-        <div class="field manual-section">
-          <button id="manual-add-question-btn" class="secondary-btn">Add question manually</button>
-        </div>
-        <div id="prepare-questions-recent-wrap" class="field manual-questions-chips-wrap hidden">
-          <div id="prepare-questions-recent-list" class="manual-questions-chips"></div>
-        </div>
-
-        <div class="field">
-          <label id="paste-questions-label" for="bulk-input">Paste your questions here (format example shown as placeholder — click and paste over it)</label>
-          <div class="bulk-input-row">
-            <button type="button" id="paste-questions-btn" class="secondary-btn paste-btn" title="Paste from clipboard">Paste</button>
-            <button type="button" id="copy-format-btn" class="secondary-btn copy-format-btn small-btn" title="Copy format example">Copy format</button>
+        <div id="hub-panel-quiz-form" class="hub-panel hub-panel-active" role="tabpanel">
+          <div class="field">
+            <label id="quiz-name-label" for="quiz-name-input">Quiz Name</label>
+            <input id="quiz-name-input" type="text" placeholder="e.g. General Knowledge" />
           </div>
-          <textarea id="bulk-input" rows="16"></textarea>
-          <p id="prompt-hint" class="hint prompt-hint"></p>
-          <span id="copy-format-feedback" class="hint copy-feedback hidden"></span>
-        </div>
-
-        <div class="field">
-          <div class="create-quiz-actions">
-            <button id="parse-questions-btn" class="primary-btn">Detect & Add Questions</button>
-            <button id="save-quiz-btn" class="primary-btn">Save Quiz</button>
+          <div class="field">
+            <label id="description-label" for="quiz-description-input">Description (optional)</label>
+            <textarea id="quiz-description-input" rows="2" placeholder="Short description of this quiz."></textarea>
           </div>
-          <span id="parse-status" class="hint"></span>
-          <p id="manual-add-hint" class="hint manual-add-hint hidden"></p>
+          <div class="field two-options-section">
+            <p class="section-label">Add questions: manual or bulk paste (both available)</p>
+          </div>
+          <div class="field manual-section">
+            <button id="manual-add-question-btn" class="secondary-btn">Add question manually</button>
+          </div>
+          <div id="prepare-questions-recent-wrap" class="field manual-questions-chips-wrap hidden">
+            <div id="prepare-questions-recent-list" class="manual-questions-chips"></div>
+          </div>
+          <div class="field">
+            <label id="paste-questions-label" for="bulk-input">Paste your questions here</label>
+            <div class="bulk-input-row">
+              <button type="button" id="paste-questions-btn" class="secondary-btn paste-btn" title="Paste from clipboard">Paste</button>
+              <button type="button" id="copy-format-btn" class="secondary-btn copy-format-btn small-btn" title="Copy format example">Copy format</button>
+            </div>
+            <textarea id="bulk-input" rows="16"></textarea>
+            <p id="prompt-hint" class="hint prompt-hint"></p>
+            <span id="copy-format-feedback" class="hint copy-feedback hidden"></span>
+          </div>
+          <div class="field">
+            <div class="create-quiz-actions">
+              <button id="parse-questions-btn" class="primary-btn">Detect & Add Questions</button>
+              <button id="save-quiz-btn" class="primary-btn">Save Quiz</button>
+            </div>
+            <span id="parse-status" class="hint"></span>
+            <p id="manual-add-hint" class="hint manual-add-hint hidden"></p>
+          </div>
+          <div id="parsed-questions-summary" class="info-box hidden"></div>
         </div>
-
-        <div id="parsed-questions-summary" class="info-box hidden"></div>
+        <div id="hub-panel-questions" class="hub-panel" role="tabpanel" hidden>
+          <h2 id="questions-list-title" class="sr-only"></h2>
+          <p id="questions-list-quiz-name" class="hint questions-quiz-name"></p>
+          <div id="questions-list-wrap">
+            <ul id="questions-list"></ul>
+            <p id="no-questions-msg" class="hint hidden">No questions yet. Add one below.</p>
+          </div>
+          <div class="field">
+            <button id="add-question-btn" class="primary-btn">Add question</button>
+          </div>
+        </div>
       </div>
+
+      <!-- Eski view'lar artık kullanılmıyor (hub içinde); geri referansları için DOM'da kalsın -->
+      <div id="quiz-edit-questions-view" class="view" aria-hidden="true" style="display:none;"></div>
+      <div id="quiz-questions-list-view" class="view" aria-hidden="true" style="display:none;"></div>
     </div>
 
     <!-- Auth modals -->

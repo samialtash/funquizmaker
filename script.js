@@ -88,6 +88,7 @@ const translations = {
     giveQuizName: "Give the quiz a name",
     newQuizBtn: "New quiz",
     loadSelected: "Edit quiz",
+    editShort: "Edit",
     addQuestionsBoth: "Add questions: manual or bulk paste (both available)",
     prepareQuestions: "Prepare questions",
     pasteLabelPlaceholder: "Paste your questions here (format example shown as placeholder — click and paste over it)",
@@ -250,6 +251,7 @@ const translations = {
     giveQuizName: "Quiz'e bir isim verin",
     newQuizBtn: "Yeni quiz",
     loadSelected: "Quiz'i düzenle",
+    editShort: "Düzenle",
     addQuestionsBoth: "Soruları manuel veya toplu yapıştırma ile ekleyin (ikisi de kullanılabilir)",
     prepareQuestions: "Soruları hazırla",
     pasteLabelPlaceholder: "Sorularınızı buraya yapıştırın (örnek format hayalet yazı olarak görünür — tıklayıp kendi metninizi yapıştırın)",
@@ -568,7 +570,8 @@ const views = {
   quizView: document.getElementById("quiz-view"),
   quizFinished: document.getElementById("quiz-finished-view"),
   createQuiz: document.getElementById("create-quiz-view"),
-  quizEditQuestions: document.getElementById("quiz-edit-questions-view")
+  quizEditQuestions: document.getElementById("quiz-edit-questions-view"),
+  quizEditHub: document.getElementById("quiz-edit-hub-view")
 };
 
 const playQuizBtn = document.getElementById("play-quiz-btn");
@@ -947,6 +950,8 @@ function applyTranslations() {
     "new-quiz-name-modal-title": t("giveQuizName"),
     "new-quiz-btn": t("newQuizBtn"),
     "load-edit-quiz-btn": t("loadSelected"),
+    "hub-tab-quiz-form": t("loadSelected"),
+    "hub-tab-questions": t("editQuestions"),
     "edit-questions-screen-title": t("prepareQuestions"),
     "paste-questions-label": t("pasteLabelPlaceholder"),
     "delete-quiz-confirm-title": t("areYouSure"),
@@ -986,11 +991,13 @@ function applyTranslations() {
   if (mainSearchEl) mainSearchEl.placeholder = t("searchPlaceholder");
   const backSelect = document.getElementById("back-btn-select");
   const backCreate = document.getElementById("back-btn-create");
+  const backHub = document.getElementById("back-btn-edit-hub");
   const backSettings = document.getElementById("back-btn-settings");
   const backLangSelect = document.getElementById("back-btn-lang-select");
   const backDiscover = document.getElementById("back-btn-discover");
   if (backSelect) backSelect.textContent = t("back");
   if (backCreate) backCreate.textContent = t("back");
+  if (backHub) backHub.textContent = t("back");
   if (backSettings) backSettings.textContent = t("back");
   if (backLangSelect) backLangSelect.textContent = t("back");
   if (backDiscover) backDiscover.textContent = t("back");
@@ -1617,35 +1624,34 @@ function renderEditQuizList(page, _direction) {
         const textDiv = document.createElement("div");
         textDiv.className = "quiz-list-item-text";
         textDiv.innerHTML = `<span class="quiz-list-name">${escapeHtml(quiz.name)}</span><span class="quiz-list-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}</span>`;
-        textDiv.addEventListener("click", (e) => {
-          e.stopPropagation();
+        const selectQuiz = (e) => {
+          if (e) e.stopPropagation();
           selectedEditQuizId = quiz.id;
           renderEditQuizList(editQuizListCurrentPage);
           renderEditQuizPagination();
           updateEditQuestionsBtn();
+        };
+        textDiv.addEventListener("click", selectQuiz);
+        item.addEventListener("click", (e) => {
+          if (e.target.closest(".quiz-list-item-actions")) return;
+          selectQuiz(e);
         });
+        item.addEventListener("touchend", (e) => {
+          if (e.target.closest(".quiz-list-item-actions")) return;
+          selectQuiz(e);
+        }, { passive: true });
         const actions = document.createElement("div");
         actions.className = "quiz-list-item-actions";
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
         btnEdit.className = "secondary-btn small-btn";
-        btnEdit.textContent = t("loadSelected");
+        btnEdit.textContent = t("editShort");
         btnEdit.addEventListener("click", (e) => {
           e.stopPropagation();
           selectedEditQuizId = quiz.id;
           doLoadEditQuiz(quiz.id);
         });
-        const btnQuestions = document.createElement("button");
-        btnQuestions.type = "button";
-        btnQuestions.className = "secondary-btn small-btn";
-        btnQuestions.textContent = t("editQuestions");
-        btnQuestions.addEventListener("click", (e) => {
-          e.stopPropagation();
-          selectedEditQuizId = quiz.id;
-          doEditQuestions(quiz.id);
-        });
         actions.appendChild(btnEdit);
-        actions.appendChild(btnQuestions);
         if (supabaseClient && currentAuthUser) {
           const btnShare = document.createElement("button");
           btnShare.type = "button";
@@ -2365,8 +2371,18 @@ function handleParseQuestions() {
     return;
   }
 
-  if (editingQuizId && draftQuestions.length) {
-    draftQuestions = draftQuestions.concat(parsed);
+  const quizId = selectedEditQuizId || editingQuizId;
+  if (quizId) {
+    const quiz = quizzes.find((q) => q.id === quizId);
+    const base = (quiz && quiz.questions && quiz.questions.length) ? quiz.questions.slice() : (draftQuestions.length ? draftQuestions.slice() : []);
+    draftQuestions = base.concat(parsed);
+    if (!editingQuizId) {
+      editingQuizId = quizId;
+      if (quiz) {
+        quizNameInput.value = quiz.name || "";
+        quizDescriptionInput.value = quiz.description || "";
+      }
+    }
   } else {
     draftQuestions = parsed;
   }
@@ -2392,6 +2408,7 @@ function handleParseQuestions() {
     html += `<br/><span class="hint">...and ${escapeHtml(String(parsed.length - 3))} more question(s).</span>`;
   }
   parsedQuestionsSummaryEl.innerHTML = html;
+  updateEditQuestionsBtn();
 }
 
 async function handleSaveQuiz() {
@@ -3955,8 +3972,9 @@ function resolveBackTarget(rawTarget) {
   if (rawTarget === "messages-list") return "messagesList";
   if (rawTarget === "quiz-select-view") return "quizSelect";
   if (rawTarget === "create-quiz-view") return "createQuiz";
-  if (rawTarget === "quiz-edit-questions-view") return "quizEditQuestions";
-  if (rawTarget === "quiz-questions-list") return "quizQuestionsList";
+  if (rawTarget === "quiz-edit-questions-view") return "quizEditHub";
+  if (rawTarget === "quiz-questions-list") return "quizEditHub";
+  if (rawTarget === "quiz-edit-hub-view") return "quizEditHub";
   if (rawTarget === "quiz-question-edit") return "quizQuestionEdit";
   return rawTarget || "mainMenu";
 }
@@ -3982,6 +4000,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     if (viewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
     if (viewKey === "friends") loadFriendsView();
     if (viewKey === "quizSelect") renderQuizSelectList(quizSelectCurrentPage);
+    if (viewKey === "quizEditHub") renderQuestionsList();
   });
 });
 
@@ -4029,7 +4048,7 @@ const addQuestionBtn = document.getElementById("add-question-btn");
 if (addQuestionBtn) {
   addQuestionBtn.addEventListener("click", () => {
     fromCreateQuizPage = false;
-    if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-questions-list";
+    if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
     currentQuestionEditIndex = -1;
     clearQuestionForm();
     const titleEl = document.getElementById("question-edit-title");
@@ -4053,7 +4072,7 @@ if (manualAddQuestionBtn) {
     }
     if (manualAddHintEl) manualAddHintEl.classList.add("hidden");
     fromCreateQuizPage = true;
-    if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-questions-view";
+    if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
     currentQuizForEdit = quizId;
     currentQuestionEditIndex = -1;
     clearQuestionForm();
@@ -4227,6 +4246,24 @@ if (pasteQuestionsBtn && bulkInput) {
   });
 }
 
+function showHubPanel(panel) {
+  const formTab = document.getElementById("hub-tab-quiz-form");
+  const questionsTab = document.getElementById("hub-tab-questions");
+  const formPanel = document.getElementById("hub-panel-quiz-form");
+  const questionsPanel = document.getElementById("hub-panel-questions");
+  if (panel === "questions") {
+    if (formTab) { formTab.classList.remove("active"); formTab.setAttribute("aria-selected", "false"); }
+    if (questionsTab) { questionsTab.classList.add("active"); questionsTab.setAttribute("aria-selected", "true"); }
+    if (formPanel) { formPanel.classList.remove("hub-panel-active"); formPanel.hidden = true; }
+    if (questionsPanel) { questionsPanel.classList.add("hub-panel-active"); questionsPanel.hidden = false; }
+  } else {
+    if (formTab) { formTab.classList.add("active"); formTab.setAttribute("aria-selected", "true"); }
+    if (questionsTab) { questionsTab.classList.remove("active"); questionsTab.setAttribute("aria-selected", "false"); }
+    if (formPanel) { formPanel.classList.add("hub-panel-active"); formPanel.hidden = false; }
+    if (questionsPanel) { questionsPanel.classList.remove("hub-panel-active"); questionsPanel.hidden = true; }
+  }
+}
+
 function doLoadEditQuiz(quizId) {
   const id = quizId || selectedEditQuizId;
   if (!id) {
@@ -4242,14 +4279,20 @@ function doLoadEditQuiz(quizId) {
   quizDescriptionInput.value = quiz.description || "";
   draftQuestions = quiz.questions.slice();
   showManualQuestionsChips = false;
-  showView("quizEditQuestions");
+  showView("quizEditHub");
+  const hubTitle = document.getElementById("quiz-edit-hub-title");
+  if (hubTitle) hubTitle.textContent = (currentLang === "tr" ? "Düzenle: " : "Edit: ") + (quiz.name || "");
+  showHubPanel("form");
   renderPrepareQuestionsChips();
+  renderQuestionsList();
   if (editQuizStatusEl) {
     editQuizStatusEl.textContent = `Editing quiz "${quiz.name}" with ${draftQuestions.length} existing questions. New parsed questions will be appended.`;
   }
   parsedQuestionsSummaryEl.classList.add("hidden");
   parseStatusEl.textContent = "";
   updateEditQuestionsBtn();
+  const backBtnQuestionEdit = document.getElementById("back-btn-question-edit");
+  if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
 }
 
 function doEditQuestions(quizId) {
@@ -4257,12 +4300,35 @@ function doEditQuestions(quizId) {
   if (!id) return;
   selectedEditQuizId = id;
   currentQuizForEdit = id;
-  showView("quizQuestionsList");
-  renderQuestionsList();
+  if (currentViewKey === "quizEditHub") {
+    showHubPanel("questions");
+    renderQuestionsList();
+  } else {
+    showView("quizEditHub");
+    const quiz = quizzes.find((q) => q.id === id);
+    if (quiz) {
+      const hubTitle = document.getElementById("quiz-edit-hub-title");
+      if (hubTitle) hubTitle.textContent = (currentLang === "tr" ? "Düzenle: " : "Edit: ") + (quiz.name || "");
+    }
+    showHubPanel("questions");
+    renderQuestionsList();
+  }
 }
 
 if (loadEditQuizBtn) {
   loadEditQuizBtn.addEventListener("click", () => doLoadEditQuiz());
+}
+
+const hubTabQuizForm = document.getElementById("hub-tab-quiz-form");
+const hubTabQuestions = document.getElementById("hub-tab-questions");
+if (hubTabQuizForm) {
+  hubTabQuizForm.addEventListener("click", () => showHubPanel("form"));
+}
+if (hubTabQuestions) {
+  hubTabQuestions.addEventListener("click", () => {
+    showHubPanel("questions");
+    renderQuestionsList();
+  });
 }
 
 if (clearEditQuizBtn) {

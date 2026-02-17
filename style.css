@@ -1759,6 +1759,50 @@ pre.format-example {
   color: var(--text);
 }
 
+/* Quiz edit hub: sekmeler ve paneller */
+#quiz-edit-hub-view .quiz-edit-hub-title {
+  margin-bottom: 12px;
+  font-size: 1.25rem;
+}
+.quiz-edit-hub-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(30, 41, 59, 0.6);
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.quiz-edit-hub-tabs .hub-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.quiz-edit-hub-tabs .hub-tab:hover {
+  color: var(--text);
+}
+.quiz-edit-hub-tabs .hub-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+.hub-panel {
+  display: none;
+}
+.hub-panel.hub-panel-active {
+  display: block;
+}
+#quiz-edit-hub-view .questions-quiz-name {
+  margin: -4px 0 12px;
+  font-size: 0.95rem;
+}
+
 /* Questions list view */
 #quiz-questions-list-view .questions-quiz-name {
   margin: -8px 0 16px;
@@ -2002,6 +2046,13 @@ pre.format-example {
 
 .quiz-list-item.selected .quiz-list-item-actions {
   display: flex;
+}
+
+/* Tablet / dokunmatik: hover yok, butonları her zaman göster ki dokununca görünsün */
+@media (hover: none) {
+  .quiz-list-item .quiz-list-item-actions {
+    display: flex;
+  }
 }
 
 .quiz-list-item-actions .secondary-btn {
