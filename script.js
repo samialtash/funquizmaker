@@ -714,6 +714,8 @@ function showView(name, direction) {
     target.style.width = "";
   }
   currentViewKey = name;
+  // Ana menüye dönüldüğünde geçmişi sıfırla: ana sayfa kök, ileri gittikçe yığına eklenir
+  if (name === "mainMenu") viewHistory = [];
 }
 
 function renderPrepareQuestionsChips() {
@@ -2047,6 +2049,9 @@ function showQuizResult(score, total) {
 
   showView("quizFinished");
   updateQuizFinishedExtra();
+  // "Soru seçimine dön" sadece quiz listesinden (quizlerim/keşfet) başlatıldığında göster; linkle açıldıysa gizle
+  const backToQuizSelectBtn = document.getElementById("back-to-quiz-select-btn");
+  if (backToQuizSelectBtn) backToQuizSelectBtn.classList.toggle("hidden", lastPlayedQuizFromShared);
   if (soundEnabled) playResultSound(percentage);
 }
 
@@ -3980,6 +3985,8 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
       lastAddedQuestionIndex = -1;
     }
     showView(viewKey, "back");
+    // Doğrudan atlama (noHistory) sonrası yığını tutarlı tut: hedef ekrandan geri = ana menü
+    if (noHistory && viewKey !== "mainMenu") viewHistory = ["mainMenu"];
     if (viewKey === "quizQuestionsList") renderQuestionsList();
     if (viewKey === "profile") loadProfile(viewingProfileUserId || undefined);
     if (viewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
