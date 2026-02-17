@@ -3197,6 +3197,41 @@ function generateShortCode() {
   }
   return code;
 }
+function ensureLinkShareRow(quizId, showInDiscover) {
+  return new Promise(function (resolve) {
+    function tryUpsert(attempt) {
+      attempt = attempt || 0;
+      supabaseClient.from("public_quizzes").select("short_code, show_in_discover").eq("user_id", currentAuthUser.id).eq("quiz_id", quizId).maybeSingle().then(function (res) {
+        var existingRow = res?.data;
+        var show = existingRow ? (existingRow.show_in_discover === true) : !!showInDiscover;
+        var code = existingRow?.short_code || generateShortCode();
+        var payload = { user_id: currentAuthUser.id, quiz_id: quizId, show_in_discover: show, short_code: code };
+        supabaseClient.from("public_quizzes").upsert(payload, { onConflict: "user_id,quiz_id" }).then(function (u) {
+          if (u.error) {
+            if (u.error.code === "23505" && attempt < 3) {
+              tryUpsert(attempt + 1);
+              return;
+            }
+            if (u.error.code === "42703") {
+              supabaseClient.from("public_quizzes").upsert({ user_id: currentAuthUser.id, quiz_id: quizId }, { onConflict: "user_id,quiz_id" }).then(function (u2) {
+                resolve({ shortCode: null, linkWorks: !u2.error });
+              }).catch(function () { resolve({ shortCode: null, linkWorks: false }); });
+              return;
+            }
+            resolve({ shortCode: null, linkWorks: false });
+            return;
+          }
+          resolve({ shortCode: code, linkWorks: true });
+        }).catch(function () { resolve({ shortCode: null, linkWorks: false }); });
+      }).catch(function () { resolve({ shortCode: null, linkWorks: false }); });
+    }
+    supabaseClient.rpc("ensure_public_quiz_link", { p_quiz_id: quizId, p_show_in_discover: !!showInDiscover }).then(function (r) {
+      if (!r.error && r.data) { resolve({ shortCode: r.data, linkWorks: true }); return; }
+      tryUpsert(0);
+    }).catch(function () { tryUpsert(0); });
+  });
+}
+
 document.getElementById("share-quiz-link-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId) return;
   var linkBtn = document.getElementById("share-quiz-link-btn");
@@ -3205,36 +3240,34 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
   var link = base + "#/play/" + shareQuizModalQuizId;
   var shortCode = null;
+  var linkWorks = false;
   if (supabaseClient && currentAuthUser) {
     var existing = await supabaseClient.from("public_quizzes").select("show_in_discover").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
     var showInDiscover = existing?.data?.show_in_discover === true;
-    var rpcRes = await supabaseClient.rpc("ensure_public_quiz_link", { p_quiz_id: shareQuizModalQuizId, p_show_in_discover: showInDiscover });
-    if (rpcRes.error) {
-      console.warn("ensure_public_quiz_link", rpcRes.error);
-      if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
-      alert(currentLang === "tr" ? "Link oluşturulamadı. Lütfen tekrar deneyin veya 'Profilinde Paylaş' kullanın." : "Could not create link. Please try again or use 'Share on profile'.");
-      return;
-    }
-    shortCode = rpcRes.data;
+    var result = await ensureLinkShareRow(shareQuizModalQuizId, showInDiscover);
+    shortCode = result.shortCode;
+    linkWorks = result.linkWorks;
     if (shortCode) link = base + "#/play/short/" + shortCode;
-    var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
-    var fullText = getQuizTextForProfanityCheck(quiz);
-    var waitStart = Date.now();
-    var hasProfanity = await containsProfanity(fullText);
-    var elapsed = Date.now() - waitStart;
-    if (elapsed < 600) await new Promise(function (r) { setTimeout(r, 600 - elapsed); });
-    if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
-    if (hasProfanity && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(link).then(() => {
-        alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
-      }).catch(() => { fallbackCopyLink(link); });
-      return;
-    }
+  } else {
+    linkWorks = false;
+  }
+  var quiz = quizzes.find(function (q) { return q.id === shareQuizModalQuizId; });
+  var fullText = getQuizTextForProfanityCheck(quiz);
+  var waitStart = Date.now();
+  var hasProfanity = await containsProfanity(fullText);
+  var elapsed = Date.now() - waitStart;
+  if (elapsed < 600) await new Promise(function (r) { setTimeout(r, 600 - elapsed); });
+  if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
+  if (!linkWorks && (!supabaseClient || !currentAuthUser)) {
+    alert(currentLang === "tr" ? "Link paylaşmak için giriş yapın." : "Please log in to share a link.");
+    return;
   }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(link).then(() => {
-      alert(currentLang === "tr" ? "Link kopyalandı. Linki açan herkes giriş yapmadan quizi görebilir." : "Link copied. Anyone can open the quiz without logging in.");
-    }).catch(() => { fallbackCopyLink(link); });
+    navigator.clipboard.writeText(link).then(function () {
+      if (hasProfanity) alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
+      else if (!linkWorks) alert(currentLang === "tr" ? "Link kopyalandı. Açılmayabilir; Supabase'de 'supabase-rpc-ensure-public-quiz-link.sql' dosyasını çalıştırın." : "Link copied. It may not open; run supabase-rpc-ensure-public-quiz-link.sql in Supabase.");
+      else alert(currentLang === "tr" ? "Link kopyalandı. Linki açan herkes giriş yapmadan quizi görebilir (keşfet listesinde görünmez)." : "Link copied. Anyone with the link can open the quiz (not shown in Discover).");
+    }).catch(function () { fallbackCopyLink(link); });
   } else {
     fallbackCopyLink(link);
   }
