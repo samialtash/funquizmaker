@@ -630,12 +630,16 @@ function isQuizNameDuplicate(name, excludeQuizId) {
   return quizzes.some((q) => q.id !== excludeQuizId && (q.name || "").trim().toLowerCase() === n);
 }
 
+var viewHistory = [];
+var currentViewKey = "";
+
 // Utility: view switching (horizontal slide – forward = new from right, back = new from left)
 function showView(name, direction) {
   const target = views[name];
   if (!target) return;
   const current = document.querySelector(".view.active");
   const isBack = direction === "back";
+  if (!isBack && currentViewKey && currentViewKey !== name) viewHistory.push(currentViewKey);
   if (current && current !== target) {
     const app = document.getElementById("app");
     const appHeight = app ? app.offsetHeight : 560;
@@ -707,6 +711,7 @@ function showView(name, direction) {
     target.style.left = "";
     target.style.width = "";
   }
+  currentViewKey = name;
 }
 
 function renderPrepareQuestionsChips() {
@@ -3943,22 +3948,25 @@ if (importQuizzesFile) {
   });
 }
 
+function resolveBackTarget(rawTarget) {
+  if (rawTarget === "main-menu") return "mainMenu";
+  if (rawTarget === "settings") return "settings";
+  if (rawTarget === "discover-view") return "discover";
+  if (rawTarget === "profile") return "profile";
+  if (rawTarget === "friends") return "friends";
+  if (rawTarget === "messages-list") return "messagesList";
+  if (rawTarget === "quiz-select-view") return "quizSelect";
+  if (rawTarget === "create-quiz-view") return "createQuiz";
+  if (rawTarget === "quiz-edit-questions-view") return "quizEditQuestions";
+  if (rawTarget === "quiz-questions-list") return "quizQuestionsList";
+  if (rawTarget === "quiz-question-edit") return "quizQuestionEdit";
+  return rawTarget || "mainMenu";
+}
+
 Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
   btn.addEventListener("click", () => {
     if (btn.closest("#profile-view")) viewingProfileUserId = null;
-    const rawTarget = btn.dataset.back || "mainMenu";
-    let targetViewKey = rawTarget;
-    if (rawTarget === "main-menu") targetViewKey = "mainMenu";
-    if (rawTarget === "settings") targetViewKey = "settings";
-    if (rawTarget === "discover-view") targetViewKey = "discover";
-    if (rawTarget === "profile") targetViewKey = "profile";
-    if (rawTarget === "friends") targetViewKey = "friends";
-    if (rawTarget === "messages-list") targetViewKey = "messagesList";
-    if (rawTarget === "quiz-select-view") targetViewKey = "quizSelect";
-    if (rawTarget === "create-quiz-view") targetViewKey = "createQuiz";
-    if (rawTarget === "quiz-edit-questions-view") targetViewKey = "quizEditQuestions";
-    if (rawTarget === "quiz-questions-list") targetViewKey = "quizQuestionsList";
-    if (rawTarget === "quiz-question-edit") targetViewKey = "quizQuestionEdit";
+    let targetViewKey = viewHistory.length > 0 ? viewHistory.pop() : resolveBackTarget(btn.dataset.back || "mainMenu");
     if (!views[targetViewKey]) targetViewKey = "mainMenu";
     if (targetViewKey === "createQuiz") {
       fromCreateQuizPage = false;
@@ -3966,8 +3974,9 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     }
     showView(targetViewKey, "back");
     if (targetViewKey === "quizQuestionsList") renderQuestionsList();
-    if (targetViewKey === "profile") loadProfile();
+    if (targetViewKey === "profile") loadProfile(viewingProfileUserId || undefined);
     if (targetViewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
+    if (targetViewKey === "friends") loadFriendsView();
   });
 });
 
