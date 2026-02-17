@@ -2249,19 +2249,14 @@ function updateFullscreenBtnText() {
 }
 
 // Bulk parser: parse 100+ questions from a single textarea
+// Soru numarasına takılmaz: A-E seçenekleri + Answer satırı gördüğünde önceki satırı soru metni kabul eder (numara olsa da olmasa da).
 /**
- * Expected pattern (flexible on spaces and dots):
- *
- * 1) Question text...
+ * Expected pattern:
+ * [Soru metni - numaralı (1. / 1)) veya numarasız]
  * A) Option 1
  * B) Option 2
- * C) Option 3
- * D) Option 4
- * E) Option 5
- * Answer: B
- *
- * 2. Next question...
  * ...
+ * Answer: B
  */
 function parseBulkQuestions(raw) {
   const lines = raw
@@ -2270,66 +2265,61 @@ function parseBulkQuestions(raw) {
     .filter((l) => l.length > 0);
 
   const questions = [];
+  const optionRegex = /^[A-Ea-e][\.\)]\s*(.+)$/;
+  const answerRegex = /^answer\s*:\s*(.+)$/i;
   let i = 0;
 
   while (i < lines.length) {
-    // Find next question line: starts with number + "." or ")"
-    const qLineMatch = lines[i].match(/^(\d+)[\.\)]\s*(.+)$/);
-    if (!qLineMatch) {
+    // A) ile başlayan satır ara (soru bloğu başlangıcı)
+    const aMatch = lines[i].match(optionRegex);
+    const isA = aMatch && lines[i].toUpperCase().startsWith("A");
+    if (!isA || !aMatch) {
       i++;
       continue;
     }
-
-    const questionText = qLineMatch[2].trim();
-    i++;
-
-    const options = [];
-    const optionRegex = /^[A-Ea-e][\.\)]\s*(.+)$/;
-    // Collect next 5 option lines
-    while (i < lines.length && options.length < 5) {
-      const m = lines[i].match(optionRegex);
+    const optionLetters = ["A", "B", "C", "D", "E"];
+    const options = [aMatch[1].trim()];
+    let j = i + 1;
+    while (j < lines.length && options.length < 5) {
+      const m = lines[j].match(optionRegex);
       if (!m) break;
+      const letter = lines[j].toUpperCase().charAt(0);
+      const expected = optionLetters[options.length];
+      if (letter !== expected) break;
       options.push(m[1].trim());
-      i++;
+      j++;
     }
-
     if (options.length !== 5) {
-      // Incomplete question; skip this block
+      i++;
       continue;
     }
-
-    // Find answer line
+    if (j >= lines.length) {
+      i++;
+      continue;
+    }
+    const answerMatch = lines[j].match(answerRegex);
+    if (!answerMatch) {
+      i++;
+      continue;
+    }
+    const answerVal = answerMatch[1].trim();
     let correctIndex = -1;
-    const answerRegex = /^answer\s*:\s*(.+)$/i;
-    if (i < lines.length) {
-      const answerMatch = lines[i].match(answerRegex);
-      if (answerMatch) {
-        const answerVal = answerMatch[1].trim();
-        // Allow letter form A-E
-        const letterMatch = /^[A-Ea-e]$/;
-        if (letterMatch.test(answerVal)) {
-          correctIndex = answerVal.toUpperCase().charCodeAt(0) - 65; // 0-4
-        } else {
-          // Or match by exact option text
-          const idx = options.findIndex(
-            (opt) => opt.toLowerCase() === answerVal.toLowerCase()
-          );
-          if (idx >= 0) correctIndex = idx;
-        }
-        i++;
-      }
+    if (/^[A-Ea-e]$/.test(answerVal)) {
+      correctIndex = answerVal.toUpperCase().charCodeAt(0) - 65;
+    } else {
+      const idx = options.findIndex((opt) => opt.toLowerCase() === answerVal.toLowerCase());
+      if (idx >= 0) correctIndex = idx;
     }
-
     if (correctIndex === -1) {
-      // If no answer line or invalid, skip
+      i++;
       continue;
     }
-
-    questions.push({
-      text: questionText,
-      options,
-      correctIndex
-    });
+    const questionText = i > 0 ? lines[i - 1] : "";
+    const text = questionText.replace(/^\d+[\.\)]\s*/, "").trim();
+    if (text) {
+      questions.push({ text, options, correctIndex });
+    }
+    i = j + 1;
   }
 
   return questions;
@@ -2463,7 +2453,7 @@ async function handleSaveQuiz() {
   const msg = (t("saveQuizSuccess") || "Quiz saved with {count} question(s).").replace("{count}", String(count));
   alert(msg);
   resetCreateQuizForm();
-  showView("createQuiz");
+  showView("createQuiz", "back");
   // Liste, createQuiz görünür olduktan sonra çizilsin; yoksa wrap genişliği 0 olur ve quizler yan yana sıkışır
   requestAnimationFrame(function () {
     requestAnimationFrame(function () {
@@ -4112,10 +4102,10 @@ if (saveSingleQuestionBtn) {
       lastAddedQuestionIndex = currentQuestionEditIndex >= 0 && quiz.questions[currentQuestionEditIndex] !== undefined
         ? currentQuestionEditIndex
         : quiz.questions.length - 1;
-      showView("quizEditQuestions");
+      showView("quizEditQuestions", "back");
       requestAnimationFrame(() => renderPrepareQuestionsChips());
     } else {
-      showView("quizQuestionsList");
+      showView("quizQuestionsList", "back");
       renderQuestionsList();
     }
   });
@@ -4124,10 +4114,10 @@ if (cancelQuestionEditBtn) {
   cancelQuestionEditBtn.addEventListener("click", () => {
     if (fromCreateQuizPage) {
       fromCreateQuizPage = false;
-      showView("quizEditQuestions");
+      showView("quizEditQuestions", "back");
       renderPrepareQuestionsChips();
     } else {
-      showView("quizQuestionsList");
+      showView("quizQuestionsList", "back");
       renderQuestionsList();
     }
   });
@@ -4467,20 +4457,18 @@ function checkStandaloneAgain() {
 // Bulk input: örnek format hayalet yazı (placeholder) olarak
 if (bulkInput) bulkInput.placeholder = FORMAT_EXAMPLE_PLACEHOLDER;
 
-// Initial setup: auth varsa buluttan quiz yükle, yoksa localStorage
+// Initial setup: önce localStorage'dan yükle (ilk kayıt kaybolmasın), sonra ise buluttan güncelle
 async function initAuthAndQuizzes() {
   loadSettings();
+  loadQuizzes();
   if (supabaseClient) {
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
       currentAuthUser = session?.user ?? null;
       if (session) await fetchUserQuizzes();
-      else loadQuizzes();
     } catch (e) {
-      loadQuizzes();
+      // Hata olursa localStorage'daki quizzes zaten yüklü
     }
-  } else {
-    loadQuizzes();
   }
   updateAuthUI();
   refreshEditQuizSelect();
