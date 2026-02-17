@@ -33,6 +33,7 @@ const translations = {
     quizFinished: "Quiz Finished!",
     retryQuiz: "Retry Quiz",
     backToMenu: "Back to Main Menu",
+    backToQuizSelection: "Back to quiz selection",
     youScored: "You scored",
     outOf: "out of",
     editQuiz: "Create / Edit Quiz",
@@ -194,6 +195,7 @@ const translations = {
     quizFinished: "Quiz Bitti!",
     retryQuiz: "Tekrar Oyna",
     backToMenu: "Ana Menüye Dön",
+    backToQuizSelection: "Soru seçimine dön",
     youScored: "Skorunuz",
     outOf: "/",
     editQuiz: "Quiz Oluştur / Düzenle",
@@ -908,6 +910,7 @@ function applyTranslations() {
     "exit-quiz-btn": t("leave"),
     "quiz-finished-title": t("quizFinished"),
     "retry-quiz-btn": t("retryQuiz"),
+    "back-to-quiz-select-btn": t("backToQuizSelection"),
     "back-to-menu-btn": t("backToMenu"),
     "edit-quiz-title": t("editQuiz"),
     "edit-existing-label": t("editExisting"),
@@ -3966,17 +3969,22 @@ function resolveBackTarget(rawTarget) {
 Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
   btn.addEventListener("click", () => {
     if (btn.closest("#profile-view")) viewingProfileUserId = null;
-    let targetViewKey = viewHistory.length > 0 ? viewHistory.pop() : resolveBackTarget(btn.dataset.back || "mainMenu");
-    if (!views[targetViewKey]) targetViewKey = "mainMenu";
-    if (targetViewKey === "createQuiz") {
+    // "Ana menüye dön" / "Soru seçimine dön" gibi butonlar her zaman hedefe gider (geçmiş kullanılmaz)
+    const noHistory = btn.dataset.noHistory === "true";
+    const targetViewKey = noHistory
+      ? resolveBackTarget(btn.dataset.back || "mainMenu")
+      : (viewHistory.length > 0 ? viewHistory.pop() : resolveBackTarget(btn.dataset.back || "mainMenu"));
+    const viewKey = !views[targetViewKey] ? "mainMenu" : targetViewKey;
+    if (viewKey === "createQuiz") {
       fromCreateQuizPage = false;
       lastAddedQuestionIndex = -1;
     }
-    showView(targetViewKey, "back");
-    if (targetViewKey === "quizQuestionsList") renderQuestionsList();
-    if (targetViewKey === "profile") loadProfile(viewingProfileUserId || undefined);
-    if (targetViewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
-    if (targetViewKey === "friends") loadFriendsView();
+    showView(viewKey, "back");
+    if (viewKey === "quizQuestionsList") renderQuestionsList();
+    if (viewKey === "profile") loadProfile(viewingProfileUserId || undefined);
+    if (viewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
+    if (viewKey === "friends") loadFriendsView();
+    if (viewKey === "quizSelect") renderQuizSelectList(quizSelectCurrentPage);
   });
 });
 
