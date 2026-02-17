@@ -104,6 +104,10 @@ const translations = {
     duplicateQuizName: "A quiz with this name already exists. Please use a different name.",
     saveQuizNoQuestions: "Add at least one question (manually or via bulk paste) before saving.",
     saveQuizSuccess: "Quiz saved with {count} question(s).",
+    parseAddedNew: "Added {new} new question(s). Total in this quiz now: {total}.",
+    parseDetectedOnly: "Detected {count} question(s). Total: {total}.",
+    parsePreviewSummary: "{total} question(s) (+{new} added this time)",
+    parsePreviewMore: "...and {n} more.",
     alertQuestionEmpty: "Please fill in the question.",
     alertOptionsEmpty: "Please fill in the options.",
     login: "Log in",
@@ -267,6 +271,10 @@ const translations = {
     duplicateQuizName: "Bu isimde bir quiz zaten var. Lütfen farklı bir isim kullanın.",
     saveQuizNoQuestions: "Kaydetmeden önce en az bir soru ekleyin (manuel veya toplu yapıştırma ile).",
     saveQuizSuccess: "Quiz {count} soru ile kaydedildi.",
+    parseAddedNew: "{new} yeni soru eklendi. Toplam: {total} soru.",
+    parseDetectedOnly: "{count} soru algılandı. Toplam: {total}.",
+    parsePreviewSummary: "{total} soru (bu sefer +{new} eklendi)",
+    parsePreviewMore: "...ve {n} soru daha.",
     alertQuestionEmpty: "Lütfen soru kısmını doldurunuz.",
     alertOptionsEmpty: "Lütfen şıkları doldurunuz.",
     login: "Giriş yap",
@@ -2395,15 +2403,18 @@ function handleParseQuestions() {
     draftQuestions = parsed;
   }
 
-  const newly = parsed.length;
-  parseStatusEl.textContent = `Detected ${newly} question${
-    newly !== 1 ? "s" : ""
-  }. Total in this quiz now: ${draftQuestions.length}.`;
+  const newlyAdded = parsed.length;
+  const totalNow = draftQuestions.length;
+  const statusMsg = newlyAdded === totalNow
+    ? (t("parseDetectedOnly") || "{count} question(s). Total: {total}.").replace("{count}", String(newlyAdded)).replace("{total}", String(totalNow))
+    : (t("parseAddedNew") || "Added {new} new. Total: {total}.").replace("{new}", String(newlyAdded)).replace("{total}", String(totalNow));
+  parseStatusEl.textContent = statusMsg;
   parseStatusEl.classList.add("success");
 
   parsedQuestionsSummaryEl.classList.remove("hidden");
   const sample = draftQuestions.slice(0, 3);
-  let html = `<strong>Preview (${escapeHtml(String(draftQuestions.length))} total):</strong><br/>`;
+  const summaryStr = (t("parsePreviewSummary") || "{total} question(s) (+{new} added)").replace("{total}", String(totalNow)).replace("{new}", String(newlyAdded));
+  let html = `<strong>${escapeHtml(summaryStr)}</strong><br/>`;
   html += sample
     .map(
       (q, index) =>
@@ -2412,8 +2423,9 @@ function handleParseQuestions() {
         })</span>`
     )
     .join("<br/>");
-  if (parsed.length > 3) {
-    html += `<br/><span class="hint">...and ${escapeHtml(String(parsed.length - 3))} more question(s).</span>`;
+  if (draftQuestions.length > 3) {
+    const moreStr = (t("parsePreviewMore") || "...and {n} more.").replace("{n}", String(draftQuestions.length - 3));
+    html += `<br/><span class="hint">${escapeHtml(moreStr)}</span>`;
   }
   parsedQuestionsSummaryEl.innerHTML = html;
   updateEditQuestionsBtn();
