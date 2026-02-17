@@ -2597,8 +2597,9 @@ async function loadProfileSharedQuizzes(optionalUserId) {
   if (!userId) return;
   listEl.innerHTML = "";
   titleEl?.classList.add("hidden");
-  const { data: rows } = await supabaseClient.from("public_quizzes").select("id,quiz_id,show_in_discover").eq("user_id", userId).order("created_at", { ascending: false });
-  if (!rows?.length) return;
+  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,quiz_id,show_in_discover").eq("user_id", userId).order("created_at", { ascending: false });
+  const rows = (rawRows || []).filter(function (r) { return r.show_in_discover === true; });
+  if (!rows.length) return;
   titleEl?.classList.remove("hidden");
   if (titleEl) titleEl.textContent = t("profileSharedQuizzes");
   const quizIds = rows.map((r) => r.quiz_id);
@@ -2644,7 +2645,8 @@ async function loadProfileSharedQuizzes(optionalUserId) {
 function openProfileSharedDropdown(anchor, card, quiz, publicRow, listEl) {
   const existing = document.querySelector(".profile-shared-dropdown");
   if (existing) existing.remove();
-  const showInDiscover = publicRow.show_in_discover !== false;
+  const showInDiscover = publicRow.show_in_discover === true;
+  const tickHtml = '<span class="profile-dropdown-tick" aria-hidden="true"> ✓</span>';
   const drop = document.createElement("div");
   drop.className = "profile-shared-dropdown";
   drop.innerHTML = `
@@ -2652,8 +2654,8 @@ function openProfileSharedDropdown(anchor, card, quiz, publicRow, listEl) {
     <div class="profile-dropdown-sub">
       <span class="profile-dropdown-label">${escapeHtml(t("privacy"))}</span>
       <button type="button" class="profile-dropdown-item" data-privacy="only_me">${escapeHtml(t("onlyMe"))}</button>
-      <button type="button" class="profile-dropdown-item" data-privacy="friends">${escapeHtml(t("friends"))}</button>
-      <button type="button" class="profile-dropdown-item" data-privacy="everyone">${escapeHtml(t("everyone"))}</button>
+      <button type="button" class="profile-dropdown-item" data-privacy="friends">${escapeHtml(t("friends"))}${!showInDiscover ? tickHtml : ""}</button>
+      <button type="button" class="profile-dropdown-item" data-privacy="everyone">${escapeHtml(t("everyone"))}${showInDiscover ? tickHtml : ""}</button>
     </div>
     <button type="button" class="profile-dropdown-item profile-dropdown-remove" data-action="remove">${escapeHtml(t("remove"))}</button>
   `;
@@ -2994,9 +2996,35 @@ async function loadFriendsView() {
   const { data: friendRows } = await supabaseClient.from("friendships").select("friend_id").eq("user_id", currentAuthUser.id);
   listEl.innerHTML = "";
   if (friendRows) for (const r of friendRows) {
-    const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", r.friend_id).single();
+    const { data: prof } = await supabaseClient.from("profiles").select("nickname,avatar_url").eq("id", r.friend_id).single();
+    const nick = prof?.nickname || r.friend_id.slice(0, 8);
+    const safeAvatar = prof?.avatar_url ? sanitizeImageSrc(prof.avatar_url) : "";
     const li = document.createElement("li");
-    li.textContent = prof?.nickname || r.friend_id.slice(0, 8);
+    li.className = "friends-list-item-clickable";
+    var wrap = document.createElement("span");
+    wrap.className = "friends-list-avatar-wrap";
+    if (safeAvatar) {
+      var img = document.createElement("img");
+      img.className = "friends-list-avatar";
+      img.src = safeAvatar;
+      img.alt = "";
+      wrap.appendChild(img);
+    } else {
+      var ph = document.createElement("span");
+      ph.className = "friends-list-avatar-placeholder";
+      ph.setAttribute("aria-hidden", "true");
+      wrap.appendChild(ph);
+    }
+    li.appendChild(wrap);
+    var nameSpan = document.createElement("span");
+    nameSpan.className = "friends-list-name";
+    nameSpan.textContent = nick;
+    li.appendChild(nameSpan);
+    li.addEventListener("click", function () {
+      viewingProfileUserId = r.friend_id;
+      showView("profile");
+      loadProfile(r.friend_id);
+    });
     listEl.appendChild(li);
   }
 }
@@ -4250,9 +4278,16 @@ if (deleteQuizCancelBtn) {
   });
 }
 if (deleteQuizConfirmBtn && deleteQuizConfirmModal) {
-  deleteQuizConfirmBtn.addEventListener("click", () => {
+  deleteQuizConfirmBtn.addEventListener("click", async () => {
     if (!pendingDeleteQuizId) return;
     const id = pendingDeleteQuizId;
+    if (supabaseClient && currentAuthUser) {
+      try {
+        await supabaseClient.from("quizzes").delete().eq("id", id).eq("user_id", currentAuthUser.id);
+      } catch (e) {
+        console.warn("Delete quiz from cloud failed", e);
+      }
+    }
     quizzes = quizzes.filter((q) => q.id !== id);
     saveQuizzes();
     if (editingQuizId === id) resetCreateQuizForm();
