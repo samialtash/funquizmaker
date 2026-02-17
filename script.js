@@ -2390,7 +2390,12 @@ function handleParseQuestions() {
   const quizId = selectedEditQuizId || editingQuizId;
   if (quizId) {
     const quiz = quizzes.find((q) => q.id === quizId);
-    const base = (quiz && quiz.questions && quiz.questions.length) ? quiz.questions.slice() : (draftQuestions.length ? draftQuestions.slice() : []);
+    const isEditingThisQuiz = editingQuizId === quizId;
+    const base = isEditingThisQuiz && draftQuestions.length
+      ? draftQuestions.slice()
+      : (quiz && quiz.questions && quiz.questions.length)
+        ? quiz.questions.slice()
+        : [];
     draftQuestions = base.concat(parsed);
     if (!editingQuizId) {
       editingQuizId = quizId;
@@ -2444,12 +2449,6 @@ async function handleSaveQuiz() {
     return;
   }
 
-  if (editingQuizId) {
-    const existing = quizzes.find((q) => q.id === editingQuizId);
-    if (existing && existing.questions && existing.questions.length) {
-      draftQuestions = existing.questions.slice();
-    }
-  }
   if (!draftQuestions.length) {
     alert(t("saveQuizNoQuestions"));
     return;
