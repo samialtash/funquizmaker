@@ -2055,10 +2055,17 @@ pre.format-example {
   }
 }
 
+.quiz-list-item-actions {
+  position: relative;
+  z-index: 2;
+}
+
 .quiz-list-item-actions .secondary-btn {
   white-space: nowrap;
   padding: 8px 12px;
   font-size: 0.875rem;
+  touch-action: manipulation;
+  min-height: var(--touch-min, 44px);
 }
 
 /* Alttaki Edit quiz / Edit questions artık satırda; bu butonları gizle */

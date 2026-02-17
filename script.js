@@ -1097,6 +1097,8 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
 
   function onPointerDown(e) {
     if (getTotalPages() <= 1) return;
+    const target = e.target;
+    if (target && (target.closest("button") || target.closest("a") || target.closest(".quiz-list-item-actions"))) return;
     startX = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
     startPage = getCurrentPage();
     wrapWidth = wrapEl.offsetWidth;
@@ -1135,7 +1137,9 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
   wrapEl.addEventListener("pointermove", onPointerMove, { passive: true });
   wrapEl.addEventListener("pointerup", onPointerUp, { passive: true });
   wrapEl.addEventListener("pointerleave", onPointerUp, { passive: true });
-  wrapEl.addEventListener("touchstart", (e) => { if (e.touches.length === 1) onPointerDown(e); }, { passive: true });
+  wrapEl.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1 && e.target && !e.target.closest("button") && !e.target.closest("a") && !e.target.closest(".quiz-list-item-actions")) onPointerDown(e);
+  }, { passive: true });
   wrapEl.addEventListener("touchmove", (e) => {
     onPointerMove(e);
     if (dragging && e.cancelable) e.preventDefault();
@@ -1646,22 +1650,26 @@ function renderEditQuizList(page, _direction) {
         btnEdit.type = "button";
         btnEdit.className = "secondary-btn small-btn";
         btnEdit.textContent = t("editShort");
-        btnEdit.addEventListener("click", (e) => {
-          e.stopPropagation();
+        const onEdit = (e) => {
+          if (e) e.stopPropagation();
           selectedEditQuizId = quiz.id;
           doLoadEditQuiz(quiz.id);
-        });
+        };
+        btnEdit.addEventListener("click", onEdit);
+        btnEdit.addEventListener("touchend", (e) => { e.preventDefault(); onEdit(e); }, { passive: false });
         actions.appendChild(btnEdit);
         if (supabaseClient && currentAuthUser) {
           const btnShare = document.createElement("button");
           btnShare.type = "button";
           btnShare.className = "secondary-btn small-btn";
           btnShare.textContent = t("shareQuiz");
-          btnShare.addEventListener("click", (e) => {
-            e.stopPropagation();
+          const onShare = (e) => {
+            if (e) e.stopPropagation();
             selectedEditQuizId = quiz.id;
             openShareQuizModal(quiz.id);
-          });
+          };
+          btnShare.addEventListener("click", onShare);
+          btnShare.addEventListener("touchend", (e) => { e.preventDefault(); onShare(e); }, { passive: false });
           actions.appendChild(btnShare);
         }
         item.appendChild(textDiv);
@@ -4000,7 +4008,10 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
     if (viewKey === "messagesList") loadMessagesList(messagesListCurrentPage);
     if (viewKey === "friends") loadFriendsView();
     if (viewKey === "quizSelect") renderQuizSelectList(quizSelectCurrentPage);
-    if (viewKey === "quizEditHub") renderQuestionsList();
+    if (viewKey === "quizEditHub") {
+      showHubPanel(lastHubPanel);
+      renderQuestionsList();
+    }
   });
 });
 
@@ -4038,6 +4049,8 @@ if (questionsListEl) {
     loadQuestionIntoForm(currentQuestionEditIndex);
     const titleEl = document.getElementById("question-edit-title");
     if (titleEl) titleEl.textContent = t("editQuestionTitle");
+    lastHubPanel = "questions";
+    if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
     showView("quizQuestionEdit");
   });
 }
@@ -4048,6 +4061,7 @@ const addQuestionBtn = document.getElementById("add-question-btn");
 if (addQuestionBtn) {
   addQuestionBtn.addEventListener("click", () => {
     fromCreateQuizPage = false;
+    if (!currentQuizForEdit && (editingQuizId || selectedEditQuizId)) currentQuizForEdit = editingQuizId || selectedEditQuizId;
     if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
     currentQuestionEditIndex = -1;
     clearQuestionForm();
@@ -4121,10 +4135,12 @@ if (saveSingleQuestionBtn) {
       lastAddedQuestionIndex = currentQuestionEditIndex >= 0 && quiz.questions[currentQuestionEditIndex] !== undefined
         ? currentQuestionEditIndex
         : quiz.questions.length - 1;
-      showView("quizEditQuestions", "back");
+      showView("quizEditHub", "back");
+      showHubPanel("form");
       requestAnimationFrame(() => renderPrepareQuestionsChips());
     } else {
-      showView("quizQuestionsList", "back");
+      showView("quizEditHub", "back");
+      showHubPanel("questions");
       renderQuestionsList();
     }
   });
@@ -4133,10 +4149,12 @@ if (cancelQuestionEditBtn) {
   cancelQuestionEditBtn.addEventListener("click", () => {
     if (fromCreateQuizPage) {
       fromCreateQuizPage = false;
-      showView("quizEditQuestions", "back");
+      showView("quizEditHub", "back");
+      showHubPanel("form");
       renderPrepareQuestionsChips();
     } else {
-      showView("quizQuestionsList", "back");
+      showView("quizEditHub", "back");
+      showHubPanel("questions");
       renderQuestionsList();
     }
   });
@@ -4246,7 +4264,9 @@ if (pasteQuestionsBtn && bulkInput) {
   });
 }
 
+let lastHubPanel = "form";
 function showHubPanel(panel) {
+  lastHubPanel = panel;
   const formTab = document.getElementById("hub-tab-quiz-form");
   const questionsTab = document.getElementById("hub-tab-questions");
   const formPanel = document.getElementById("hub-panel-quiz-form");
