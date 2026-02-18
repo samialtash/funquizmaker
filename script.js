@@ -83,6 +83,10 @@ const translations = {
     quizName: "Quiz Name",
     description: "Description (optional)",
     pasteQuestions: "Paste your questions here (supports many questions in one go)",
+    bulkAddQuestionsTitle: "Bulk add questions",
+    bulkAddQuestionsDesc: "Instead of writing questions and options one by one, when you paste your questions in the format below, the system will automatically detect and convert them into questions.",
+    manualAddQuestionsHeading: "Manual question addition",
+    bulkAddQuestionsHeading: "Bulk question addition",
     formatExample: "Format example (must have 5 options A–E and an answer per question):",
     detectAdd: "Detect & Add Questions",
     saveQuiz: "Save Quiz",
@@ -137,6 +141,14 @@ const translations = {
     questionImageLabel: "Question image (optional)",
     removeImage: "Remove image",
     addPhoto: "Add photo",
+    questionTypeChoice: "Multiple choice",
+    questionTypeOpen: "Open answer",
+    questionTypeMatch: "Matching",
+    openExpectedAnswerLabel: "Correct answer (user will type this)",
+    matchQuestionTextLabel: "Question / title (optional)",
+    matchAddPair: "Add pair",
+    matchPairHint: "Up to 10 pairs. Fill left and right columns in order.",
+    manualAddIntro: "Choose the type of question to add:",
     chooseImage: "Choose image",
     addOptionRow: "Add option",
     duplicateQuizName: "A quiz with this name already exists. Please use a different name.",
@@ -250,6 +262,10 @@ const translations = {
     quizName: "Quiz Adı",
     description: "Açıklama (isteğe bağlı)",
     pasteQuestions: "Sorularınızı buraya yapıştırın (çok sayıda soru desteklenir)",
+    bulkAddQuestionsTitle: "Toplu soru ekle",
+    bulkAddQuestionsDesc: "Soruları ve şıkları tek tek yazmak yerine aşağıdaki formatla sorularınızı toplu attığınızda sistem otomatik olarak hepsini algılayıp soru haline çevirecektir.",
+    manualAddQuestionsHeading: "Manuel soru ekleme",
+    bulkAddQuestionsHeading: "Toplu soru ekleme",
     formatExample: "Örnek format (her soru 5 seçenek A–E ve bir cevap satırı içermeli):",
     detectAdd: "Soruları Algıla ve Ekle",
     saveQuiz: "Quiz Kaydet",
@@ -304,6 +320,14 @@ const translations = {
     questionImageLabel: "Soru fotoğrafı (isteğe bağlı)",
     removeImage: "Fotoğrafı kaldır",
     addPhoto: "Fotoğraf ekle",
+    questionTypeChoice: "Çoktan seçmeli",
+    questionTypeOpen: "Açık cevap",
+    questionTypeMatch: "Eşleştirme",
+    openExpectedAnswerLabel: "Doğru cevap (kullanıcı bunu yazacak)",
+    matchQuestionTextLabel: "Soru / başlık (isteğe bağlı)",
+    matchAddPair: "Çift ekle",
+    matchPairHint: "En fazla 10 eşleştirme. Sol ve sağ sütunu sırayla doldurun.",
+    manualAddIntro: "Eklemek istediğiniz soru tipini seçin:",
     chooseImage: "Dosya seç",
     addOptionRow: "Şık ekle",
     duplicateQuizName: "Bu isimde bir quiz zaten var. Lütfen farklı bir isim kullanın.",
@@ -560,6 +584,12 @@ const MAX_OPTIONS = 5;
 
 let editFormQuestionImage = null;
 let editFormOptionImages = [null, null];
+/** "choice" | "open" | "match" */
+let currentQuestionType = "choice";
+let openEditFormQuestionImage = null;
+/** Match type: [{ left: string, right: string }, ...] max 10 */
+let editFormMatchPairs = [];
+const MAX_MATCH_PAIRS = 10;
 
 let quizzes = [];
 let currentQuiz = null;
@@ -619,7 +649,8 @@ const views = {
   quizFinished: document.getElementById("quiz-finished-view"),
   createQuiz: document.getElementById("create-quiz-view"),
   quizEditQuestions: document.getElementById("quiz-edit-questions-view"),
-  quizEditHub: document.getElementById("quiz-edit-hub-view")
+  quizEditHub: document.getElementById("quiz-edit-hub-view"),
+  quizLinkPreview: document.getElementById("quiz-link-preview-view")
 };
 
 const playQuizBtn = document.getElementById("play-quiz-btn");
@@ -764,8 +795,14 @@ function showView(name, direction) {
     target.style.left = "";
     target.style.width = "";
   }
+  // Quiz, bitiş veya link önizlemeden çıkınca ya da ana menüye gelince linki sıfırla (yenileyince quiz tekrar açılmasın)
+  const wasInQuizOrLink = currentViewKey === "quizView" || currentViewKey === "quizFinished" || currentViewKey === "quizLinkPreview";
+  const leavingToNormal = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
+  const goingToMain = name === "mainMenu";
+  if (typeof window !== "undefined" && window.location && ((wasInQuizOrLink && leavingToNormal) || goingToMain)) {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/");
+  }
   currentViewKey = name;
-  // Ana menüye dönüldüğünde geçmişi sıfırla: ana sayfa kök, ileri gittikçe yığına eklenir
   if (name === "mainMenu") viewHistory = [];
 }
 
@@ -994,7 +1031,9 @@ function applyTranslations() {
     "correct-answer-label": t("correctAnswer"),
     "save-single-question-btn": t("saveQuestion"),
     "cancel-question-edit-btn": t("cancel"),
-    "manual-add-question-btn": t("addManualQuestion"),
+    "manual-add-choice-btn": t("questionTypeChoice"),
+    "manual-add-open-btn": t("questionTypeOpen"),
+    "manual-add-match-btn": t("questionTypeMatch"),
     "new-quiz-name-modal-title": t("giveQuizName"),
     "new-quiz-btn": t("newQuizBtn"),
     "load-edit-quiz-btn": t("loadSelected"),
@@ -1002,6 +1041,9 @@ function applyTranslations() {
     "hub-tab-questions": t("editQuestions"),
     "edit-questions-screen-title": t("prepareQuestions"),
     "paste-questions-label": t("pasteLabelPlaceholder"),
+    "sub-tab-manual": t("manualAddQuestionsHeading"),
+    "sub-tab-bulk": t("bulkAddQuestionsHeading"),
+    "bulk-add-questions-desc": t("bulkAddQuestionsDesc"),
     "delete-quiz-confirm-title": t("areYouSure"),
     "delete-quiz-confirm-msg": t("deleteQuizConfirmMsg"),
     "delete-quiz-btn-edit": t("deleteQuiz"),
@@ -1010,7 +1052,16 @@ function applyTranslations() {
     "question-image-label": t("questionImageLabel"),
     "single-question-image-remove": t("removeImage"),
     "single-question-image-add": t("addPhoto"),
+    "qtype-tab-choice": t("questionTypeChoice"),
+    "qtype-tab-open": t("questionTypeOpen"),
+    "qtype-tab-match": t("questionTypeMatch"),
+    "open-expected-answer-label": t("openExpectedAnswerLabel"),
+    "match-question-text-label": t("matchQuestionTextLabel"),
+    "match-add-pair-btn": t("matchAddPair"),
+    "manual-add-intro": t("manualAddIntro"),
   };
+  const matchPairHintEl = document.querySelector(".match-pairs-container + .field .hint");
+  if (matchPairHintEl) matchPairHintEl.textContent = t("matchPairHint");
   document.querySelectorAll(".option-photo-btn").forEach((btn) => {
     btn.textContent = t("addPhoto");
   });
@@ -1018,8 +1069,6 @@ function applyTranslations() {
   if (chooseImageLabel) chooseImageLabel.textContent = t("chooseImage");
   const addOptionRowBtnTr = document.getElementById("add-option-row-btn");
   if (addOptionRowBtnTr) addOptionRowBtnTr.textContent = t("addOptionRow");
-  const sectionLabel = document.querySelector(".two-options-section .section-label");
-  if (sectionLabel) sectionLabel.textContent = t("addQuestionsBoth");
   const cookieConsentText = document.getElementById("cookie-consent-text");
   const cookieConsentBtn = document.getElementById("cookie-consent-accept");
   const cookieConsentManageBtn = document.getElementById("cookie-consent-manage");
@@ -1215,28 +1264,46 @@ function renderQuizSelectList(page, _direction) {
     slide.style.maxWidth = wrapWidth + "px";
     const start = p * QUIZ_PER_PAGE;
     const slice = listToShow.slice(start, start + QUIZ_PER_PAGE);
+    const listContainer = document.createElement("div");
+    listContainer.className = "quiz-list";
     for (let i = 0; i < QUIZ_PER_PAGE; i++) {
       const quiz = slice[i];
       if (quiz) {
+        const isSelected = selectedPlayQuizId === quiz.id;
         const item = document.createElement("div");
-        item.className = "quiz-list-item" + (selectedPlayQuizId === quiz.id ? " selected" : "");
+        item.className = "quiz-list-item quiz-select-item" + (isSelected ? " selected" : "");
         item.dataset.quizId = quiz.id;
-        item.innerHTML = `<span class="quiz-list-name">${escapeHtml(quiz.name)}</span><span class="quiz-list-meta">${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}</span>`;
+        const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : "empty.png";
+        const coverSafe = coverUrl.replace(/"/g, "&quot;");
+        const desc = (quiz.description || "").trim().slice(0, 160);
+        const descDisplay = desc + ((quiz.description || "").trim().length > 160 ? "…" : "");
+        const qCount = quiz.questions ? quiz.questions.length : 0;
+        const qStr = qCount === 1 ? (currentLang === "tr" ? "1 soru" : "1 question") : (currentLang === "tr" ? qCount + " soru" : qCount + " questions");
+        item.innerHTML = `
+          <div class="quiz-list-item-head">
+            <span class="quiz-list-name">${escapeHtml(quiz.name)}</span>
+            <span class="quiz-list-meta">${qStr}</span>
+          </div>
+          <div class="quiz-list-item-expand">
+            <div class="quiz-list-item-cover" style="background-image:url(${coverSafe})"></div>
+            <p class="quiz-list-item-desc">${escapeHtml(descDisplay) || "—"}</p>
+          </div>`;
         item.addEventListener("click", (e) => {
           e.stopPropagation();
           selectedPlayQuizId = quiz.id;
           renderQuizSelectList(quizSelectCurrentPage);
           startQuizBtn.disabled = false;
         });
-        slide.appendChild(item);
+        listContainer.appendChild(item);
       } else {
         const empty = document.createElement("div");
         empty.className = "quiz-list-item quiz-list-item-empty";
         empty.innerHTML = `<span class="quiz-list-name quiz-list-name-empty">—</span>`;
         empty.setAttribute("aria-hidden", "true");
-        slide.appendChild(empty);
+        listContainer.appendChild(empty);
       }
     }
+    slide.appendChild(listContainer);
     quizSelectStripEl.appendChild(slide);
   }
 
@@ -1251,6 +1318,15 @@ function renderQuizSelectList(page, _direction) {
     renderQuizSelectPagination();
   }
   startQuizBtn.disabled = !selectedPlayQuizId;
+
+  var expandedTarget = quizSelectStripEl.querySelector(".quiz-list-item.quiz-select-item.selected");
+  if (expandedTarget) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        expandedTarget.classList.add("expanded");
+      });
+    });
+  }
 
   if (totalPages > 1 && !quizSelectWrapEl.dataset.carouselSetup) {
     quizSelectWrapEl.dataset.carouselSetup = "1";
@@ -1412,7 +1488,8 @@ function renderQuestionsList() {
 
       const textSpan = document.createElement("span");
       textSpan.className = "question-list-text";
-      textSpan.textContent = q.text || "";
+      const typeLabel = q.type === "open" ? " (" + t("questionTypeOpen") + ")" : q.type === "match" ? " (" + t("questionTypeMatch") + ")" : "";
+      textSpan.textContent = (q.text || "").trim().slice(0, 60) + (typeLabel || "") + ((q.text || "").trim().length > 60 ? "…" : "");
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "secondary-btn small-btn question-delete-btn";
@@ -1562,32 +1639,66 @@ function removeOptionRow(index) {
   setOptionTexts(savedTexts);
 }
 
+function showQuestionTypePanel(type) {
+  currentQuestionType = type;
+  ["choice", "open", "match"].forEach((t) => {
+    const tab = document.getElementById("qtype-tab-" + t);
+    const panel = document.getElementById("qtype-panel-" + t);
+    if (tab) {
+      tab.classList.toggle("active", t === type);
+      tab.setAttribute("aria-selected", t === type ? "true" : "false");
+    }
+    if (panel) {
+      panel.classList.toggle("question-type-panel-active", t === type);
+      panel.hidden = t !== type;
+    }
+  });
+}
+
 function loadQuestionIntoForm(index) {
   const quiz = quizzes.find((q) => q.id === currentQuizForEdit);
   if (!quiz || !quiz.questions[index]) return;
   const q = quiz.questions[index];
-  const textEl = document.getElementById("single-question-text");
-  const correctEl = document.getElementById("single-correct-answer");
-  if (textEl) textEl.value = q.text || "";
-  const opts = q.options || [];
-  const count = Math.max(MIN_OPTIONS, Math.min(MAX_OPTIONS, opts.length));
-  editFormOptionImages = [];
-  for (let i = 0; i < count; i++) {
-    const opt = opts[i];
-    editFormOptionImages.push(getOptionImage(opt) || null);
+  const type = q.type || "choice";
+  showQuestionTypePanel(type);
+  if (type === "choice") {
+    const textEl = document.getElementById("single-question-text");
+    const correctEl = document.getElementById("single-correct-answer");
+    if (textEl) textEl.value = q.text || "";
+    const opts = q.options || [];
+    const count = Math.max(MIN_OPTIONS, Math.min(MAX_OPTIONS, opts.length));
+    editFormOptionImages = [];
+    for (let i = 0; i < count; i++) {
+      const opt = opts[i];
+      editFormOptionImages.push(getOptionImage(opt) || null);
+    }
+    if (editFormOptionImages.length < MIN_OPTIONS) {
+      while (editFormOptionImages.length < MIN_OPTIONS) editFormOptionImages.push(null);
+    }
+    renderOptionRows();
+    opts.forEach((opt, i) => {
+      const letter = OPTION_LETTERS[i];
+      const el = document.getElementById(`single-option-${letter}`);
+      if (el) el.value = getOptionText(opt) || "";
+    });
+    if (correctEl) correctEl.value = String(Math.min(q.correctIndex ?? 0, editFormOptionImages.length - 1));
+    editFormQuestionImage = q.image || null;
+    updateQuestionImagePreview();
+  } else if (type === "open") {
+    const textEl = document.getElementById("open-question-text");
+    const ansEl = document.getElementById("open-expected-answer");
+    if (textEl) textEl.value = q.text || "";
+    if (ansEl) ansEl.value = q.expectedAnswer || "";
+    openEditFormQuestionImage = q.image || null;
+    updateOpenQuestionImagePreview();
+  } else if (type === "match") {
+    const textEl = document.getElementById("match-question-text");
+    if (textEl) textEl.value = q.text || "";
+    editFormMatchPairs = Array.isArray(q.pairs) && q.pairs.length
+      ? q.pairs.slice(0, MAX_MATCH_PAIRS).map((p) => ({ left: p.left || "", right: p.right || "" }))
+      : [{ left: "", right: "" }];
+    renderMatchPairsContainer();
   }
-  if (editFormOptionImages.length < MIN_OPTIONS) {
-    while (editFormOptionImages.length < MIN_OPTIONS) editFormOptionImages.push(null);
-  }
-  renderOptionRows();
-  opts.forEach((opt, i) => {
-    const letter = OPTION_LETTERS[i];
-    const el = document.getElementById(`single-option-${letter}`);
-    if (el) el.value = getOptionText(opt) || "";
-  });
-  if (correctEl) correctEl.value = String(Math.min(q.correctIndex ?? 0, editFormOptionImages.length - 1));
-  editFormQuestionImage = q.image || null;
-  updateQuestionImagePreview();
 }
 
 function updateQuestionImagePreview() {
@@ -1634,7 +1745,58 @@ function updateOptionImagePreview(optionIndex) {
   }
 }
 
+function updateOpenQuestionImagePreview() {
+  const wrap = document.getElementById("open-question-image-wrap");
+  const preview = document.getElementById("open-question-image-preview");
+  const addBtn = document.getElementById("open-question-image-add");
+  const safeSrc = sanitizeImageSrc(openEditFormQuestionImage);
+  if (!preview) return;
+  if (safeSrc) {
+    preview.innerHTML = `<img src="${safeSrc.replace(/"/g, "&quot;")}" alt="" />`;
+    if (wrap) wrap.classList.remove("hidden");
+    if (addBtn) addBtn.classList.add("hidden");
+  } else {
+    preview.innerHTML = "";
+    if (wrap) wrap.classList.add("hidden");
+    if (addBtn) addBtn.classList.remove("hidden");
+  }
+}
+
+function renderMatchPairsContainer() {
+  const container = document.getElementById("match-pairs-container");
+  const addBtn = document.getElementById("match-add-pair-btn");
+  if (!container) return;
+  container.innerHTML = "";
+  editFormMatchPairs.forEach((pair, i) => {
+    const row = document.createElement("div");
+    row.className = "match-pair-row field";
+    row.innerHTML = `
+      <label class="match-pair-label">${i + 1}.</label>
+      <input type="text" class="match-pair-left" data-index="${i}" placeholder="Sol" value="${escapeHtml(pair.left)}" />
+      <span class="match-pair-arrow" aria-hidden="true">↔</span>
+      <input type="text" class="match-pair-right" data-index="${i}" placeholder="Sağ" value="${escapeHtml(pair.right)}" />
+      ${editFormMatchPairs.length > 1 ? `<button type="button" class="secondary-btn small-btn match-pair-remove" data-index="${i}" title="${escapeHtml(t("delete"))}">×</button>` : ""}
+    `;
+    const leftInput = row.querySelector(".match-pair-left");
+    const rightInput = row.querySelector(".match-pair-right");
+    const removeBtn = row.querySelector(".match-pair-remove");
+    leftInput.addEventListener("input", () => { editFormMatchPairs[i].left = leftInput.value; });
+    rightInput.addEventListener("input", () => { editFormMatchPairs[i].right = rightInput.value; });
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        editFormMatchPairs.splice(i, 1);
+        if (editFormMatchPairs.length === 0) editFormMatchPairs = [{ left: "", right: "" }];
+        renderMatchPairsContainer();
+      });
+    }
+    container.appendChild(row);
+  });
+  if (addBtn) addBtn.disabled = editFormMatchPairs.length >= MAX_MATCH_PAIRS;
+}
+
 function clearQuestionForm() {
+  currentQuestionType = "choice";
+  showQuestionTypePanel("choice");
   const textEl = document.getElementById("single-question-text");
   const correctEl = document.getElementById("single-correct-answer");
   if (textEl) textEl.value = "";
@@ -1643,6 +1805,16 @@ function clearQuestionForm() {
   updateQuestionImagePreview();
   renderOptionRows();
   if (correctEl) correctEl.value = "0";
+  const openTextEl = document.getElementById("open-question-text");
+  const openAnsEl = document.getElementById("open-expected-answer");
+  if (openTextEl) openTextEl.value = "";
+  if (openAnsEl) openAnsEl.value = "";
+  openEditFormQuestionImage = null;
+  updateOpenQuestionImagePreview();
+  const matchTextEl = document.getElementById("match-question-text");
+  if (matchTextEl) matchTextEl.value = "";
+  editFormMatchPairs = [{ left: "", right: "" }];
+  renderMatchPairsContainer();
 }
 
 function renderEditQuizList(page, _direction) {
@@ -2016,16 +2188,8 @@ function renderCurrentQuestion() {
 
   const qIndex = currentQuestionOrder[currentQuestionIndex];
   const q = currentQuiz.questions[qIndex];
+  const qType = q.type || "choice";
   quizProgressEl.textContent = `Question ${currentQuestionIndex + 1} / ${total}`;
-
-  const optsRaw = (q.options || []).map((o) => (typeof o === "string" ? { text: o } : o));
-  let displayOrder = optsRaw.map((_, i) => i);
-  if (shuffleOptionsEnabled && optsRaw.length > 1) {
-    for (let i = displayOrder.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [displayOrder[i], displayOrder[j]] = [displayOrder[j], displayOrder[i]];
-    }
-  }
 
   questionTextEl.innerHTML = "";
   const safeQImage = sanitizeImageSrc(q.image);
@@ -2042,6 +2206,93 @@ function renderCurrentQuestion() {
 
   optionsContainerEl.innerHTML = "";
   nextQuestionBtn.disabled = true;
+
+  if (qType === "open") {
+    const inputWrap = document.createElement("div");
+    inputWrap.className = "open-answer-wrap";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "open-answer-input";
+    input.placeholder = currentLang === "tr" ? "Cevabınızı yazın..." : "Type your answer...";
+    const checkBtn = document.createElement("button");
+    checkBtn.type = "button";
+    checkBtn.className = "primary-btn open-answer-check-btn";
+    checkBtn.textContent = currentLang === "tr" ? "Cevabı kontrol et" : "Check answer";
+    checkBtn.addEventListener("click", () => {
+      const userAnswer = (input.value || "").trim();
+      const expected = (q.expectedAnswer || "").trim();
+      const correct = expected && userAnswer && userAnswer.toLowerCase() === expected.toLowerCase();
+      if (correct) {
+        currentScore += 1;
+        updateScoreDisplay();
+        playCorrectVfx(checkBtn);
+        input.disabled = true;
+        checkBtn.disabled = true;
+        checkBtn.textContent = currentLang === "tr" ? "Doğru!" : "Correct!";
+        checkBtn.classList.add("correct");
+      } else {
+        if (soundEnabled) playAnswerSound(false);
+        checkBtn.classList.add("incorrect");
+        checkBtn.textContent = currentLang === "tr" ? "Yanlış, tekrar dene" : "Wrong, try again";
+      }
+      nextQuestionBtn.disabled = false;
+    });
+    inputWrap.appendChild(input);
+    inputWrap.appendChild(checkBtn);
+    optionsContainerEl.appendChild(inputWrap);
+    return;
+  }
+
+  if (qType === "match") {
+    const pairs = Array.isArray(q.pairs) ? q.pairs : [];
+    if (pairs.length === 0) {
+      nextQuestionBtn.disabled = false;
+      optionsContainerEl.textContent = currentLang === "tr" ? "Eşleştirme verisi yok." : "No matching data.";
+      return;
+    }
+    const rightOrder = pairs.map((_, i) => i);
+    for (let i = rightOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rightOrder[i], rightOrder[j]] = [rightOrder[j], rightOrder[i]];
+    }
+    const matchWrap = document.createElement("div");
+    matchWrap.className = "match-quiz-wrap";
+    matchWrap.dataset.rightOrder = JSON.stringify(rightOrder);
+    const leftCol = document.createElement("div");
+    leftCol.className = "match-column match-left";
+    const rightCol = document.createElement("div");
+    rightCol.className = "match-column match-right";
+    pairs.forEach((p, i) => {
+      const leftRow = document.createElement("div");
+      leftRow.className = "match-row match-left-row";
+      leftRow.dataset.pairIndex = String(i);
+      leftRow.textContent = p.left || "";
+      leftCol.appendChild(leftRow);
+    });
+    rightOrder.forEach((pairIdx) => {
+      const rightRow = document.createElement("div");
+      rightRow.className = "match-row match-right-row";
+      rightRow.draggable = true;
+      rightRow.dataset.pairIndex = String(pairIdx);
+      rightRow.textContent = (pairs[pairIdx] && pairs[pairIdx].right) || "";
+      rightCol.appendChild(rightRow);
+    });
+    matchWrap.appendChild(leftCol);
+    matchWrap.appendChild(rightCol);
+    optionsContainerEl.appendChild(matchWrap);
+    attachMatchDragListeners(matchWrap, pairs.length, () => { nextQuestionBtn.disabled = false; });
+    nextQuestionBtn.disabled = false;
+    return;
+  }
+
+  const optsRaw = (q.options || []).map((o) => (typeof o === "string" ? { text: o } : o));
+  let displayOrder = optsRaw.map((_, i) => i);
+  if (shuffleOptionsEnabled && optsRaw.length > 1) {
+    for (let i = displayOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [displayOrder[i], displayOrder[j]] = [displayOrder[j], displayOrder[i]];
+    }
+  }
 
   displayOrder.forEach((originalIdx, displayedIdx) => {
     const opt = optsRaw[originalIdx];
@@ -2063,6 +2314,47 @@ function renderCurrentQuestion() {
     btn.appendChild(textSpan);
     btn.addEventListener("click", () => handleAnswerClick(btn, displayedIdx));
     optionsContainerEl.appendChild(btn);
+  });
+}
+
+function attachMatchDragListeners(matchWrap, pairCount, onReorder) {
+  const rightCol = matchWrap.querySelector(".match-right");
+  if (!rightCol) return;
+  const rows = rightCol.querySelectorAll(".match-right-row");
+  rows.forEach((row) => {
+    row.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", row.dataset.pairIndex);
+      e.dataTransfer.effectAllowed = "move";
+      row.classList.add("match-dragging");
+    });
+    row.addEventListener("dragend", () => row.classList.remove("match-dragging"));
+  });
+  rightCol.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const target = e.target.closest(".match-right-row");
+    if (target) target.classList.add("match-drag-over");
+  });
+  rightCol.addEventListener("dragleave", (e) => {
+    if (!e.relatedTarget || !rightCol.contains(e.relatedTarget)) rightCol.querySelectorAll(".match-drag-over").forEach((r) => r.classList.remove("match-drag-over"));
+  });
+  rightCol.addEventListener("drop", (e) => {
+    e.preventDefault();
+    rightCol.querySelectorAll(".match-drag-over").forEach((r) => r.classList.remove("match-drag-over"));
+    const fromIdx = e.dataTransfer.getData("text/plain");
+    const target = e.target.closest(".match-right-row");
+    if (!target || fromIdx === undefined) return;
+    const fromEl = rightCol.querySelector(`.match-right-row[data-pair-index="${fromIdx}"]`);
+    if (fromEl && fromEl !== target) {
+      const all = [...rightCol.querySelectorAll(".match-right-row")];
+      const fromI = all.indexOf(fromEl);
+      const toI = all.indexOf(target);
+      if (fromI >= 0 && toI >= 0) {
+        if (fromI < toI) target.parentNode.insertBefore(fromEl, target.nextSibling);
+        else target.parentNode.insertBefore(fromEl, target);
+        if (onReorder) onReorder();
+      }
+    }
   });
 }
 
@@ -2106,6 +2398,22 @@ function updateScoreDisplay() {
 
 function nextQuestion() {
   if (!currentQuiz) return;
+  const qIndex = currentQuestionOrder[currentQuestionIndex];
+  const q = currentQuiz.questions[qIndex];
+  if (q && q.type === "match") {
+    const matchWrap = optionsContainerEl.querySelector(".match-quiz-wrap");
+    if (matchWrap) {
+      const rightCol = matchWrap.querySelector(".match-right");
+      const rows = rightCol ? rightCol.querySelectorAll(".match-right-row") : [];
+      let correct = 0;
+      rows.forEach((row, slot) => {
+        const pairIndex = parseInt(row.dataset.pairIndex, 10);
+        if (!isNaN(pairIndex) && pairIndex === slot) correct++;
+      });
+      currentScore += correct;
+      updateScoreDisplay();
+    }
+  }
   currentQuestionIndex += 1;
   if (typeof window !== "undefined" && window.location && playRouteBase) window.location.hash = playRouteBase + "/" + currentQuestionIndex;
   renderCurrentQuestion();
@@ -2557,16 +2865,31 @@ async function handleSaveQuiz() {
   }
 
   const quiz = editingQuizId ? quizzes.find((q) => q.id === editingQuizId) : quizzes[quizzes.length - 1];
+  saveQuizzes();
+  if (!supabaseClient && typeof window !== "undefined") {
+    await new Promise(function (resolve) {
+      ensureSupabaseThenRun(function () { resolve(); });
+    });
+  }
+  if (supabaseClient && !currentAuthUser) {
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      currentAuthUser = session?.user ?? null;
+    } catch (_) {}
+  }
   if (supabaseClient && currentAuthUser && quiz) {
     try {
       await saveQuizToCloud(quiz);
       await fetchUserQuizzes();
     } catch (e) {
-      alert(t("importError") || "Could not save to cloud.");
-      return;
+      try {
+        await saveQuizToCloud(quiz);
+        await fetchUserQuizzes();
+      } catch (e2) {
+        console.warn("saveQuizToCloud retry failed", e2);
+        alert(currentLang === "tr" ? "Quiz cihaza kaydedildi; bulut senkronizasyonu başarısız. İnternet kontrolü sonrası tekrar deneyin." : "Quiz saved locally; cloud sync failed. Check connection and try again.");
+      }
     }
-  } else {
-    saveQuizzes();
   }
   refreshQuizSelect();
 
@@ -2575,7 +2898,6 @@ async function handleSaveQuiz() {
   alert(msg);
   resetCreateQuizForm();
   showView("createQuiz", "back");
-  // Liste, createQuiz görünür olduktan sonra çizilsin; yoksa wrap genişliği 0 olur ve quizler yan yana sıkışır
   requestAnimationFrame(function () {
     requestAnimationFrame(function () {
       refreshEditQuizSelect();
@@ -2721,50 +3043,75 @@ async function loadProfileSharedQuizzes(optionalUserId) {
   if (!userId) return;
   listEl.innerHTML = "";
   titleEl?.classList.add("hidden");
-  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,quiz_id,show_in_discover").eq("user_id", userId).order("created_at", { ascending: false });
+  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count,show_in_discover,short_code,category,category_sub").eq("user_id", userId).order("created_at", { ascending: false });
   const rows = (rawRows || []).filter(function (r) { return r.show_in_discover === true; });
   if (!rows.length) return;
   titleEl?.classList.remove("hidden");
   if (titleEl) titleEl.textContent = t("profileSharedQuizzes");
   const quizIds = rows.map((r) => r.quiz_id);
-  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds);
+  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").in("id", quizIds);
   const byId = {};
   if (quizData) for (const q of quizData) byId[q.id] = q;
   const ratingsMap = currentAuthUser ? await getQuizRatings(quizIds) : {};
   const isOwnProfile = userId === (currentAuthUser && currentAuthUser.id);
+  let authorName = "—";
+  const { data: authorProf } = await supabaseClient.from("profiles").select("nickname").eq("id", userId).maybeSingle();
+  if (authorProf && authorProf.nickname) authorName = authorProf.nickname;
+  const catLabel = currentLang === "tr" ? "Kategori" : "Category";
   for (const r of rows) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
     const ri = ratingsMap[r.quiz_id];
     const avgStr = formatRating(ri ? ri.avg : null);
     const ratingCount = ri ? ri.count : 0;
-    const card = document.createElement("article");
-    card.className = "discover-card profile-shared-card";
-    card.innerHTML = `
-      <div class="discover-card-main">
-        <h3 class="discover-card-title">${escapeHtml(quiz.name)}</h3>
-        <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
-      </div>
-      <div class="profile-shared-card-right">
-        <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}<span class="discover-rating-count"> (${ratingCount})</span></div>
-        ${isOwnProfile ? `<button type="button" class="profile-card-menu-btn icon-btn" aria-label="${escapeHtml(t("privacy"))}">⋮</button>` : ""}
-      </div>
+    const viewCount = r.view_count != null ? r.view_count : 0;
+    const viewStr = currentLang === "tr" ? `${viewCount} giriş` : `${viewCount} views`;
+    const categoryLabel = getCategoryLabel(r.category);
+    const descShort = ((quiz.description || "").trim() || "—").slice(0, 80);
+    const descDisplay = descShort.length >= 80 ? descShort + "…" : descShort;
+    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    const coverUrlSafe = coverUrl.replace(/"/g, "%22").replace(/'/g, "%27");
+    discoverCardCache[quiz.id] = { quiz: quiz, author: authorName, ratingInfo: ri || null, publicRowId: r.id, shortCode: r.short_code || null };
+    const wrap = document.createElement("div");
+    wrap.className = "discover-feed-card-wrap profile-shared-card-wrap";
+    wrap.setAttribute("role", "listitem");
+    wrap.dataset.quizId = quiz.id;
+    const menuLabel = t("privacy");
+    wrap.innerHTML = `
+      <button type="button" class="discover-card discover-feed-card">
+        <span class="discover-card-image-wrap">
+          <span class="discover-card-image"></span>
+          <span class="discover-card-badge discover-card-views">${escapeHtml(viewStr)}</span>
+          <span class="discover-card-badge discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${escapeHtml(avgStr)}<span class="discover-rating-count"> (${ratingCount})</span></span>
+        </span>
+        <span class="discover-card-meta-row">
+          <span class="discover-card-category">${escapeHtml(catLabel)}: ${escapeHtml(categoryLabel)}</span>
+          <span class="discover-card-author">${escapeHtml(authorName)}</span>
+        </span>
+        <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
+        <span class="discover-card-desc">${escapeHtml(descDisplay)}</span>
+      </button>
+      ${isOwnProfile ? `<button type="button" class="discover-card-menu-btn profile-card-menu-btn" aria-label="${escapeHtml(menuLabel)}">⋮</button>` : ""}
     `;
-    card.addEventListener("click", function (ev) {
-      if (ev.target.closest(".profile-card-menu-btn") || ev.target.closest(".profile-shared-dropdown")) return;
-      openDiscoverPreview(quiz, "", ratingsMap[r.quiz_id] || null);
+    const cardBtn = wrap.querySelector(".discover-feed-card");
+    const imgEl = wrap.querySelector(".discover-card-image");
+    if (imgEl) imgEl.style.backgroundImage = "url(\"" + coverUrlSafe + "\")";
+    cardBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openDiscoverPreview(quiz, authorName, ri || null, r.id);
     });
     if (isOwnProfile) {
-      const menuBtn = card.querySelector(".profile-card-menu-btn");
+      const menuBtn = wrap.querySelector(".profile-card-menu-btn");
       if (menuBtn) {
         menuBtn.addEventListener("click", function (ev) {
           ev.preventDefault();
           ev.stopPropagation();
-          openProfileSharedDropdown(ev.currentTarget, card, quiz, r, listEl);
+          openProfileSharedDropdown(ev.currentTarget, wrap, quiz, r, listEl);
         });
       }
     }
-    listEl.appendChild(card);
+    listEl.appendChild(wrap);
   }
 }
 
@@ -3713,6 +4060,9 @@ async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   }
   if (titleEl) titleEl.textContent = quiz.name || "";
   if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
+  const qCount = quiz.questions ? quiz.questions.length : 0;
+  const questionCountEl = document.getElementById("discover-preview-question-count");
+  if (questionCountEl) questionCountEl.textContent = qCount === 1 ? (currentLang === "tr" ? "1 soru" : "1 question") : (currentLang === "tr" ? qCount + " soru" : qCount + " questions");
   renderPreviewRating(ratingEl, quiz.id, ratingInfo).catch(() => {});
   updateDiscoverPreviewShuffleUi();
   const shuffleLabel = document.getElementById("discover-preview-shuffle-label");
@@ -3832,11 +4182,66 @@ function closeDiscoverPreview() {
   }
 }
 
+/** Link ile açılış: tam ekran ön izleme sayfası. publicRow: { id, short_code?, view_count? } */
+function openQuizLinkPreview(quiz, publicRow, ratingInfo) {
+  if (!quiz) return;
+  var id = quiz.id;
+  var publicRowId = publicRow && publicRow.id;
+  var shortCode = (publicRow && publicRow.short_code) || null;
+  discoverCardCache[id] = { quiz: quiz, author: "—", ratingInfo: ratingInfo || null, publicRowId: publicRowId || null, shortCode: shortCode };
+  if (publicRowId && supabaseClient) {
+    try {
+      supabaseClient.rpc("increment_public_quiz_view", { pid: publicRowId }).catch(function () {});
+    } catch (err) {}
+  }
+  var coverEl = document.getElementById("quiz-link-preview-cover");
+  var titleEl = document.getElementById("quiz-link-preview-title");
+  var descEl = document.getElementById("quiz-link-preview-desc");
+  var metaEl = document.getElementById("quiz-link-preview-meta");
+  var ratingEl = document.getElementById("quiz-link-preview-rating");
+  var viewCount = (publicRow && (publicRow.view_count != null)) ? Number(publicRow.view_count) : 0;
+  var qCount = quiz.questions ? quiz.questions.length : 0;
+  if (coverEl) {
+    var coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    coverEl.style.backgroundImage = "url(\"" + coverUrl.replace(/"/g, "%22").replace(/'/g, "%27") + "\")";
+  }
+  if (titleEl) titleEl.textContent = quiz.name || "";
+  if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
+  if (metaEl) {
+    var metaParts = [];
+    metaParts.push(qCount === 1 ? (currentLang === "tr" ? "1 soru" : "1 question") : (currentLang === "tr" ? qCount + " soru" : qCount + " questions"));
+    metaParts.push(currentLang === "tr" ? viewCount + " giriş" : viewCount + " views");
+    metaEl.textContent = metaParts.join(" · ");
+  }
+  if (ratingEl) {
+    ratingEl.innerHTML = "";
+    var avg = ratingInfo ? ratingInfo.avg : 0;
+    var count = ratingInfo ? ratingInfo.count : 0;
+    var avgStr = formatRating(avg);
+    var label = document.createElement("span");
+    label.className = "discover-preview-rating-label";
+    label.innerHTML = "<span class=\"discover-rating-stars\">★</span> " + escapeHtml(avgStr) + " <span class=\"discover-rating-count\">(" + count + ")</span>";
+    ratingEl.appendChild(label);
+  }
+  var shuffleLabel = document.getElementById("quiz-link-preview-shuffle-label");
+  var shuffleOptLabel = document.getElementById("quiz-link-preview-shuffle-options-label");
+  if (shuffleLabel) shuffleLabel.textContent = t("randomOrder") || (currentLang === "tr" ? "Soruları rastgele sırala" : "Shuffle questions");
+  if (shuffleOptLabel) shuffleOptLabel.textContent = t("shuffleOptions") || (currentLang === "tr" ? "Şıkları rastgele sırala" : "Shuffle options");
+  var shufBtn = document.getElementById("quiz-link-preview-shuffle");
+  var shufOptBtn = document.getElementById("quiz-link-preview-shuffle-options");
+  if (shufBtn) shufBtn.classList.toggle("active", !!shuffleEnabled);
+  if (shufOptBtn) shufOptBtn.classList.toggle("active", !!shuffleOptionsEnabled);
+  linkPreviewQuiz = quiz;
+  showView("quizLinkPreview");
+}
+
+var linkPreviewQuiz = null;
+
 function playDiscoverQuiz(quiz) {
   lastPlayedQuizFromShared = true;
   var id = quiz.id;
   if (!quizzes.find(function (q) { return q.id === id; })) {
-    quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
+    quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
   }
   var cached = discoverCardCache[id];
   var shortCode = cached && cached.shortCode;
@@ -3894,6 +4299,32 @@ async function copyQuizToMyQuizzes(quiz) {
     shuffleOptionsEnabled = !shuffleOptionsEnabled;
     saveSettings();
     updateDiscoverPreviewShuffleUi();
+    if (shuffleOptionsToggleBtn) shuffleOptionsToggleBtn.classList.toggle("active", !!shuffleOptionsEnabled);
+  });
+})();
+
+(function initQuizLinkPreview() {
+  var startBtn = document.getElementById("quiz-link-preview-start-btn");
+  var backBtn = document.getElementById("quiz-link-preview-back");
+  var shuf = document.getElementById("quiz-link-preview-shuffle");
+  var shufOpt = document.getElementById("quiz-link-preview-shuffle-options");
+  if (startBtn) startBtn.addEventListener("click", function () {
+    if (linkPreviewQuiz) {
+      playDiscoverQuiz(linkPreviewQuiz);
+      linkPreviewQuiz = null;
+    }
+  });
+  if (backBtn) backBtn.setAttribute("data-back", "main-menu");
+  if (shuf) shuf.addEventListener("click", function () {
+    shuffleEnabled = !shuffleEnabled;
+    saveSettings();
+    shuf.classList.toggle("active", !!shuffleEnabled);
+    if (shuffleToggleBtn) shuffleToggleBtn.classList.toggle("active", !!shuffleEnabled);
+  });
+  if (shufOpt) shufOpt.addEventListener("click", function () {
+    shuffleOptionsEnabled = !shuffleOptionsEnabled;
+    saveSettings();
+    shufOpt.classList.toggle("active", !!shuffleOptionsEnabled);
     if (shuffleOptionsToggleBtn) shuffleOptionsToggleBtn.classList.toggle("active", !!shuffleOptionsEnabled);
   });
 })();
@@ -4242,59 +4673,91 @@ if (addQuestionBtn) {
   });
 }
 
-const manualAddQuestionBtn = document.getElementById("manual-add-question-btn");
 const manualAddHintEl = document.getElementById("manual-add-hint");
-if (manualAddQuestionBtn) {
-  manualAddQuestionBtn.addEventListener("click", () => {
-    const quizId = editingQuizId || selectedEditQuizId || "";
-    if (!quizId) {
-      if (manualAddHintEl) {
-        manualAddHintEl.textContent = t("manualAddHint");
-        manualAddHintEl.classList.remove("hidden");
-        setTimeout(() => manualAddHintEl.classList.add("hidden"), 4000);
-      }
-      return;
+function openAddQuestionWithType(type) {
+  const quizId = editingQuizId || selectedEditQuizId || "";
+  if (!quizId) {
+    if (manualAddHintEl) {
+      manualAddHintEl.textContent = t("manualAddHint");
+      manualAddHintEl.classList.remove("hidden");
+      setTimeout(() => manualAddHintEl.classList.add("hidden"), 4000);
     }
-    if (manualAddHintEl) manualAddHintEl.classList.add("hidden");
-    fromCreateQuizPage = true;
-    if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
-    currentQuizForEdit = quizId;
-    currentQuestionEditIndex = -1;
-    clearQuestionForm();
-    const titleEl = document.getElementById("question-edit-title");
-    if (titleEl) titleEl.textContent = t("newQuestionTitle");
-    showView("quizQuestionEdit");
-  });
+    return;
+  }
+  if (manualAddHintEl) manualAddHintEl.classList.add("hidden");
+  fromCreateQuizPage = true;
+  if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
+  currentQuizForEdit = quizId;
+  currentQuestionEditIndex = -1;
+  clearQuestionForm();
+  showQuestionTypePanel(type);
+  const titleEl = document.getElementById("question-edit-title");
+  if (titleEl) titleEl.textContent = t("newQuestionTitle");
+  showView("quizQuestionEdit");
 }
+document.querySelectorAll(".manual-add-type-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const type = btn.dataset.type || "choice";
+    openAddQuestionWithType(type);
+  });
+});
 
 const saveSingleQuestionBtn = document.getElementById("save-single-question-btn");
 const cancelQuestionEditBtn = document.getElementById("cancel-question-edit-btn");
 if (saveSingleQuestionBtn) {
   saveSingleQuestionBtn.addEventListener("click", () => {
-    const textEl = document.getElementById("single-question-text");
-    const correctEl = document.getElementById("single-correct-answer");
-    const text = (textEl && textEl.value.trim()) || "";
-    const n = editFormOptionImages.length;
-    const options = [];
-    for (let i = 0; i < n; i++) {
-      const letter = OPTION_LETTERS[i];
-      const el = document.getElementById(`single-option-${letter}`);
-      const optionText = (el && el.value.trim()) || "";
-      options.push({ text: optionText, image: editFormOptionImages[i] || undefined });
-    }
-    const correctIndex = correctEl ? parseInt(correctEl.value, 10) : 0;
-    if (!text) {
-      alert(t("alertQuestionEmpty"));
-      return;
-    }
-    if (options.length < MIN_OPTIONS || options.length > MAX_OPTIONS) return;
-    if (options.some((o) => !(o.text && o.text.trim()) && !o.image)) {
-      alert(t("alertOptionsEmpty"));
-      return;
-    }
     const quiz = quizzes.find((q) => q.id === currentQuizForEdit);
     if (!quiz) return;
-    const q = { text, image: editFormQuestionImage || undefined, options, correctIndex };
+    let q;
+    if (currentQuestionType === "open") {
+      const textEl = document.getElementById("open-question-text");
+      const ansEl = document.getElementById("open-expected-answer");
+      const text = (textEl && textEl.value.trim()) || "";
+      const expectedAnswer = (ansEl && ansEl.value.trim()) || "";
+      if (!text) {
+        alert(t("alertQuestionEmpty"));
+        return;
+      }
+      if (!expectedAnswer) {
+        alert(currentLang === "tr" ? "Doğru cevabı girin." : "Enter the correct answer.");
+        return;
+      }
+      q = { type: "open", text, image: openEditFormQuestionImage || undefined, expectedAnswer };
+    } else if (currentQuestionType === "match") {
+      const textEl = document.getElementById("match-question-text");
+      const text = (textEl && textEl.value.trim()) || "";
+      const pairs = editFormMatchPairs
+        .map((p) => ({ left: (p.left || "").trim(), right: (p.right || "").trim() }))
+        .filter((p) => p.left || p.right);
+      if (pairs.length === 0) {
+        alert(currentLang === "tr" ? "En az bir eşleştirme çifti girin." : "Enter at least one matching pair.");
+        return;
+      }
+      q = { type: "match", text: text || undefined, pairs };
+    } else {
+      const textEl = document.getElementById("single-question-text");
+      const correctEl = document.getElementById("single-correct-answer");
+      const text = (textEl && textEl.value.trim()) || "";
+      const n = editFormOptionImages.length;
+      const options = [];
+      for (let i = 0; i < n; i++) {
+        const letter = OPTION_LETTERS[i];
+        const el = document.getElementById(`single-option-${letter}`);
+        const optionText = (el && el.value.trim()) || "";
+        options.push({ text: optionText, image: editFormOptionImages[i] || undefined });
+      }
+      const correctIndex = correctEl ? parseInt(correctEl.value, 10) : 0;
+      if (!text) {
+        alert(t("alertQuestionEmpty"));
+        return;
+      }
+      if (options.length < MIN_OPTIONS || options.length > MAX_OPTIONS) return;
+      if (options.some((o) => !(o.text && o.text.trim()) && !o.image)) {
+        alert(t("alertOptionsEmpty"));
+        return;
+      }
+      q = { text, image: editFormQuestionImage || undefined, options, correctIndex };
+    }
     if (currentQuestionEditIndex >= 0 && quiz.questions[currentQuestionEditIndex] !== undefined) {
       quiz.questions[currentQuestionEditIndex] = q;
     } else {
@@ -4355,6 +4818,46 @@ if (singleQuestionImageRemove) {
   singleQuestionImageRemove.addEventListener("click", () => {
     editFormQuestionImage = null;
     updateQuestionImagePreview();
+  });
+}
+document.querySelectorAll(".question-type-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const type = tab.dataset.type;
+    if (type) showQuestionTypePanel(type);
+  });
+});
+const openQuestionImageAdd = document.getElementById("open-question-image-add");
+const openQuestionImageInput = document.getElementById("open-question-image");
+const openQuestionImageRemove = document.getElementById("open-question-image-remove");
+if (openQuestionImageAdd) {
+  openQuestionImageAdd.addEventListener("click", () => {
+    const wrap = document.getElementById("open-question-image-wrap");
+    if (wrap) wrap.classList.remove("hidden");
+    openQuestionImageAdd.classList.add("hidden");
+  });
+}
+if (openQuestionImageInput) {
+  openQuestionImageInput.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    resizeImageToDataUrl(file).then((dataUrl) => {
+      openEditFormQuestionImage = dataUrl;
+      updateOpenQuestionImagePreview();
+    }).catch(() => {});
+  });
+}
+if (openQuestionImageRemove) {
+  openQuestionImageRemove.addEventListener("click", () => {
+    openEditFormQuestionImage = null;
+    updateOpenQuestionImagePreview();
+  });
+}
+const matchAddPairBtn = document.getElementById("match-add-pair-btn");
+if (matchAddPairBtn) {
+  matchAddPairBtn.addEventListener("click", () => {
+    if (editFormMatchPairs.length >= MAX_MATCH_PAIRS) return;
+    editFormMatchPairs.push({ left: "", right: "" });
+    renderMatchPairsContainer();
   });
 }
 
@@ -4523,6 +5026,28 @@ if (hubTabQuestions) {
     renderQuestionsList();
   });
 }
+
+function showQuizFormSubPanel(which) {
+  const subTabManual = document.getElementById("sub-tab-manual");
+  const subTabBulk = document.getElementById("sub-tab-bulk");
+  const panelManual = document.getElementById("hub-sub-panel-manual");
+  const panelBulk = document.getElementById("hub-sub-panel-bulk");
+  if (which === "bulk") {
+    if (subTabManual) { subTabManual.classList.remove("active"); subTabManual.setAttribute("aria-selected", "false"); }
+    if (subTabBulk) { subTabBulk.classList.add("active"); subTabBulk.setAttribute("aria-selected", "true"); }
+    if (panelManual) { panelManual.classList.remove("hub-sub-panel-active"); panelManual.hidden = true; }
+    if (panelBulk) { panelBulk.classList.add("hub-sub-panel-active"); panelBulk.hidden = false; }
+  } else {
+    if (subTabManual) { subTabManual.classList.add("active"); subTabManual.setAttribute("aria-selected", "true"); }
+    if (subTabBulk) { subTabBulk.classList.remove("active"); subTabBulk.setAttribute("aria-selected", "false"); }
+    if (panelManual) { panelManual.classList.add("hub-sub-panel-active"); panelManual.hidden = false; }
+    if (panelBulk) { panelBulk.classList.remove("hub-sub-panel-active"); panelBulk.hidden = true; }
+  }
+}
+const subTabManualBtn = document.getElementById("sub-tab-manual");
+const subTabBulkBtn = document.getElementById("sub-tab-bulk");
+if (subTabManualBtn) subTabManualBtn.addEventListener("click", () => showQuizFormSubPanel("manual"));
+if (subTabBulkBtn) subTabBulkBtn.addEventListener("click", () => showQuizFormSubPanel("bulk"));
 
 if (clearEditQuizBtn) {
   clearEditQuizBtn.addEventListener("click", () => {
@@ -4885,7 +5410,7 @@ function handlePlayHash() {
 
   function openQuizByLink() {
     if (!supabaseClient) return;
-    function openWithQuiz(quiz, publicRowId) {
+    function openWithQuiz(quiz, publicRow) {
       if (!quiz) {
         alert(currentLang === "tr" ? "Quiz bulunamadı veya erişim yok." : "Quiz not found or access denied.");
         return;
@@ -4897,14 +5422,17 @@ function handlePlayHash() {
         startQuizAtPage(quiz, startAtPage, routeBase);
         return;
       }
-      showView("discover");
-      loadDiscoverQuizzes();
-      var ratingInfo = null;
-      setTimeout(function () { openDiscoverPreview(quiz, "—", ratingInfo, publicRowId); }, 100);
+      var publicRowId = publicRow && publicRow.id;
+      getQuizRatings([quiz.id]).then(function (ratingMap) {
+        var ratingInfo = ratingMap && ratingMap[quiz.id] ? ratingMap[quiz.id] : null;
+        openQuizLinkPreview(quiz, publicRow || { id: publicRowId }, ratingInfo);
+      }).catch(function () {
+        openQuizLinkPreview(quiz, publicRow || { id: publicRowId }, null);
+      });
     }
     if (resolveShort) {
       function tryOpenByShortCode(attempt) {
-        supabaseClient.from("public_quizzes").select("quiz_id, id").eq("short_code", quizId).limit(1).maybeSingle()
+        supabaseClient.from("public_quizzes").select("quiz_id, id, short_code, view_count").eq("short_code", quizId).limit(1).maybeSingle()
           .then(function (rowRes) {
             var row = rowRes?.data;
             var err = rowRes?.error;
@@ -4931,7 +5459,7 @@ function handlePlayHash() {
                   setTimeout(function () { tryOpenByShortCode(attempt + 1); }, 1000);
                   return;
                 }
-                openWithQuiz(quizRes?.data, row.id);
+                openWithQuiz(quizRes?.data, row);
               });
           })
           .catch(function (e) {
@@ -4944,11 +5472,11 @@ function handlePlayHash() {
     }
     Promise.all([
       supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").eq("id", quizId).maybeSingle(),
-      supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle()
+      supabaseClient.from("public_quizzes").select("id, short_code, view_count").eq("quiz_id", quizId).limit(1).maybeSingle()
     ]).then(function (results) {
       var quiz = results[0]?.data;
-      var publicRowId = results[1]?.data?.id || null;
-      openWithQuiz(quiz, publicRowId);
+      var publicRow = results[1]?.data || null;
+      openWithQuiz(quiz, publicRow);
     }).catch(function () {
       alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
     });

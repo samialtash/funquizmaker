@@ -118,6 +118,27 @@
         <div id="lang-select-list" class="lang-select-list"></div>
       </div>
 
+      <!-- Link ile açılış: tam ekran ön izleme (resim solda, bilgi sağda) -->
+      <div id="quiz-link-preview-view" class="view quiz-link-preview-view">
+        <button type="button" id="quiz-link-preview-back" class="back-btn" data-back="main-menu">← Back</button>
+        <div class="quiz-link-preview-scroll">
+          <div class="quiz-link-preview-hero">
+            <div id="quiz-link-preview-cover" class="quiz-link-preview-cover" role="img" aria-label="Quiz kapağı"></div>
+            <div class="quiz-link-preview-body">
+              <h1 id="quiz-link-preview-title" class="quiz-link-preview-title"></h1>
+              <p id="quiz-link-preview-desc" class="quiz-link-preview-desc"></p>
+              <p id="quiz-link-preview-meta" class="quiz-link-preview-meta"></p>
+              <div id="quiz-link-preview-rating" class="quiz-link-preview-rating"></div>
+              <div class="quiz-link-preview-toggles">
+                <button type="button" id="quiz-link-preview-shuffle" class="secondary-btn toggle-pill"><span class="toggle-indicator"></span><span id="quiz-link-preview-shuffle-label" class="toggle-label">Soruları rastgele sırala</span></button>
+                <button type="button" id="quiz-link-preview-shuffle-options" class="secondary-btn toggle-pill"><span class="toggle-indicator"></span><span id="quiz-link-preview-shuffle-options-label" class="toggle-label">Şıkları rastgele sırala</span></button>
+              </div>
+              <button type="button" id="quiz-link-preview-start-btn" class="primary-btn quiz-link-preview-start-btn">Quiz'i Başlat</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Quizleri keşfet: herkese açık quizler, karta tıklanınca popup → Quiz'i Başlat -->
       <div id="discover-view" class="view">
         <button type="button" id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
@@ -149,7 +170,7 @@
           <span id="profile-friend-status" class="hint hidden"></span>
         </div>
         <h2 id="profile-shared-title" class="profile-section-title hidden">Profilinde paylaşılan quizler</h2>
-        <div id="profile-shared-list" class="profile-shared-list"></div>
+        <div id="profile-shared-list" class="profile-shared-list discover-feed-grid"></div>
       </div>
       <!-- Profil düzenle: avatar + nickname (sadece kendi profili) -->
       <div id="profile-edit-view" class="view">
@@ -254,28 +275,66 @@
       <div id="quiz-question-edit-view" class="view">
         <button id="back-btn-question-edit" class="back-btn" data-back="quiz-questions-list">← Back</button>
         <h1 id="question-edit-title" class="title">Edit question</h1>
-        <div class="field">
-          <label id="question-text-label" for="single-question-text">Question text</label>
-          <textarea id="single-question-text" rows="4" placeholder="Question text..."></textarea>
-        </div>
-        <div class="field image-field">
-          <button type="button" id="single-question-image-add" class="secondary-btn small-btn add-photo-btn">Add photo</button>
-          <div id="single-question-image-wrap" class="image-upload-wrap hidden">
-            <label id="single-question-choose-image-label" class="image-upload-label">Choose image</label>
-            <input type="file" id="single-question-image" accept="image/jpeg,image/png,image/webp" class="image-input" />
-            <div id="single-question-image-preview" class="image-preview"></div>
-            <button type="button" id="single-question-image-remove" class="secondary-btn small-btn image-remove-btn">Remove image</button>
+        <div class="question-type-tabs-wrap">
+          <div class="question-type-tabs" role="tablist">
+            <button type="button" id="qtype-tab-choice" class="question-type-tab active" role="tab" aria-selected="true" data-type="choice">Çoktan seçmeli</button>
+            <button type="button" id="qtype-tab-open" class="question-type-tab" role="tab" aria-selected="false" data-type="open">Açık cevap</button>
+            <button type="button" id="qtype-tab-match" class="question-type-tab" role="tab" aria-selected="false" data-type="match">Eşleştirme</button>
           </div>
         </div>
-        <div id="option-rows-container" class="option-rows-container"></div>
-        <div class="field add-option-row-wrap">
-          <button type="button" id="add-option-row-btn" class="secondary-btn small-btn hidden">Add option</button>
+        <div id="qtype-panel-choice" class="question-type-panel question-type-panel-active" role="tabpanel">
+          <div class="field">
+            <label id="question-text-label" for="single-question-text">Question text</label>
+            <textarea id="single-question-text" rows="4" placeholder="Question text..."></textarea>
+          </div>
+          <div class="field image-field">
+            <button type="button" id="single-question-image-add" class="secondary-btn small-btn add-photo-btn">Add photo</button>
+            <div id="single-question-image-wrap" class="image-upload-wrap hidden">
+              <label id="single-question-choose-image-label" class="image-upload-label">Choose image</label>
+              <input type="file" id="single-question-image" accept="image/jpeg,image/png,image/webp" class="image-input" />
+              <div id="single-question-image-preview" class="image-preview"></div>
+              <button type="button" id="single-question-image-remove" class="secondary-btn small-btn image-remove-btn">Remove image</button>
+            </div>
+          </div>
+          <div id="option-rows-container" class="option-rows-container"></div>
+          <div class="field add-option-row-wrap">
+            <button type="button" id="add-option-row-btn" class="secondary-btn small-btn hidden">Add option</button>
+          </div>
+          <div class="field">
+            <label id="correct-answer-label" for="single-correct-answer">Correct answer</label>
+            <select id="single-correct-answer"></select>
+          </div>
         </div>
-        <div class="field">
-          <label id="correct-answer-label" for="single-correct-answer">Correct answer</label>
-          <select id="single-correct-answer"></select>
+        <div id="qtype-panel-open" class="question-type-panel" role="tabpanel" hidden>
+          <div class="field">
+            <label id="open-question-text-label" for="open-question-text">Soru metni</label>
+            <textarea id="open-question-text" rows="4" placeholder="Soru..."></textarea>
+          </div>
+          <div class="field image-field">
+            <button type="button" id="open-question-image-add" class="secondary-btn small-btn add-photo-btn">Fotoğraf ekle</button>
+            <div id="open-question-image-wrap" class="image-upload-wrap hidden">
+              <input type="file" id="open-question-image" accept="image/jpeg,image/png,image/webp" class="image-input" />
+              <div id="open-question-image-preview" class="image-preview"></div>
+              <button type="button" id="open-question-image-remove" class="secondary-btn small-btn image-remove-btn">Kaldır</button>
+            </div>
+          </div>
+          <div class="field">
+            <label id="open-expected-answer-label" for="open-expected-answer">Doğru cevap (kullanıcı bunu yazacak)</label>
+            <input type="text" id="open-expected-answer" placeholder="Beklenen cevap..." />
+          </div>
         </div>
-        <div class="field inline-row create-quiz-actions">
+        <div id="qtype-panel-match" class="question-type-panel" role="tabpanel" hidden>
+          <div class="field">
+            <label id="match-question-text-label" for="match-question-text">Soru / başlık (isteğe bağlı)</label>
+            <textarea id="match-question-text" rows="2" placeholder="Örn: Eşleştirin"></textarea>
+          </div>
+          <div id="match-pairs-container" class="match-pairs-container"></div>
+          <div class="field">
+            <button type="button" id="match-add-pair-btn" class="secondary-btn small-btn">Çift ekle</button>
+            <p class="hint">En fazla 10 eşleştirme. Sol ve sağ sütunu sırayla doldurun.</p>
+          </div>
+        </div>
+        <div class="field inline-row create-quiz-actions question-edit-actions">
           <button id="save-single-question-btn" class="primary-btn">Save Quiz</button>
           <button id="cancel-question-edit-btn" class="secondary-btn">Cancel</button>
         </div>
@@ -452,44 +511,56 @@
               </div>
             </div>
           </div>
-          <div class="field two-options-section">
-            <p class="section-label">Add questions: manual or bulk paste (both available)</p>
-          </div>
-          <div class="field manual-section">
-            <button id="manual-add-question-btn" class="secondary-btn">Add question manually</button>
-          </div>
-          <div id="prepare-questions-recent-wrap" class="field manual-questions-chips-wrap hidden">
-            <div id="prepare-questions-recent-list" class="manual-questions-chips"></div>
-          </div>
-          <div class="field">
-            <label id="paste-questions-label" for="bulk-input">Paste your questions here</label>
-            <div class="bulk-input-row">
-              <button type="button" id="paste-questions-btn" class="secondary-btn paste-btn" title="Paste from clipboard">Paste</button>
-              <button type="button" id="copy-format-btn" class="secondary-btn copy-format-btn small-btn" title="Copy format example">Copy format</button>
+
+          <div class="quiz-form-sub-tabs-wrap">
+            <div class="quiz-form-sub-tabs" role="tablist">
+              <button type="button" id="sub-tab-bulk" class="quiz-form-sub-tab active" role="tab" aria-selected="true">Toplu soru ekleme</button>
+              <button type="button" id="sub-tab-manual" class="quiz-form-sub-tab" role="tab" aria-selected="false">Manuel soru ekleme</button>
             </div>
-            <textarea id="bulk-input" rows="16"></textarea>
-            <p id="prompt-hint" class="hint prompt-hint"></p>
-            <span id="copy-format-feedback" class="hint copy-feedback hidden"></span>
           </div>
-          <div class="field">
-            <div class="create-quiz-actions">
-              <button id="parse-questions-btn" class="primary-btn">Detect & Add Questions</button>
-              <button id="save-quiz-btn" class="primary-btn">Save Quiz</button>
+          <div id="hub-sub-panel-bulk" class="hub-sub-panel hub-sub-panel-active" role="tabpanel">
+            <p id="bulk-add-questions-desc" class="bulk-add-questions-desc">Soruları ve şıkları tek tek yazmak yerine aşağıdaki formatla sorularınızı toplu attığınızda sistem otomatik olarak hepsini algılayıp soru haline çevirecektir.</p>
+            <div class="field">
+              <label id="paste-questions-label" for="bulk-input">Paste your questions here</label>
+              <div class="bulk-input-row">
+                <button type="button" id="paste-questions-btn" class="secondary-btn paste-btn" title="Paste from clipboard">Paste</button>
+                <button type="button" id="copy-format-btn" class="secondary-btn copy-format-btn small-btn" title="Copy format example">Copy format</button>
+              </div>
+              <textarea id="bulk-input" rows="16"></textarea>
+              <p id="prompt-hint" class="hint prompt-hint"></p>
+              <span id="copy-format-feedback" class="hint copy-feedback hidden"></span>
             </div>
-            <span id="parse-status" class="hint"></span>
-            <p id="manual-add-hint" class="hint manual-add-hint hidden"></p>
+            <div class="field">
+              <div class="create-quiz-actions">
+                <button id="parse-questions-btn" class="primary-btn">Detect & Add Questions</button>
+                <button id="save-quiz-btn" class="primary-btn">Save Quiz</button>
+              </div>
+              <span id="parse-status" class="hint"></span>
+              <p id="manual-add-hint" class="hint manual-add-hint hidden"></p>
+            </div>
+            <div id="parsed-questions-summary" class="info-box hidden"></div>
           </div>
-          <div id="parsed-questions-summary" class="info-box hidden"></div>
+          <div id="hub-sub-panel-manual" class="hub-sub-panel" role="tabpanel" hidden>
+            <p id="manual-add-intro" class="manual-add-intro hint">Eklemek istediğiniz soru tipini seçin:</p>
+            <div class="manual-add-type-buttons">
+              <button type="button" id="manual-add-choice-btn" class="secondary-btn manual-add-type-btn" data-type="choice">Çoktan seçmeli</button>
+              <button type="button" id="manual-add-open-btn" class="secondary-btn manual-add-type-btn" data-type="open">Açık cevap</button>
+              <button type="button" id="manual-add-match-btn" class="secondary-btn manual-add-type-btn" data-type="match">Eşleştirme</button>
+            </div>
+            <div id="prepare-questions-recent-wrap" class="field manual-questions-chips-wrap hidden">
+              <div id="prepare-questions-recent-list" class="manual-questions-chips"></div>
+            </div>
+          </div>
         </div>
         <div id="hub-panel-questions" class="hub-panel" role="tabpanel" hidden>
+          <div class="field questions-panel-add-row">
+            <button id="add-question-btn" class="primary-btn">Add question</button>
+          </div>
           <h2 id="questions-list-title" class="sr-only"></h2>
           <p id="questions-list-quiz-name" class="hint questions-quiz-name"></p>
           <div id="questions-list-wrap">
             <ul id="questions-list"></ul>
             <p id="no-questions-msg" class="hint hidden">No questions yet. Add one below.</p>
-          </div>
-          <div class="field">
-            <button id="add-question-btn" class="primary-btn">Add question</button>
           </div>
         </div>
       </div>
@@ -546,6 +617,7 @@
         <div id="discover-preview-image" class="discover-preview-image" role="img" aria-label="Quiz kapağı"></div>
         <h2 id="discover-preview-title" class="discover-preview-title"></h2>
         <p id="discover-preview-desc" class="discover-preview-desc"></p>
+        <p id="discover-preview-question-count" class="discover-preview-meta"></p>
         <div id="discover-preview-rating" class="discover-preview-rating"></div>
         <div class="discover-preview-toggles">
           <button type="button" id="discover-preview-shuffle" class="secondary-btn toggle-pill"><span class="toggle-indicator"></span><span id="discover-preview-shuffle-label" class="toggle-label">Soruları rastgele sırala</span></button>
