@@ -1178,6 +1178,7 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
   if (!wrapEl || !stripEl) return;
   const DURATION_MS = 350;
   const THRESHOLD_RATIO = 0.25;
+  const DRAG_START_PX = 10;
 
   function applyTransform(pageIndex, dragPx, withTransition) {
     if (!wrapEl.offsetWidth) return;
@@ -1191,6 +1192,7 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
   let wrapWidth = 0;
   let lastDelta = 0;
   let dragging = false;
+  let pointerDown = false;
 
   function onPointerDown(e) {
     if (getTotalPages() <= 1) return;
@@ -1200,15 +1202,21 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
     startPage = getCurrentPage();
     wrapWidth = wrapEl.offsetWidth;
     lastDelta = 0;
-    dragging = true;
+    dragging = false;
+    pointerDown = true;
     stripEl.classList.remove("quiz-list-no-drag");
     stripEl.style.transition = "none";
   }
 
   function onPointerMove(e) {
-    if (!dragging) return;
+    if (!pointerDown) return;
     const x = e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : startX);
     let delta = x - startX;
+    if (!dragging && Math.abs(delta) > DRAG_START_PX) {
+      dragging = true;
+      stripEl.classList.remove("quiz-list-no-drag");
+    }
+    if (!dragging) return;
     const totalPages = getTotalPages();
     if (startPage === 0 && delta > 0) delta = delta * 0.4;
     if (startPage === totalPages - 1 && delta < 0) delta = delta * 0.4;
@@ -1217,6 +1225,8 @@ function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, s
   }
 
   function onPointerUp(e) {
+    if (!pointerDown) return;
+    pointerDown = false;
     if (!dragging) return;
     dragging = false;
     stripEl.classList.add("quiz-list-no-drag");
@@ -2484,19 +2494,27 @@ async function updateQuizFinishedExtra() {
     const myRating = await getMyQuizRating(currentQuiz.id);
     starsWrap.innerHTML = "";
     for (let i = 1; i <= 5; i++) {
+      const filled = myRating !== null && i <= myRating;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "quiz-finished-star-btn" + (myRating !== null && i <= myRating ? " rated" : "");
+      btn.className = "quiz-finished-star-btn" + (filled ? " rated" : "");
       btn.setAttribute("aria-label", `${i} yıldız`);
-      btn.textContent = "★";
+      btn.textContent = filled ? "★" : "☆";
       btn.dataset.rating = String(i);
       if (myRating === null) {
         btn.addEventListener("click", async () => {
           if (!currentAuthUser || !supabaseClient || !currentQuiz) return;
-          await submitQuizRating(currentQuiz.id, i);
-          starsWrap.querySelectorAll("button").forEach((b) => b.classList.remove("rated"));
-          btn.classList.add("rated");
-          btn.disabled = true;
+          const rating = i;
+          await submitQuizRating(currentQuiz.id, rating);
+          starsWrap.querySelectorAll("button").forEach((b) => {
+            const r = Number(b.dataset.rating);
+            const isRated = r <= rating;
+            b.classList.toggle("rated", isRated);
+            b.textContent = isRated ? "★" : "☆";
+            b.disabled = true;
+          });
+          starsWrap.classList.add("stars-pop");
+          setTimeout(() => starsWrap.classList.remove("stars-pop"), 380);
         });
       } else {
         btn.disabled = true;
@@ -4146,11 +4164,12 @@ async function renderPreviewRating(container, quizId, ratingInfo) {
   var starsWrap = document.createElement("div");
   starsWrap.className = "discover-preview-stars";
   for (var i = 1; i <= 5; i++) {
+    var filled = myRating !== null && i <= myRating;
     var starBtn = document.createElement("button");
     starBtn.type = "button";
-    starBtn.className = "discover-star-btn" + (myRating !== null && i <= myRating ? " rated" : "");
+    starBtn.className = "discover-star-btn" + (filled ? " rated" : "");
     starBtn.setAttribute("aria-label", i + " yıldız");
-    starBtn.textContent = "★";
+    starBtn.textContent = filled ? "★" : "☆";
     starBtn.dataset.rating = String(i);
     if (myRating === null) {
       starBtn.addEventListener("click", async function (e) {
@@ -4159,6 +4178,11 @@ async function renderPreviewRating(container, quizId, ratingInfo) {
         await submitQuizRating(quizId, Number(e.currentTarget.dataset.rating));
         var newRatings = await getQuizRatings([quizId]);
         await renderPreviewRating(container, quizId, newRatings[quizId]);
+        var wrap = container.querySelector(".discover-preview-stars");
+        if (wrap) {
+          wrap.classList.add("stars-pop");
+          setTimeout(function () { wrap.classList.remove("stars-pop"); }, 380);
+        }
       });
     } else {
       starBtn.disabled = true;

@@ -405,8 +405,10 @@ body.standalone .app-logo {
 .share-quiz-user-list .share-user-item.selected { background: var(--accent-soft); }
 .share-quiz-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 #share-quiz-send-btn { width: 100%; margin-bottom: 8px; }
+#share-quiz-link-btn { width: 100%; margin-bottom: 12px; display: block; }
 #share-quiz-public-btn { width: 100%; }
-.share-quiz-public-section { margin-bottom: 12px; }
+.share-quiz-public-section { margin-bottom: 14px; }
+.share-quiz-modal { padding-bottom: 24px; box-sizing: border-box; }
 .share-quiz-public-section .field-label { display: block; margin-bottom: 4px; }
 .share-quiz-sub-wrap { margin-top: 10px; }
 .share-quiz-sub-wrap.hidden { display: none !important; }
@@ -670,6 +672,12 @@ body.standalone .app-logo {
 .discover-star-btn:hover { color: var(--accent); }
 .discover-star-btn.rated { color: #fbbf24; }
 .discover-star-btn:disabled { cursor: default; opacity: 1; }
+.discover-preview-stars.stars-pop .discover-star-btn.rated { animation: star-pop 0.35s ease; }
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
 .discover-preview-toggles { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .discover-preview-toggles .toggle-pill { width: 100%; }
 
@@ -867,6 +875,8 @@ body.standalone .app-logo {
 .quiz-finished-star-btn { background: none; border: none; color: var(--muted); font-size: 1.8rem; cursor: pointer; padding: 0 4px; transition: color 0.15s; }
 .quiz-finished-star-btn:hover { color: #fbbf24; }
 .quiz-finished-star-btn.rated { color: #fbbf24; }
+.quiz-finished-star-btn:disabled { cursor: default; opacity: 1; }
+.quiz-finished-stars.stars-pop .quiz-finished-star-btn.rated { animation: star-pop 0.35s ease; }
 
 .main-menu-logo {
   position: absolute;
@@ -2397,6 +2407,7 @@ pre.format-example {
   flex-direction: column;
   align-items: stretch;
   overflow: hidden;
+  cursor: pointer;
 }
 #quiz-select-view .quiz-list-item-head {
   display: flex;
