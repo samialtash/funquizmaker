@@ -1,5 +1,43 @@
 // Basic quiz storage using browser localStorage
 const STORAGE_KEY = "custom_quizzes_v1";
+
+// Keşfet kategorileri (herkese açık paylaşırken zorunlu). Eğitim seçilince bölüm (category_sub) de seçilir.
+const QUIZ_CATEGORIES = [
+  { id: "genel", labelTr: "Genel", labelEn: "General" },
+  { id: "egitim", labelTr: "Eğitim", labelEn: "Education", hasSub: true },
+  { id: "bilim", labelTr: "Bilim", labelEn: "Science" },
+  { id: "tarih", labelTr: "Tarih", labelEn: "History" },
+  { id: "cografya", labelTr: "Coğrafya", labelEn: "Geography" },
+  { id: "edebiyat", labelTr: "Edebiyat", labelEn: "Literature" },
+  { id: "spor", labelTr: "Spor", labelEn: "Sports" },
+  { id: "muzik", labelTr: "Müzik", labelEn: "Music" },
+  { id: "sinema", labelTr: "Sinema & TV", labelEn: "Film & TV" },
+  { id: "teknoloji", labelTr: "Teknoloji", labelEn: "Technology" },
+  { id: "saglik", labelTr: "Sağlık", labelEn: "Health" },
+  { id: "din_kultur", labelTr: "Din & Kültür", labelEn: "Religion & Culture" },
+  { id: "eglence", labelTr: "Eğlence", labelEn: "Entertainment" },
+  { id: "diger", labelTr: "Diğer", labelEn: "Other" }
+];
+const EDUCATION_SUBS = [
+  { id: "matematik", labelTr: "Matematik", labelEn: "Mathematics" },
+  { id: "fizik", labelTr: "Fizik", labelEn: "Physics" },
+  { id: "kimya", labelTr: "Kimya", labelEn: "Chemistry" },
+  { id: "biyoloji", labelTr: "Biyoloji", labelEn: "Biology" },
+  { id: "turkce", labelTr: "Türkçe", labelEn: "Turkish" },
+  { id: "ingilizce", labelTr: "İngilizce", labelEn: "English" },
+  { id: "tarih_egitim", labelTr: "Tarih", labelEn: "History" },
+  { id: "cografya_egitim", labelTr: "Coğrafya", labelEn: "Geography" },
+  { id: "diger_egitim", labelTr: "Diğer", labelEn: "Other" }
+];
+function getCategoryLabel(id) {
+  const c = QUIZ_CATEGORIES.find((x) => x.id === id);
+  return c ? (currentLang === "tr" ? c.labelTr : c.labelEn) : id || "—";
+}
+function getEducationSubLabel(id) {
+  const s = EDUCATION_SUBS.find((x) => x.id === id);
+  return s ? (currentLang === "tr" ? s.labelTr : s.labelEn) : id || "—";
+}
+const DISCOVER_PLACEHOLDER_IMAGE = "empty.png";
 const SOUND_ENABLED_KEY = "quiz_sound_enabled_v1";
 const SHUFFLE_ENABLED_KEY = "quiz_shuffle_enabled_v1";
 const SHUFFLE_OPTIONS_ENABLED_KEY = "quiz_shuffle_options_enabled_v1";
@@ -429,14 +467,14 @@ function updateAuthUI() {
 async function fetchUserQuizzes() {
   if (!supabaseClient || !currentAuthUser) return;
   try {
-    const { data: ownData, error } = await supabaseClient.from("quizzes").select("id,name,description,questions").eq("user_id", currentAuthUser.id).order("created_at", { ascending: false });
+    const { data: ownData, error } = await supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").eq("user_id", currentAuthUser.id).order("created_at", { ascending: false });
     if (error) throw error;
-    quizzes = (ownData || []).map((r) => ({ id: r.id, name: r.name || "", description: r.description || "", questions: Array.isArray(r.questions) ? r.questions : [] }));
+    quizzes = (ownData || []).map((r) => ({ id: r.id, name: r.name || "", description: r.description || "", questions: Array.isArray(r.questions) ? r.questions : [], cover_image: r.cover_image || null }));
     const { data: sharedRows } = await supabaseClient.from("quiz_shared_to").select("quiz_id").eq("to_user_id", currentAuthUser.id);
     if (sharedRows && sharedRows.length) {
       const ids = sharedRows.map((s) => s.quiz_id).filter(Boolean);
-      const { data: sharedQuizzes } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", ids);
-      if (sharedQuizzes) for (const r of sharedQuizzes) quizzes.push({ id: r.id, name: (r.name || "") + " (paylaşılan)", description: r.description || "", questions: Array.isArray(r.questions) ? r.questions : [] });
+      const { data: sharedQuizzes } = await supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").in("id", ids);
+      if (sharedQuizzes) for (const r of sharedQuizzes) quizzes.push({ id: r.id, name: (r.name || "") + " (paylaşılan)", description: r.description || "", questions: Array.isArray(r.questions) ? r.questions : [], cover_image: r.cover_image || null });
     }
   } catch (e) {
     console.warn("fetchUserQuizzes failed", e);
@@ -446,7 +484,7 @@ async function fetchUserQuizzes() {
 
 async function saveQuizToCloud(quiz) {
   if (!supabaseClient || !currentAuthUser) return;
-  const row = { user_id: currentAuthUser.id, name: quiz.name, description: quiz.description || "", questions: quiz.questions || [] };
+    const row = { user_id: currentAuthUser.id, name: quiz.name, description: quiz.description || "", questions: quiz.questions || [], cover_image: quiz.cover_image || null };
   const isUuid = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
   try {
     if (quiz.id && isUuid(quiz.id)) {
@@ -530,6 +568,8 @@ let currentQuestionOrder = [];
 let currentScore = 0;
 let lastRunQuizId = null;
 let lastPlayedQuizFromShared = false;
+/** Base hash for play URL (her sayfa ayrı URL: playRouteBase + "/" + index) */
+let playRouteBase = "";
 let chatWithUserId = null;
 let viewingProfileUserId = null;
 const MESSAGES_PER_PAGE = 10;
@@ -1922,11 +1962,12 @@ function playResultSound(percentage) {
   }).catch(() => {});
 }
 
-// Quiz run helpers
-function startQuiz(quizId) {
+// Quiz run helpers — her sayfa ayrı URL (playRouteBase + "/" + index)
+function startQuiz(quizId, options) {
   const quiz = quizzes.find((q) => q.id === quizId);
   if (!quiz || !quiz.questions.length) return;
 
+  playRouteBase = (options && options.playRouteBase) || "#/play/" + quizId;
   currentQuiz = quiz;
   currentQuestionIndex = 0;
   currentQuestionOrder = buildQuestionOrder(quiz);
@@ -1939,6 +1980,29 @@ function startQuiz(quizId) {
   updateFullscreenBtnText();
   warmUpAudio();
   renderCurrentQuestion();
+  if (typeof window !== "undefined" && window.location) window.location.hash = playRouteBase + "/0";
+}
+
+function startQuizAtPage(quiz, pageIndex, routeBase) {
+  if (!quiz || !Array.isArray(quiz.questions) || !quiz.questions.length) return;
+  const total = quiz.questions.length;
+  const idx = Math.max(0, Math.min(pageIndex, total - 1));
+
+  playRouteBase = routeBase || "#/play/" + quiz.id;
+  currentQuiz = quiz;
+  currentQuestionIndex = idx;
+  currentQuestionOrder = buildQuestionOrder(quiz);
+  currentScore = 0;
+  lastRunQuizId = quiz.id;
+  lastPlayedQuizFromShared = true;
+
+  quizTitleEl.textContent = quiz.name;
+  updateScoreDisplay();
+  showView("quizView");
+  updateFullscreenBtnText();
+  warmUpAudio();
+  renderCurrentQuestion();
+  if (typeof window !== "undefined" && window.location) window.location.hash = playRouteBase + "/" + currentQuestionIndex;
 }
 
 function renderCurrentQuestion() {
@@ -2043,6 +2107,7 @@ function updateScoreDisplay() {
 function nextQuestion() {
   if (!currentQuiz) return;
   currentQuestionIndex += 1;
+  if (typeof window !== "undefined" && window.location && playRouteBase) window.location.hash = playRouteBase + "/" + currentQuestionIndex;
   renderCurrentQuestion();
 }
 
@@ -2349,6 +2414,22 @@ function parseBulkQuestions(raw) {
 
 // Create / edit quiz flow
 let draftQuestions = [];
+let currentQuizCoverImage = null;
+
+function updateQuizCoverPreview() {
+  const preview = document.getElementById("quiz-cover-preview");
+  const removeBtn = document.getElementById("quiz-cover-remove-btn");
+  if (!preview) return;
+  if (currentQuizCoverImage) {
+    preview.style.backgroundImage = `url(${currentQuizCoverImage})`;
+    preview.classList.add("has-image");
+    if (removeBtn) removeBtn.classList.remove("hidden");
+  } else {
+    preview.style.backgroundImage = "";
+    preview.classList.remove("has-image");
+    if (removeBtn) removeBtn.classList.add("hidden");
+  }
+}
 
 function resetCreateQuizForm() {
   quizNameInput.value = "";
@@ -2357,6 +2438,8 @@ function resetCreateQuizForm() {
   draftQuestions = [];
   editingQuizId = null;
   selectedEditQuizId = "";
+  currentQuizCoverImage = null;
+  updateQuizCoverPreview();
   if (editQuizStatusEl) {
     editQuizStatusEl.textContent = "";
   }
@@ -2460,13 +2543,15 @@ async function handleSaveQuiz() {
       existing.name = name;
       existing.description = description;
       existing.questions = draftQuestions;
+      existing.cover_image = currentQuizCoverImage || null;
     }
   } else {
     const newQuiz = {
       id: `quiz_${Date.now()}`,
       name,
       description,
-      questions: draftQuestions
+      questions: draftQuestions,
+      cover_image: currentQuizCoverImage || null
     };
     quizzes.push(newQuiz);
   }
@@ -2650,7 +2735,9 @@ async function loadProfileSharedQuizzes(optionalUserId) {
   for (const r of rows) {
     const quiz = byId[r.quiz_id];
     if (!quiz) continue;
-    const avgStr = formatRating(ratingsMap[r.quiz_id] ? ratingsMap[r.quiz_id].avg : null);
+    const ri = ratingsMap[r.quiz_id];
+    const avgStr = formatRating(ri ? ri.avg : null);
+    const ratingCount = ri ? ri.count : 0;
     const card = document.createElement("article");
     card.className = "discover-card profile-shared-card";
     card.innerHTML = `
@@ -2659,7 +2746,7 @@ async function loadProfileSharedQuizzes(optionalUserId) {
         <p class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</p>
       </div>
       <div class="profile-shared-card-right">
-        <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}/5</div>
+        <div class="discover-card-rating"><span class="discover-rating-stars">★</span> ${avgStr}<span class="discover-rating-count"> (${ratingCount})</span></div>
         ${isOwnProfile ? `<button type="button" class="profile-card-menu-btn icon-btn" aria-label="${escapeHtml(t("privacy"))}">⋮</button>` : ""}
       </div>
     `;
@@ -3121,6 +3208,38 @@ function openShareQuizModal(quizId) {
       previewWrap.classList.add("hidden");
     }
   }
+  var catSelect = document.getElementById("share-quiz-category");
+  var subSelect = document.getElementById("share-quiz-category-sub");
+  var subWrap = document.getElementById("share-quiz-sub-wrap");
+  if (catSelect) {
+    catSelect.innerHTML = "";
+    var opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = currentLang === "tr" ? "— Seçin —" : "— Select —";
+    catSelect.appendChild(opt0);
+    QUIZ_CATEGORIES.forEach(function (c) {
+      var opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = currentLang === "tr" ? c.labelTr : c.labelEn;
+      catSelect.appendChild(opt);
+    });
+    catSelect.value = "";
+  }
+  if (subSelect) {
+    subSelect.innerHTML = "";
+    var sub0 = document.createElement("option");
+    sub0.value = "";
+    sub0.textContent = currentLang === "tr" ? "— Seçin —" : "— Select —";
+    subSelect.appendChild(sub0);
+    EDUCATION_SUBS.forEach(function (s) {
+      var opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = currentLang === "tr" ? s.labelTr : s.labelEn;
+      subSelect.appendChild(opt);
+    });
+    subSelect.value = "";
+  }
+  if (subWrap) subWrap.classList.add("hidden");
   renderShareQuizFriendsList();
   document.getElementById("share-quiz-search-user").value = "";
   document.getElementById("share-quiz-search-results").classList.add("hidden");
@@ -3170,6 +3289,13 @@ document.getElementById("share-quiz-search-user")?.addEventListener("input", asy
 });
 document.getElementById("share-quiz-modal-close")?.addEventListener("click", closeShareQuizModal);
 document.getElementById("share-quiz-modal-overlay")?.addEventListener("click", (e) => { if (e.target.id === "share-quiz-modal-overlay") closeShareQuizModal(); });
+document.getElementById("share-quiz-category")?.addEventListener("change", function () {
+  var val = this.value;
+  var subWrap = document.getElementById("share-quiz-sub-wrap");
+  var subSelect = document.getElementById("share-quiz-category-sub");
+  if (subWrap) subWrap.classList.toggle("hidden", val !== "egitim");
+  if (subSelect && val !== "egitim") subSelect.value = "";
+});
 
 // Kullanıcı Sözleşmesi modal
 document.getElementById("terms-link-btn")?.addEventListener("click", () => {
@@ -3368,8 +3494,20 @@ document.getElementById("share-quiz-public-btn")?.addEventListener("click", asyn
     alert(currentLang === "tr" ? "Herkese açık quiz içeriğinde uygun olmayan ifadeler bulundu. Lütfen quiz adı, açıklama ve soru/cevapları kontrol edin." : "The quiz contains inappropriate language. Please remove offensive content before sharing publicly.");
     return;
   }
+  var catSelect = document.getElementById("share-quiz-category");
+  var subSelect = document.getElementById("share-quiz-category-sub");
+  var category = catSelect ? (catSelect.value || "").trim() : "";
+  var category_sub = subSelect ? (subSelect.value || "").trim() : "";
+  if (!category) {
+    alert(currentLang === "tr" ? "Lütfen bir kategori seçin." : "Please select a category.");
+    return;
+  }
+  if (category === "egitim" && !category_sub) {
+    alert(currentLang === "tr" ? "Eğitim kategorisi için lütfen bir bölüm seçin." : "Please select a section for Education.");
+    return;
+  }
   var existing = await supabaseClient.from("public_quizzes").select("short_code").eq("user_id", currentAuthUser.id).eq("quiz_id", shareQuizModalQuizId).maybeSingle();
-  var payload = { user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId, show_in_discover: true };
+  var payload = { user_id: currentAuthUser.id, quiz_id: shareQuizModalQuizId, show_in_discover: true, category: category || null, category_sub: category === "egitim" ? category_sub || null : null };
   if (existing?.data?.short_code) payload.short_code = existing.data.short_code;
   await supabaseClient.from("public_quizzes").upsert(payload, { onConflict: "user_id,quiz_id" });
   closeShareQuizModal();
@@ -3436,7 +3574,7 @@ async function loadDiscoverQuizzes() {
     emptyEl.classList.remove("hidden");
     return;
   }
-  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count,show_in_discover,short_code").order("created_at", { ascending: false }).limit(80);
+  const { data: rawRows } = await supabaseClient.from("public_quizzes").select("id,user_id,quiz_id,view_count,show_in_discover,short_code,category,category_sub").order("created_at", { ascending: false }).limit(80);
   const rows = (rawRows || []).filter(function (r) { return r.show_in_discover === true; }).slice(0, 50);
   if (!rows.length) {
     emptyEl.textContent = t("discoverEmpty");
@@ -3446,7 +3584,7 @@ async function loadDiscoverQuizzes() {
   emptyEl.classList.add("hidden");
   const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
   const [quizDataResult, ratingsMap] = await Promise.all([
-    supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds),
+    supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").in("id", quizIds),
     getQuizRatings(quizIds)
   ]);
   const quizData = quizDataResult?.data || [];
@@ -3463,22 +3601,34 @@ async function loadDiscoverQuizzes() {
     const author = currentAuthUser ? (authorCache[r.user_id] ?? "—") : "—";
     const ratingInfo = ratingsMap[quiz.id];
     const avgStr = formatRating(ratingInfo ? ratingInfo.avg : null);
+    const ratingCount = ratingInfo ? ratingInfo.count : 0;
     const viewCount = r.view_count != null ? r.view_count : 0;
-    const viewStr = currentLang === "tr" ? `(${viewCount} kez girildi)` : `(${viewCount} views)`;
+    const viewStr = currentLang === "tr" ? `${viewCount} giriş` : `${viewCount} views`;
+    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    const coverUrlSafe = coverUrl.replace(/"/g, "%22").replace(/'/g, "%27");
+    const categoryLabel = getCategoryLabel(r.category);
+    const descShort = ((quiz.description || "").trim() || "—").slice(0, 80);
+    const descDisplay = descShort.length >= 80 ? descShort + "…" : descShort;
     discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id, shortCode: r.short_code || null };
     const wrap = document.createElement("div");
     wrap.className = "discover-feed-card-wrap";
     wrap.setAttribute("role", "listitem");
     wrap.dataset.quizId = quiz.id;
     const menuLabel = currentLang === "tr" ? "Menü" : "Menu";
+    const catLabel = currentLang === "tr" ? "Kategori" : "Category";
     wrap.innerHTML = `
       <button type="button" class="discover-card discover-feed-card">
-        <span class="discover-card-main">
-          <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
-          <span class="discover-card-desc">${escapeHtml((quiz.description || "").trim() || "—")}</span>
-          <span class="discover-card-meta">${escapeHtml(author)} · ${escapeHtml(viewStr)}</span>
+        <span class="discover-card-image-wrap">
+          <span class="discover-card-image"></span>
+          <span class="discover-card-badge discover-card-views">${escapeHtml(viewStr)}</span>
+          <span class="discover-card-badge discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${escapeHtml(avgStr)}<span class="discover-rating-count"> (${ratingCount})</span></span>
         </span>
-        <span class="discover-card-rating" aria-label="Puan"><span class="discover-rating-stars">★</span> ${avgStr}/5</span>
+        <span class="discover-card-meta-row">
+          <span class="discover-card-category">${escapeHtml(catLabel)}: ${escapeHtml(categoryLabel)}</span>
+          <span class="discover-card-author">${escapeHtml(author)}</span>
+        </span>
+        <span class="discover-card-title">${escapeHtml(quiz.name)}</span>
+        <span class="discover-card-desc">${escapeHtml(descDisplay)}</span>
       </button>
       <button type="button" class="discover-card-menu-btn" aria-label="${escapeHtml(menuLabel)}">⋮</button>
       <div class="discover-card-dropdown hidden">
@@ -3490,6 +3640,8 @@ async function loadDiscoverQuizzes() {
     const cardBtn = wrap.querySelector(".discover-feed-card");
     const menuBtn = wrap.querySelector(".discover-card-menu-btn");
     const dropdown = wrap.querySelector(".discover-card-dropdown");
+    const imgEl = wrap.querySelector(".discover-card-image");
+    if (imgEl) imgEl.style.backgroundImage = "url(\"" + coverUrlSafe + "\")";
     cardBtn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -3550,10 +3702,15 @@ async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
     } catch (err) {}
   }
   const overlay = document.getElementById("discover-preview-overlay");
+  const imgEl = document.getElementById("discover-preview-image");
   const titleEl = document.getElementById("discover-preview-title");
   const descEl = document.getElementById("discover-preview-desc");
   const ratingEl = document.getElementById("discover-preview-rating");
   const startBtn = document.getElementById("discover-preview-start-btn");
+  if (imgEl) {
+    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    imgEl.style.backgroundImage = "url(\"" + coverUrl.replace(/"/g, "%22").replace(/'/g, "%27") + "\")";
+  }
   if (titleEl) titleEl.textContent = quiz.name || "";
   if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
   renderPreviewRating(ratingEl, quiz.id, ratingInfo).catch(() => {});
@@ -3626,7 +3783,7 @@ async function renderPreviewRating(container, quizId, ratingInfo) {
   var avgStr = formatRating(avg);
   var label = document.createElement("span");
   label.className = "discover-preview-rating-label";
-  label.innerHTML = "<span class=\"discover-rating-stars\">★</span> " + escapeHtml(avgStr) + "/5" + (count ? " (" + count + ")" : "");
+  label.innerHTML = "<span class=\"discover-rating-stars\">★</span> " + escapeHtml(avgStr) + " <span class=\"discover-rating-count\">(" + count + ")</span>";
   container.appendChild(label);
   if (!currentAuthUser || !supabaseClient) {
     var loginHint = document.createElement("p");
@@ -3681,7 +3838,10 @@ function playDiscoverQuiz(quiz) {
   if (!quizzes.find(function (q) { return q.id === id; })) {
     quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [] });
   }
-  startQuiz(id);
+  var cached = discoverCardCache[id];
+  var shortCode = cached && cached.shortCode;
+  var base = shortCode ? "#/play/short/" + shortCode : "#/play/" + id;
+  startQuiz(id, { playRouteBase: base });
 }
 
 async function copyQuizToMyQuizzes(quiz) {
@@ -4309,6 +4469,8 @@ function doLoadEditQuiz(quizId) {
   quizNameInput.value = quiz.name;
   quizDescriptionInput.value = quiz.description || "";
   draftQuestions = quiz.questions.slice();
+  currentQuizCoverImage = quiz.cover_image || null;
+  updateQuizCoverPreview();
   showManualQuestionsChips = false;
   showView("quizEditHub");
   const hubTitle = document.getElementById("quiz-edit-hub-title");
@@ -4366,6 +4528,28 @@ if (clearEditQuizBtn) {
   clearEditQuizBtn.addEventListener("click", () => {
     resetCreateQuizForm();
     refreshEditQuizSelect();
+  });
+}
+
+const quizCoverInput = document.getElementById("quiz-cover-input");
+const quizCoverAddBtn = document.getElementById("quiz-cover-add-btn");
+const quizCoverRemoveBtn = document.getElementById("quiz-cover-remove-btn");
+if (quizCoverAddBtn && quizCoverInput) {
+  quizCoverAddBtn.addEventListener("click", () => quizCoverInput.click());
+  quizCoverInput.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    resizeImageToDataUrl(file).then((dataUrl) => {
+      currentQuizCoverImage = dataUrl;
+      updateQuizCoverPreview();
+    }).catch(() => {});
+    e.target.value = "";
+  });
+}
+if (quizCoverRemoveBtn) {
+  quizCoverRemoveBtn.addEventListener("click", () => {
+    currentQuizCoverImage = null;
+    updateQuizCoverPreview();
   });
 }
 
@@ -4440,13 +4624,16 @@ if (newQuizBtn && newQuizNameModal && newQuizNameInput && newQuizNameOk && newQu
       id: `quiz_${Date.now()}`,
       name,
       description: "",
-      questions: []
+      questions: [],
+      cover_image: null
     };
     quizzes.push(newQuiz);
     saveQuizzes();
     editingQuizId = newQuiz.id;
     currentQuizForEdit = newQuiz.id;
     draftQuestions = [];
+    currentQuizCoverImage = null;
+    updateQuizCoverPreview();
     quizNameInput.value = name;
     quizDescriptionInput.value = "";
     bulkInput.value = "";
@@ -4458,7 +4645,10 @@ if (newQuizBtn && newQuizNameModal && newQuizNameInput && newQuizNameOk && newQu
     renderEditQuizList(editQuizListCurrentPage);
     updateEditQuestionsBtn();
     lastAddedQuestionIndex = -1;
-    showView("quizEditQuestions");
+    showView("quizEditHub");
+    showHubPanel("form");
+    const hubTitle = document.getElementById("quiz-edit-hub-title");
+    if (hubTitle) hubTitle.textContent = (currentLang === "tr" ? "Düzenle: " : "Edit: ") + name;
     renderPrepareQuestionsChips();
   });
   newQuizNameModal.addEventListener("click", (e) => {
@@ -4665,22 +4855,46 @@ initAuthAndQuizzes();
 
 function handlePlayHash() {
   var hash = (window.location.hash || "").replace(/^#\/?/, "");
+  var shortWithPage = /^play\/short\/([a-zA-Z0-9]+)\/(\d+)$/.exec(hash);
+  var uuidWithPage = /^play\/([a-f0-9-]{36})\/(\d+)$/i.exec(hash);
   var shortMatch = /^play\/short\/([a-zA-Z0-9]+)$/.exec(hash);
   var uuidMatch = /^play\/([a-f0-9-]{36})$/i.exec(hash);
+
   var quizId = null;
   var resolveShort = false;
-  if (shortMatch) {
+  var startAtPage = null;
+  var routeBase = null;
+
+  if (shortWithPage) {
+    quizId = shortWithPage[1];
+    resolveShort = true;
+    startAtPage = parseInt(shortWithPage[2], 10);
+    routeBase = "#/play/short/" + shortWithPage[1];
+  } else if (uuidWithPage) {
+    quizId = uuidWithPage[1];
+    startAtPage = parseInt(uuidWithPage[2], 10);
+    routeBase = "#/play/" + uuidWithPage[1];
+  } else if (shortMatch) {
     resolveShort = true;
     quizId = shortMatch[1];
   } else if (uuidMatch) {
     quizId = uuidMatch[1];
   }
+
   if (!quizId) return;
+
   function openQuizByLink() {
     if (!supabaseClient) return;
     function openWithQuiz(quiz, publicRowId) {
       if (!quiz) {
         alert(currentLang === "tr" ? "Quiz bulunamadı veya erişim yok." : "Quiz not found or access denied.");
+        return;
+      }
+      if (startAtPage != null && !isNaN(startAtPage) && routeBase) {
+        if (!quizzes.find(function (q) { return q.id === quiz.id; })) {
+          quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
+        }
+        startQuizAtPage(quiz, startAtPage, routeBase);
         return;
       }
       showView("discover");
@@ -4711,7 +4925,7 @@ function handlePlayHash() {
               alert(currentLang === "tr" ? "Link geçersiz veya süresi dolmuş. Linki atan kişiden yeni bir link isteyin." : "Invalid or expired link. Ask the sender for a new link.");
               return;
             }
-            return supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", row.quiz_id).maybeSingle()
+            return supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").eq("id", row.quiz_id).maybeSingle()
               .then(function (quizRes) {
                 if (quizRes?.error && attempt < 2) {
                   setTimeout(function () { tryOpenByShortCode(attempt + 1); }, 1000);
@@ -4729,7 +4943,7 @@ function handlePlayHash() {
       return;
     }
     Promise.all([
-      supabaseClient.from("quizzes").select("id,name,description,questions").eq("id", quizId).maybeSingle(),
+      supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").eq("id", quizId).maybeSingle(),
       supabaseClient.from("public_quizzes").select("id").eq("quiz_id", quizId).limit(1).maybeSingle()
     ]).then(function (results) {
       var quiz = results[0]?.data;
@@ -4739,7 +4953,6 @@ function handlePlayHash() {
       alert(currentLang === "tr" ? "Quiz bulunamadı." : "Quiz not found.");
     });
   }
-  // Giriş yapmadan da link açılır: ensureSupabaseThenRun anon client oluşturur; RLS public_quizzes + quizzes (public’te olan) okumaya izin vermeli
   if (supabaseClient) setTimeout(openQuizByLink, 150);
   else ensureSupabaseThenRun(function () { setTimeout(openQuizByLink, 400); });
 }

@@ -122,9 +122,9 @@
       <div id="discover-view" class="view">
         <button type="button" id="back-btn-discover" class="back-btn" data-back="main-menu">← Back</button>
         <h1 id="discover-title" class="main-menu-title">Quizleri keşfet</h1>
-        <div id="discover-list-wrap" class="discover-list-wrap">
+        <div id="discover-list-wrap" class="discover-list-wrap discover-grid-wrap">
           <p id="discover-empty" class="discover-empty hint hidden"></p>
-          <div id="discover-feed" class="discover-feed" role="list"></div>
+          <div id="discover-feed" class="discover-feed discover-feed-grid" role="list"></div>
         </div>
       </div>
 
@@ -204,6 +204,18 @@
           </div>
           <button type="button" id="share-quiz-send-btn" class="primary-btn">Gönder</button>
           <hr class="share-quiz-divider" />
+          <div class="share-quiz-public-section">
+            <label id="share-quiz-category-label" class="field-label">Kategori</label>
+            <select id="share-quiz-category" class="auth-form input">
+              <option value="">— Seçin —</option>
+            </select>
+            <div id="share-quiz-sub-wrap" class="share-quiz-sub-wrap hidden">
+              <label id="share-quiz-sub-label" class="field-label">Bölüm</label>
+              <select id="share-quiz-category-sub" class="auth-form input">
+                <option value="">— Seçin —</option>
+              </select>
+            </div>
+          </div>
           <button type="button" id="share-quiz-link-btn" class="secondary-btn">Quizi link olarak gönder</button>
           <button type="button" id="share-quiz-public-btn" class="secondary-btn">Profilinde Paylaş (herkese açık)</button>
         </div>
@@ -429,6 +441,17 @@
             <label id="description-label" for="quiz-description-input">Description (optional)</label>
             <textarea id="quiz-description-input" rows="2" placeholder="Short description of this quiz."></textarea>
           </div>
+          <div class="field quiz-cover-field">
+            <label id="quiz-cover-label" class="quiz-cover-label">Quiz kapağı (Keşfet'te görünür)</label>
+            <div class="quiz-cover-wrap">
+              <div id="quiz-cover-preview" class="quiz-cover-preview" role="img" aria-label="Kapak önizleme"></div>
+              <div class="quiz-cover-actions">
+                <input type="file" id="quiz-cover-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
+                <button type="button" id="quiz-cover-add-btn" class="secondary-btn small-btn">Kapak ekle</button>
+                <button type="button" id="quiz-cover-remove-btn" class="secondary-btn small-btn hidden">Kaldır</button>
+              </div>
+            </div>
+          </div>
           <div class="field two-options-section">
             <p class="section-label">Add questions: manual or bulk paste (both available)</p>
           </div>
@@ -520,6 +543,7 @@
       <div class="discover-overlay-backdrop" id="discover-preview-backdrop"></div>
       <div class="discover-overlay-modal" role="dialog" aria-modal="true" aria-labelledby="discover-preview-title">
         <button type="button" id="discover-preview-close" class="discover-overlay-close" aria-label="Kapat">×</button>
+        <div id="discover-preview-image" class="discover-preview-image" role="img" aria-label="Quiz kapağı"></div>
         <h2 id="discover-preview-title" class="discover-preview-title"></h2>
         <p id="discover-preview-desc" class="discover-preview-desc"></p>
         <div id="discover-preview-rating" class="discover-preview-rating"></div>
