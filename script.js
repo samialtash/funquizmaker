@@ -1262,8 +1262,8 @@ function applyTranslations() {
 function setupQuizListCarousel(wrapEl, stripEl, getTotalPages, getCurrentPage, setCurrentPage, onPageChange) {
   if (!wrapEl || !stripEl) return;
   const DURATION_MS = 350;
-  const THRESHOLD_RATIO = 0.25;
-  const DRAG_START_PX = 10;
+  const THRESHOLD_RATIO = 0.08;
+  const DRAG_START_PX = 8;
 
   function applyTransform(pageIndex, dragPx, withTransition) {
     if (!wrapEl.offsetWidth) return;
