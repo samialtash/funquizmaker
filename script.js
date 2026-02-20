@@ -653,6 +653,47 @@ const views = {
   quizLinkPreview: document.getElementById("quiz-link-preview-view")
 };
 
+var VIEW_TO_HASH = {
+  mainMenu: "#/",
+  discover: "#/discover",
+  settings: "#/settings",
+  langSelect: "#/lang",
+  profile: "#/profile",
+  profileEdit: "#/profile/edit",
+  friends: "#/friends",
+  messagesList: "#/messages",
+  chat: "#/chat",
+  quizSelect: "#/quiz-select",
+  createQuiz: "#/create",
+  quizEditHub: "#/edit"
+};
+var HASH_TO_VIEW = {
+  "#/": "mainMenu",
+  "#/discover": "discover",
+  "#/settings": "settings",
+  "#/lang": "langSelect",
+  "#/profile": "profile",
+  "#/profile/edit": "profileEdit",
+  "#/friends": "friends",
+  "#/messages": "messagesList",
+  "#/chat": "chat",
+  "#/quiz-select": "quizSelect",
+  "#/create": "createQuiz",
+  "#/edit": "quizEditHub"
+};
+
+function getViewHash(name) {
+  return VIEW_TO_HASH[name] || "#/";
+}
+function getViewFromHash(hash) {
+  var raw = (hash || "").trim();
+  if (!raw || raw === "#" || raw === "#/") return "mainMenu";
+  var normalized = raw.replace(/^#\/?/, "").trim();
+  if (!normalized) return "mainMenu";
+  var withSlash = "#/" + normalized;
+  return HASH_TO_VIEW[withSlash] || null;
+}
+
 const playQuizBtn = document.getElementById("play-quiz-btn");
 const createQuizBtn = document.getElementById("create-quiz-btn");
 
@@ -718,13 +759,15 @@ var viewHistory = [];
 var currentViewKey = "";
 
 // Utility: view switching (horizontal slide – forward = new from right, back = new from left)
-function showView(name, direction) {
+// noTransition: true = ilk yükleme/yenilemede hash’ten view açılırken animasyonsuz doğrudan göster
+function showView(name, direction, noTransition) {
   const target = views[name];
   if (!target) return;
   const current = document.querySelector(".view.active");
-  const isBack = direction === "back";
+  const isBack = direction === "back" || name === "mainMenu";
   if (!isBack && currentViewKey && currentViewKey !== name) viewHistory.push(currentViewKey);
-  if (current && current !== target) {
+  var TOP_BAR_H = 56;
+  if (current && current !== target && !noTransition) {
     const app = document.getElementById("app");
     const appHeight = app ? app.offsetHeight : 560;
     if (app) {
@@ -734,16 +777,19 @@ function showView(name, direction) {
     current.classList.remove("view-exit-left", "view-exit-right");
     current.classList.add(isBack ? "view-exit-right" : "view-exit-left");
     current.style.position = "absolute";
-    current.style.top = "0";
+    current.style.top = TOP_BAR_H + "px";
     current.style.left = "0";
+    current.style.right = "0";
     current.style.width = "100%";
-    current.style.right = "";
+    current.style.bottom = "0";
 
     target.style.display = "block";
     target.style.position = "absolute";
-    target.style.top = "0";
+    target.style.top = TOP_BAR_H + "px";
     target.style.left = "0";
+    target.style.right = "0";
     target.style.width = "100%";
+    target.style.bottom = "0";
     target.classList.add("active");
     target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in");
     target.classList.add(isBack ? "view-enter-from-left" : "view-enter-from-right");
@@ -756,14 +802,18 @@ function showView(name, direction) {
       current.style.position = "";
       current.style.top = "";
       current.style.left = "";
+      current.style.right = "";
       current.style.width = "";
+      current.style.bottom = "";
       current.classList.remove("active", "view-exit-left", "view-exit-right");
       current.style.display = "none";
-      target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in");
+      target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in", "view-exit-left", "view-exit-right");
       target.style.position = "";
       target.style.top = "";
       target.style.left = "";
+      target.style.right = "";
       target.style.width = "";
+      target.style.bottom = "";
       if (app) {
         app.style.overflow = "";
         app.style.minHeight = "";
@@ -773,37 +823,71 @@ function showView(name, direction) {
     current.offsetHeight;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        setTimeout(() => target.classList.add("view-slide-in"), 80);
+        setTimeout(() => target.classList.add("view-slide-in"), 40);
       });
     });
     current.addEventListener("transitionend", onDone);
     target.addEventListener("transitionend", onDone);
-    setTimeout(onDone, 500);
+    setTimeout(onDone, 220);
   } else {
-    if (current) {
-      current.classList.remove("view-exit-left", "view-exit-right");
+    if (current && current !== target) {
+      current.classList.remove("active", "view-exit-left", "view-exit-right");
       current.style.position = "";
       current.style.top = "";
       current.style.left = "";
+      current.style.right = "";
       current.style.width = "";
+      current.style.bottom = "";
+      current.style.display = "none";
     }
+    document.querySelectorAll(".view").forEach(function (el) {
+      if (el !== target) {
+        el.classList.remove("active");
+        el.style.display = "none";
+        el.style.position = "";
+        el.style.top = "";
+        el.style.left = "";
+        el.style.right = "";
+        el.style.width = "";
+        el.style.bottom = "";
+      }
+    });
     target.classList.remove("view-enter-from-right", "view-enter-from-left", "view-slide-in");
     target.classList.add("active");
     target.style.display = "block";
     target.style.position = "";
     target.style.top = "";
     target.style.left = "";
+    target.style.right = "";
     target.style.width = "";
+    target.style.bottom = "";
   }
   // Quiz, bitiş veya link önizlemeden çıkınca ya da ana menüye gelince linki sıfırla (yenileyince quiz tekrar açılmasın)
-  const wasInQuizOrLink = currentViewKey === "quizView" || currentViewKey === "quizFinished" || currentViewKey === "quizLinkPreview";
-  const leavingToNormal = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
   const goingToMain = name === "mainMenu";
-  if (typeof window !== "undefined" && window.location && ((wasInQuizOrLink && leavingToNormal) || goingToMain)) {
+  if (typeof window !== "undefined" && window.location && goingToMain) {
     window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/");
   }
   currentViewKey = name;
+
+  var globalBar = document.getElementById("global-top-bar");
+  var quizBar = document.getElementById("quiz-top-bar");
+  var quizBarTitle = document.getElementById("quiz-top-bar-title");
+  var inQuiz = name === "quizView" || name === "quizFinished";
+  if (globalBar) globalBar.classList.toggle("top-bar-hidden", inQuiz);
+  if (quizBar) quizBar.classList.toggle("top-bar-visible", inQuiz);
+  if (quizBarTitle && inQuiz && currentQuiz) quizBarTitle.textContent = currentQuiz.name || "";
+  if (quizBarTitle && !inQuiz) quizBarTitle.textContent = "";
+
   if (name === "mainMenu") viewHistory = [];
+
+  var setHash = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
+  if (setHash && typeof window !== "undefined" && window.history) {
+    var h = getViewHash(name);
+    var curHash = (window.location.hash || "").trim() || "#/";
+    if (curHash !== h) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search + h);
+    }
+  }
 }
 
 function renderPrepareQuestionsChips() {
@@ -1300,9 +1384,16 @@ function renderQuizSelectList(page, _direction) {
           </div>`;
         item.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (selectedPlayQuizId === quiz.id) return;
+          var prevSelected = quizSelectStripEl.querySelector(".quiz-list-item.quiz-select-item.selected");
           selectedPlayQuizId = quiz.id;
-          renderQuizSelectList(quizSelectCurrentPage);
           startQuizBtn.disabled = false;
+          requestAnimationFrame(function () {
+            if (prevSelected && prevSelected !== item) {
+              prevSelected.classList.remove("expanded", "selected");
+            }
+            item.classList.add("selected", "expanded");
+          });
         });
         listContainer.appendChild(item);
       } else {
@@ -2946,6 +3037,33 @@ if (isIOS) {
 }
 
 // Event wiring
+var globalBarLogoBtn = document.getElementById("global-bar-logo-btn");
+if (globalBarLogoBtn) {
+  globalBarLogoBtn.addEventListener("click", function () {
+    showView("mainMenu");
+  });
+}
+var globalSearchWrap = document.getElementById("global-bar-search-wrap");
+var globalSearchToggleBtn = document.getElementById("global-search-toggle-btn");
+if (globalSearchToggleBtn && globalSearchWrap) {
+  globalSearchToggleBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var expanded = globalSearchWrap.classList.toggle("search-expanded");
+    globalSearchToggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (expanded && mainQuizSearchEl) {
+      requestAnimationFrame(function () {
+        mainQuizSearchEl.focus();
+      });
+    }
+  });
+  document.addEventListener("click", function closeSearchOnOutside(e) {
+    if (!globalSearchWrap.classList.contains("search-expanded")) return;
+    if (globalSearchWrap.contains(e.target)) return;
+    globalSearchWrap.classList.remove("search-expanded");
+    globalSearchToggleBtn.setAttribute("aria-expanded", "false");
+  });
+}
+
 const mainQuizSearchEl = document.getElementById("main-quiz-search");
 if (mainQuizSearchEl) {
   mainQuizSearchEl.addEventListener("input", () => {
@@ -5314,7 +5432,21 @@ async function initAuthAndQuizzes() {
   updateShuffleOptionsToggleUi();
   initStandalone();
   initCookieConsent();
-  showView("mainMenu");
+  var hash = (window.location.hash || "").trim() || "#/";
+  if (/^#\/?play\//.test(hash)) {
+    showView("mainMenu", undefined, true);
+  } else {
+    var viewFromHash = getViewFromHash(hash);
+    if (viewFromHash && views[viewFromHash]) showView(viewFromHash, undefined, true);
+    else showView("mainMenu", undefined, true);
+  }
+}
+
+function handleViewHash() {
+  var hash = (window.location.hash || "").trim() || "#/";
+  if (/^#\/?play\//.test(hash)) return;
+  var viewFromHash = getViewFromHash(hash);
+  if (viewFromHash && views[viewFromHash]) showView(viewFromHash);
 }
 
 function getCookieConsentValue() {
@@ -5511,7 +5643,10 @@ function handlePlayHash() {
 if (/^#\/?play\//.test(window.location.hash || "")) {
   setTimeout(handlePlayHash, 200);
 }
-window.addEventListener("hashchange", handlePlayHash);
+window.addEventListener("hashchange", function () {
+  if (/^#\/?play\//.test(window.location.hash || "")) handlePlayHash();
+  else handleViewHash();
+});
 
 window.addEventListener("load", function () { checkStandaloneAgain(); });
 setTimeout(checkStandaloneAgain, 500);

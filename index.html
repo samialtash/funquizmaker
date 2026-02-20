@@ -29,20 +29,27 @@
       <img src="logoquiz.png" alt="" />
     </div>
     <div id="app">
-      <!-- Main Menu -->
-      <div id="main-menu" class="view active main-menu-view">
-        <header class="main-menu-header">
-          <img src="logoquiz.png" alt="Quiz" class="main-menu-logo" />
-          <div class="main-menu-search-wrap">
-            <input type="search" id="main-quiz-search" class="main-quiz-search" placeholder="" autocomplete="off" aria-label="Quiz ara" />
-            <div id="main-search-results" class="main-search-results hidden" aria-live="polite" role="listbox"></div>
+      <!-- Üst bar: quiz dışında logo + arama + giriş; quizde quiz başlığı -->
+      <div id="app-top-bars" class="app-top-bars">
+        <div id="global-top-bar" class="app-top-bar global-top-bar">
+          <button type="button" id="global-bar-logo-btn" class="global-bar-logo-btn" aria-label="Ana sayfaya dön">
+            <img src="logoquiz.png" alt="" class="global-bar-logo" />
+          </button>
+          <div class="global-bar-search-wrap" id="global-bar-search-wrap">
+            <button type="button" id="global-search-toggle-btn" class="global-search-toggle-btn" aria-label="Quiz ara" aria-expanded="false">
+              <span class="global-search-icon" aria-hidden="true">🔍</span>
+            </button>
+            <div class="global-bar-search-inner">
+              <input type="search" id="main-quiz-search" class="main-quiz-search global-bar-search" placeholder="" autocomplete="off" aria-label="Quiz ara" />
+              <div id="main-search-results" class="main-search-results hidden" aria-live="polite" role="listbox"></div>
+            </div>
           </div>
-          <div class="main-menu-auth" id="main-menu-auth">
+          <div class="global-bar-auth" id="main-menu-auth">
             <button type="button" id="auth-login-btn" class="auth-link-btn">Giriş yap</button>
             <span class="auth-sep" aria-hidden="true">|</span>
             <button type="button" id="auth-signup-btn" class="auth-link-btn">Kaydol</button>
           </div>
-          <div class="main-menu-auth logged-in hidden" id="main-menu-auth-logged-in">
+          <div class="global-bar-auth logged-in hidden" id="main-menu-auth-logged-in">
             <div class="header-notif-wrap">
               <button type="button" id="notification-btn" class="icon-btn notification-btn" aria-label="Bildirimler">
                 <span class="notification-icon">🔔</span>
@@ -56,7 +63,15 @@
             <button type="button" id="auth-nickname-btn" class="auth-nickname-btn"><span id="auth-nickname" class="auth-nickname"></span></button>
             <button type="button" id="auth-logout-btn" class="auth-link-btn">Çıkış yap</button>
           </div>
-        </header>
+        </div>
+        <div id="quiz-top-bar" class="app-top-bar quiz-top-bar">
+          <span id="quiz-top-bar-title" class="quiz-top-bar-title"></span>
+        </div>
+      </div>
+
+      <!-- Main Menu (üst bar artık global bar; header burada gizli) -->
+      <div id="main-menu" class="view active main-menu-view">
+        <header class="main-menu-header main-menu-header-placeholder" aria-hidden="true"></header>
         <div class="main-menu-content">
           <h1 id="main-title" class="main-menu-title">Fun Quiz Maker</h1>
           <div class="main-menu-buttons">

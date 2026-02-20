@@ -111,16 +111,173 @@ body.standalone #app .view.active {
   box-shadow: 0 40px 120px rgba(15, 23, 42, 0.95);
   overflow: hidden;
   position: relative;
+  padding-top: 56px;
+}
+
+/* Üst bar konteyneri: sabit yükseklik, taşan barlar gizlenir */
+.app-top-bars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 20;
+  overflow: hidden;
+  border-radius: 28px 28px 0 0;
+}
+
+.app-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  flex-shrink: 0;
+}
+
+.global-top-bar {
+  background: rgba(10, 16, 36, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  transform: translateY(0);
+}
+
+.global-top-bar.top-bar-hidden {
+  transform: translateY(-100%);
+}
+
+.quiz-top-bar {
+  background: rgba(30, 41, 59, 0.98);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.35);
+  transform: translateY(-100%);
+  justify-content: center;
+}
+
+.quiz-top-bar.top-bar-visible {
+  transform: translateY(0);
+}
+
+.quiz-top-bar-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+.global-bar-logo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  margin: 0 8px 0 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.global-bar-logo-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.global-bar-logo-btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+.global-bar-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.global-bar-search-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  position: relative;
+  transition: max-width 0.3s ease, width 0.3s ease;
+  max-width: 48px;
+}
+.global-bar-search-wrap.search-expanded {
+  max-width: 280px;
+  width: 280px;
+}
+.global-search-toggle-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.global-search-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.global-search-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.global-bar-search-inner {
+  overflow: hidden;
+  width: 0;
+  opacity: 0;
+  transition: width 0.25s ease, opacity 0.2s ease;
+  margin-left: 0;
+}
+.global-bar-search-wrap.search-expanded .global-bar-search-inner {
+  width: 220px;
+  min-width: 220px;
+  opacity: 1;
+  margin-left: 8px;
+}
+.global-bar-search-inner .main-quiz-search {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+.global-bar-search-inner .main-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  z-index: 50;
+}
+
+.global-bar-auth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .view {
   display: none;
-  padding: 24px 28px 32px;
+  padding: 16px 28px 32px;
   min-height: 560px;
   position: relative;
-  transition: transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  contain: layout;
 }
 
 .view.active {
@@ -150,6 +307,14 @@ body.standalone #app .view.active {
   transform: translateX(0) translateZ(0);
 }
 
+/* Geçiş sırasında sabit katman, yazı/layout kayması önlenir */
+.view.view-exit-left,
+.view.view-exit-right,
+.view.view-enter-from-left,
+.view.view-enter-from-right {
+  will-change: transform;
+}
+
 /* Ana menü logosu (ana ekrana alınca gizlenir, üstte fullscreen logo kullanılır) */
 .app-logo {
   display: block;
@@ -172,11 +337,26 @@ body.standalone .app-logo {
   min-height: 560px;
 }
 
+.main-menu-view .main-menu-content {
+  margin-top: 0;
+}
+
 .main-menu-header {
   position: relative;
   min-height: 56px;
   margin-bottom: 24px;
   flex-shrink: 0;
+}
+
+/* Ana menüde üst bar yerine kullanılan boş header – layout’tan çıkar, boşluk bırakmasın */
+.main-menu-view .main-menu-header-placeholder {
+  display: none;
+  min-height: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
 }
 
 /* Sağ üst: Giriş yap / Kaydol veya nickname + Çıkış yap */
@@ -1446,6 +1626,10 @@ pre.format-example {
   font-size: 0.9rem;
 }
 
+#quiz-view #quiz-title {
+  display: none;
+}
+
 #quiz-title {
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1740,7 +1924,7 @@ pre.format-example {
   }
 
   .view {
-    padding: 20px 20px 24px;
+    padding: 16px 20px 24px;
   }
 
   .title {
@@ -1785,7 +1969,7 @@ pre.format-example {
   }
 
   .view {
-    padding: 18px 16px 24px;
+    padding: 16px 16px 24px;
   }
 
   .title {
@@ -2320,6 +2504,17 @@ pre.format-example {
   user-select: none;
 }
 
+/* Quizlerim: liste yüksekliği kilitli – biri açılıp biri kapansa da kutu sabit, aşağı oynamasın */
+#quiz-select-view .quiz-list-slide-wrap {
+  height: 620px;
+  min-height: 620px;
+  max-height: 620px;
+}
+#quiz-select-view .quiz-list-strip {
+  height: 620px;
+  min-height: 620px;
+}
+
 .quiz-list-slide-wrap::after {
   content: "";
   position: absolute;
@@ -2418,16 +2613,18 @@ pre.format-example {
 #quiz-select-view .quiz-list-item-expand {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), margin 0.25s ease;
   margin-top: 0;
   display: flex;
   flex-direction: row;
   gap: 12px;
   align-items: flex-start;
+  transition: max-height 0.4s cubic-bezier(0.2, 0, 0, 1), margin 0.4s cubic-bezier(0.2, 0, 0, 1);
 }
+/* Açılma ve kapanma aynı süre, aynı easing – aynı anda */
 #quiz-select-view .quiz-list-item.expanded .quiz-list-item-expand {
   max-height: 180px;
   margin-top: 12px;
+  transition: max-height 0.4s cubic-bezier(0.2, 0, 0, 1), margin 0.4s cubic-bezier(0.2, 0, 0, 1);
 }
 #quiz-select-view .quiz-list-item-cover {
   width: 120px;
