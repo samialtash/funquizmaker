@@ -2517,7 +2517,10 @@ function nextQuestion() {
     }
   }
   currentQuestionIndex += 1;
-  if (typeof window !== "undefined" && window.location && playRouteBase) window.location.hash = playRouteBase + "/" + currentQuestionIndex;
+  var total = currentQuestionOrder ? currentQuestionOrder.length : (currentQuiz && currentQuiz.questions ? currentQuiz.questions.length : 0);
+  if (currentQuestionIndex < total && typeof window !== "undefined" && window.location && playRouteBase) {
+    window.location.hash = playRouteBase + "/" + currentQuestionIndex;
+  }
   renderCurrentQuestion();
 }
 
