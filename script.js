@@ -1066,7 +1066,6 @@ function saveSettings() {
 
 function applyTranslations() {
   const els = {
-    "main-title": t("mainTitle"),
     "play-quiz-btn": t("myQuizzes"),
     "create-quiz-btn": t("createQuiz"),
     "how-it-works": t("howItWorks"),
@@ -1168,6 +1167,8 @@ function applyTranslations() {
     const el = document.getElementById(id);
     if (el) el.textContent = els[id];
   });
+  const mainTitleLogo = document.getElementById("main-title-logo");
+  if (mainTitleLogo) mainTitleLogo.alt = t("mainTitle");
   const mainSearchEl = document.getElementById("main-quiz-search");
   if (mainSearchEl) mainSearchEl.placeholder = t("searchPlaceholder");
   const backSelect = document.getElementById("back-btn-select");
@@ -5563,6 +5564,11 @@ function handlePlayHash() {
   }
 
   if (!quizId) return;
+
+  var page = (startAtPage != null && !isNaN(startAtPage)) ? startAtPage : 0;
+  if (currentViewKey === "quizView" && currentQuiz && currentQuiz.id === quizId && currentQuestionIndex === page) {
+    return;
+  }
 
   function openQuizByLink() {
     if (!supabaseClient) return;

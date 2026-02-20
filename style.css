@@ -1,18 +1,21 @@
 :root {
+  /* Quiza Time logo palette: turuncu ana vurgu, beyaz/koyu arka plan */
   --bg: #050816;
   --bg-alt: #0a1024;
-  --accent: #6366f1;
-  --accent-soft: rgba(99, 102, 241, 0.25);
-  --accent-strong: #4f46e5;
-  --danger: #f97373;
+  --accent: rgb(238, 134, 48);
+  --accent-soft: rgba(238, 134, 48, 0.28);
+  --accent-strong: rgb(210, 118, 42);
+  --accent-secondary: #6A0DAD;
+  --danger: #e74c3c;
   --success: #22c55e;
   --text: #f9fafb;
   --muted: #9ca3af;
   --card: rgba(15, 23, 42, 0.85);
   --border: rgba(148, 163, 184, 0.3);
-  --radius-lg: 18px;
-  --radius-md: 12px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
   --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.9);
+  --shadow-cartoon: 4px 6px 0 rgba(0, 0, 0, 0.25);
   --transition-fast: 0.18s ease-out;
   --transition-med: 0.25s ease-out;
   /* Safe areas for notched devices (mobile/tablet) */
@@ -42,9 +45,11 @@ body {
   min-height: 100dvh;
   -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #1d2437 0, #050816 50%, #020617 100%);
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+  background-image: url("background.png");
+  background-repeat: repeat;
+  background-color: #050816;
+  background-attachment: scroll;
   color: var(--text);
   display: flex;
   align-items: stretch;
@@ -90,12 +95,18 @@ body.standalone #app {
   flex-direction: column;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
+  /* Sabit genişlik: içeriğe göre oynamasın, ekran genişliğine göre kalıcı olsun */
   width: 100%;
   max-width: 1100px;
+  min-width: 0;
+  flex-shrink: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 body.standalone #app .view.active {
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
@@ -106,9 +117,12 @@ body.standalone #app .view.active {
   max-width: 1100px;
   margin: 16px;
   border-radius: 28px;
-  background: radial-gradient(circle at top left, #111827 0, #020617 60%);
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 40px 120px rgba(15, 23, 42, 0.95);
+  background-image: url("background2.png");
+  background-repeat: repeat;
+  background-color: #0a1024;
+  background-position: 0 0;
+  border: 3px solid #000;
+  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.4), 0 20px 60px rgba(15, 23, 42, 0.8);
   overflow: hidden;
   position: relative;
   padding-top: 56px;
@@ -141,9 +155,46 @@ body.standalone #app .view.active {
 }
 
 .global-top-bar {
-  background: rgba(10, 16, 36, 0.95);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(135deg, rgb(238, 134, 48) 0%, rgb(210, 118, 42) 50%, rgb(180, 100, 36) 100%);
+  border-bottom: 3px solid #000;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
   transform: translateY(0);
+}
+/* Üst bar yazıları: içi beyaz, dışı ince siyah çizgi */
+.global-top-bar .global-bar-logo-btn,
+.global-top-bar .global-search-toggle-btn {
+  color: #fff;
+  -webkit-text-stroke: 1px #000;
+  text-shadow:
+    -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
+    0 0 0 1px #fff, 0 0 4px 1px rgba(255, 255, 255, 0.5);
+  font-weight: 700;
+}
+/* Giriş yap / Kaydol / nickname: siyah dış çizgi yok */
+.global-top-bar .global-bar-auth .auth-link-btn,
+.global-top-bar .global-bar-auth .auth-nickname-btn,
+.global-top-bar .global-bar-auth .auth-nickname,
+.global-top-bar .auth-sep {
+  color: #fff;
+  -webkit-text-stroke: transparent;
+  font-weight: 800;
+  text-shadow: none;
+}
+.global-top-bar .global-search-toggle-btn .global-search-icon {
+  color: inherit;
+}
+.global-top-bar .global-bar-search-inner .main-quiz-search {
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.global-top-bar .global-bar-search-inner .main-quiz-search::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+.global-top-bar .global-bar-search-inner .main-search-results {
+  background: rgba(10, 10, 10, 0.95);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .global-top-bar.top-bar-hidden {
@@ -151,8 +202,9 @@ body.standalone #app .view.active {
 }
 
 .quiz-top-bar {
-  background: rgba(30, 41, 59, 0.98);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, rgb(238, 134, 48) 0%, rgb(210, 118, 42) 50%, rgb(180, 100, 36) 100%);
+  border-bottom: 3px solid #000;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
   transform: translateY(-100%);
   justify-content: center;
 }
@@ -162,9 +214,11 @@ body.standalone #app .view.active {
 }
 
 .quiz-top-bar-title {
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--text);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #fff;
+  -webkit-text-stroke: transparent;
+  text-shadow: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -174,16 +228,23 @@ body.standalone #app .view.active {
 
 .global-bar-logo-btn {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 6px;
+  padding: 0 12px;
   margin: 0 8px 0 0;
+  min-width: 80px;
   border: none;
   background: none;
   cursor: pointer;
   border-radius: var(--radius-md);
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
+}
+.global-top-bar .global-bar-logo-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.global-top-bar .global-bar-logo-btn:active {
+  background: rgba(255, 255, 255, 0.3);
 }
 .global-bar-logo-btn:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -192,8 +253,9 @@ body.standalone #app .view.active {
   background: rgba(255, 255, 255, 0.12);
 }
 .global-bar-logo {
-  width: 40px;
-  height: 40px;
+  height: 56px;
+  width: auto;
+  max-width: 80px;
   object-fit: contain;
   display: block;
   pointer-events: none;
@@ -212,8 +274,8 @@ body.standalone #app .view.active {
   width: 280px;
 }
 .global-search-toggle-btn {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border: none;
   border-radius: var(--radius-md);
@@ -226,11 +288,14 @@ body.standalone #app .view.active {
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
+.global-top-bar .global-search-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
 .global-search-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 .global-search-icon {
-  font-size: 1.35rem;
+  font-size: 1.65rem;
   line-height: 1;
 }
 .global-bar-search-inner {
@@ -1149,7 +1214,7 @@ body.standalone .app-logo {
 }
 
 .main-search-results .main-search-result-item:hover {
-  background: rgba(99, 102, 241, 0.25);
+  background: var(--accent-soft);
 }
 
 .main-search-results .main-search-result-item .result-name {
@@ -1169,7 +1234,7 @@ body.standalone .app-logo {
 .main-quiz-search:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 0 2px rgba(238, 134, 48, 0.35);
 }
 
 .main-menu-content {
@@ -1186,6 +1251,21 @@ body.standalone .app-logo {
   margin: 0 0 28px;
   letter-spacing: 0.02em;
   font-weight: 700;
+}
+
+.main-menu-logo-wrap {
+  line-height: 0;
+  font-size: 0;
+}
+
+.main-menu-logo-img {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 120px;
+  margin: 0 auto;
+  object-fit: contain;
 }
 
 .main-menu-title::before {
@@ -1259,10 +1339,11 @@ body.standalone .app-logo {
   border-radius: 12px;
   background: conic-gradient(
     from 220deg,
-    #6366f1,
-    #22c55e,
-    #f97316,
-    #6366f1
+    rgb(238, 134, 48),
+    #FFD93D,
+    #e74c3c,
+    #6A0DAD,
+    rgb(238, 134, 48)
   );
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.4);
 }
@@ -1277,65 +1358,80 @@ body.standalone .app-logo {
 button {
   font-family: inherit;
   font-size: 0.98rem;
+  font-weight: 600;
   border-radius: 999px;
-  border: 1px solid transparent;
+  border: 2px solid #000;
   cursor: pointer;
   padding: 10px 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.9);
   color: var(--text);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast),
     background var(--transition-fast), border-color var(--transition-fast),
     opacity var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.3);
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: default;
   transform: none;
-  box-shadow: none;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.25);
 }
 
 button:not(:disabled):hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.3);
 }
 
 .primary-btn {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  box-shadow: 0 12px 30px rgba(129, 140, 248, 0.4);
-  border-color: rgba(129, 140, 248, 0.8);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 8px 24px rgba(238, 134, 48, 0.35);
+  border: 2px solid #000;
 }
 
 .primary-btn:not(:disabled):hover {
-  box-shadow: 0 18px 40px rgba(129, 140, 248, 0.55);
+  box-shadow: 4px 7px 0 rgba(0, 0, 0, 0.4), 0 12px 32px rgba(238, 134, 48, 0.45);
 }
 
 .secondary-btn {
   background: radial-gradient(circle at top left, #1e293b 0, #020617 70%);
-  border-color: rgba(148, 163, 184, 0.4);
+  border: 2px solid #000;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.secondary-btn:not(:disabled):hover {
+  border-color: var(--accent);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.35);
 }
 
 .back-btn {
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 0.9rem;
+  font-weight: 600;
   margin-bottom: 12px;
 }
 
 .danger-btn {
   background: linear-gradient(135deg, #b91c1c, #991b1b);
-  border-color: rgba(239, 68, 68, 0.8);
-  box-shadow: 0 12px 30px rgba(185, 28, 28, 0.4);
+  border: 2px solid #000;
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4);
   color: #fff;
 }
 
 .danger-btn:hover {
-  box-shadow: 0 18px 40px rgba(185, 28, 28, 0.55);
+  box-shadow: 4px 7px 0 rgba(0, 0, 0, 0.45);
 }
 
 .delete-quiz-wrap {
@@ -1346,29 +1442,18 @@ button:not(:disabled):hover {
   display: none;
 }
 
-/* Tam ekranda üstte logo (sadece fullscreen iken görünür) */
+/* Tam ekranda üstte logo (artık kullanılmıyor; tam ekranda uygulama üst barı gösteriliyor) */
 .fullscreen-logo {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 150;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 12px 16px;
-  background: rgba(5, 8, 22, 0.95);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  pointer-events: none;
+  display: none !important;
 }
 
 .fullscreen-logo.hidden {
-  display: none;
+  display: none !important;
 }
 
-/* Tam ekrandayken uygulama içeriği logonun altından başlasın */
+/* Tam ekranda da normal üst bar kullanılsın (padding değişmesin) */
 body.fullscreen-active #app {
-  padding-top: 6rem;
+  padding-top: 56px;
 }
 
 .fullscreen-logo img {
@@ -1382,9 +1467,9 @@ body.fullscreen-active #app {
 .info-box {
   border-radius: var(--radius-lg);
   background: radial-gradient(circle at top left, #111827 0, #020617 80%);
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 3px solid #000;
   padding: 16px 16px 16px 18px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.8);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.3);
   font-size: 0.95rem;
 }
 
@@ -1437,7 +1522,7 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.8);
+  box-shadow: 0 0 0 1px rgba(238, 134, 48, 0.6);
   transform: translateY(-1px);
 }
 
@@ -1507,8 +1592,8 @@ option {
   margin: 8px 0 12px;
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(238, 134, 48, 0.08);
+  border: 1px solid rgba(238, 134, 48, 0.25);
   font-size: 0.88rem;
   line-height: 1.45;
   color: var(--muted);
@@ -2212,7 +2297,7 @@ pre.format-example {
 .quiz-form-sub-tabs .quiz-form-sub-tab.active {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 2px 12px rgba(238, 134, 48, 0.45);
 }
 .quiz-form-sub-tabs .quiz-form-sub-tab.active:hover {
   background: var(--accent-strong);
@@ -2420,7 +2505,7 @@ pre.format-example {
 }
 
 .question-list-item:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(238, 134, 48, 0.5);
 }
 
 .question-drag-handle {
@@ -2456,7 +2541,7 @@ pre.format-example {
 
 .question-list-item.drag-over {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 0 1px rgba(238, 134, 48, 0.4);
 }
 
 .question-list-text {
@@ -2589,12 +2674,12 @@ pre.format-example {
 }
 
 .quiz-list-item:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(238, 134, 48, 0.5);
 }
 
 .quiz-list-item.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 1px rgba(238, 134, 48, 0.5);
 }
 
 /* Quizlerim: seçilince genişleyen kart (açıklama + foto) */
