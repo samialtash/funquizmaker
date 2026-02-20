@@ -69,16 +69,17 @@ body.standalone .view.active {
   min-height: auto;
 }
 
-/* Ana ekrana alınca: tüm uygulama kutusu ortada, başlık ortada; side rail padding yok */
+/* Ana ekrana alınca: uygulama en üstten başlasın, ekranı kaplasın, içeriğe göre oynamasın */
 body.standalone {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 16px;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding: 0;
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
   box-sizing: border-box;
   width: 100%;
   margin: 0;
@@ -89,19 +90,23 @@ body.standalone #app {
   margin-left: auto;
   margin-right: auto;
   padding-top: 0;
-  max-height: 90vh;
-  max-height: 90dvh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
-  /* Sabit genişlik: içeriğe göre oynamasın, ekran genişliğine göre kalıcı olsun */
   width: 100%;
   max-width: 1100px;
   min-width: 0;
   flex-shrink: 0;
   overflow-x: hidden;
   box-sizing: border-box;
+  border-radius: 0;
 }
 
 body.standalone #app .view.active {
@@ -1672,7 +1677,7 @@ pre.format-example {
 
 #quiz-view {
   padding: 20px 22px 22px;
-  background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+  background: radial-gradient(circle at top, #1a1510 0, #0a1024 50%, #020617 100%);
   position: relative;
 }
 
@@ -1709,6 +1714,7 @@ pre.format-example {
   margin-bottom: 14px;
   gap: 12px;
   font-size: 0.9rem;
+  color: #fff;
 }
 
 #quiz-view #quiz-title {
@@ -1719,20 +1725,20 @@ pre.format-example {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent);
 }
 
 #quiz-progress,
 #quiz-score {
-  color: var(--muted);
+  color: #fff;
 }
 
 #quiz-content {
   border-radius: 24px;
   padding: 22px 22px 18px;
-  background: radial-gradient(circle at top left, #020617 0, #020617 70%);
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+  background: radial-gradient(circle at top left, #14110c 0, #0a1024 60%, #020617 90%);
+  border: 3px solid #000;
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(238, 134, 48, 0.15);
   min-height: 360px;
   display: flex;
   flex-direction: column;
@@ -1756,12 +1762,18 @@ pre.format-example {
   text-align: left;
   padding: 11px 13px 11px 42px;
   border-radius: 16px;
-  background: radial-gradient(circle at top left, #020617 0, #020617 70%);
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.7);
+  background: radial-gradient(circle at top left, #1a1510 0, #0a1024 60%, #020617 90%);
+  border: 2px solid #000;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.3);
   font-size: 0.96rem;
   min-height: 56px;
   overflow: hidden;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.option-btn:not(.disabled):not(.correct):not(.incorrect):hover {
+  border-color: rgba(238, 134, 48, 0.8);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.35);
 }
 
 .option-btn::before {
@@ -1773,19 +1785,20 @@ pre.format-example {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(238, 134, 48, 0.2);
+  border: 2px solid rgba(238, 134, 48, 0.6);
   font-size: 0.78rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
+  color: var(--text);
 }
 
 .option-btn.correct {
-  border-color: rgba(34, 197, 94, 0.9);
+  border: 2px solid rgba(34, 197, 94, 0.9);
   background: radial-gradient(circle at top left, #14532d 0, #022c22 60%);
-  box-shadow: 0 18px 40px rgba(22, 163, 74, 0.65);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 8px 24px rgba(22, 163, 74, 0.5);
 }
 
 .option-btn.correct::before {
@@ -1795,9 +1808,9 @@ pre.format-example {
 }
 
 .option-btn.incorrect {
-  border-color: rgba(239, 68, 68, 0.9);
+  border: 2px solid rgba(239, 68, 68, 0.9);
   background: radial-gradient(circle at top left, #7f1d1d 0, #450a0a 60%);
-  box-shadow: 0 18px 40px rgba(185, 28, 28, 0.7);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 8px 24px rgba(185, 28, 28, 0.6);
 }
 
 .option-btn.incorrect::before {
@@ -1807,8 +1820,8 @@ pre.format-example {
 }
 
 .option-btn.revealed-correct:not(.correct) {
-  border-color: rgba(34, 197, 94, 0.9);
-  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.9);
+  border: 2px solid rgba(34, 197, 94, 0.9);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(74, 222, 128, 0.9);
 }
 
 .option-btn.disabled {
