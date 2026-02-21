@@ -2307,7 +2307,7 @@ function playResultSound(percentage) {
 
 // Quiz run helpers — her sayfa ayrı URL (playRouteBase + "/" + index)
 function startQuiz(quizId, options) {
-  const quiz = quizzes.find((q) => q.id === quizId);
+  const quiz = (options && options.quiz) || quizzes.find((q) => q.id === quizId);
   if (!quiz || !quiz.questions.length) return;
 
   playRouteBase = (options && options.playRouteBase) || "/play/" + quizId;
@@ -3318,7 +3318,7 @@ async function loadProfileSharedQuizzes(optionalUserId) {
     cardBtn.addEventListener("click", function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
-      openDiscoverPreview(quiz, authorName, ri || null, r.id);
+      openDiscoverPreview(quiz, authorName, ri || null, r.id, userId);
     });
     if (isOwnProfile) {
       const menuBtn = wrap.querySelector(".profile-card-menu-btn");
@@ -3529,26 +3529,69 @@ async function loadMessagesList(page) {
   const container = document.getElementById("messages-list-container");
   const paginationEl = document.getElementById("messages-list-pagination");
   if (!container || !supabaseClient || !currentAuthUser) return;
-  const { data: all } = await supabaseClient.from("quiz_shared_to").select("from_user_id,to_user_id,created_at").or(`from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${currentAuthUser.id}`).order("created_at", { ascending: false });
+  const { data: all } = await supabaseClient.from("quiz_shared_to").select("from_user_id,to_user_id,created_at,quiz_id").or(`from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${currentAuthUser.id}`).order("created_at", { ascending: false });
   const otherIds = new Set();
   const lastAt = {};
+  const lastQuizId = {};
   if (all) for (const r of all) {
     const other = r.from_user_id === currentAuthUser.id ? r.to_user_id : r.from_user_id;
     otherIds.add(other);
-    if (!lastAt[other] || r.created_at > lastAt[other]) lastAt[other] = r.created_at;
+    if (!lastAt[other] || r.created_at > lastAt[other]) {
+      lastAt[other] = r.created_at;
+      lastQuizId[other] = r.quiz_id || null;
+    }
   }
   const sorted = [...otherIds].sort((a, b) => (lastAt[b] || "").localeCompare(lastAt[a] || ""));
   const total = sorted.length;
   const start = page * MESSAGES_PER_PAGE;
   const pageIds = sorted.slice(start, start + MESSAGES_PER_PAGE);
+  const quizIdsToFetch = [...new Set(pageIds.map((id) => lastQuizId[id]).filter(Boolean))];
+  const [profilesResult, quizDataResult] = await Promise.all([
+    pageIds.length ? supabaseClient.from("profiles").select("id,nickname,avatar_url").in("id", pageIds) : { data: [] },
+    quizIdsToFetch.length ? supabaseClient.from("quizzes").select("id,name").in("id", quizIdsToFetch) : { data: [] }
+  ]);
+  const profById = {};
+  (profilesResult?.data || []).forEach((p) => { profById[p.id] = p; });
+  const quizNameById = {};
+  (quizDataResult?.data || []).forEach((q) => { quizNameById[q.id] = q.name || "—"; });
   container.innerHTML = "";
   document.getElementById("messages-list-title").textContent = t("messages");
   for (const id of pageIds) {
-    const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", id).single();
+    const prof = profById[id];
+    const nick = prof?.nickname || id.slice(0, 8);
+    const avatarUrl = prof?.avatar_url ? sanitizeImageSrc(prof.avatar_url) : "";
+    const qId = lastQuizId[id];
+    const lastMsgText = qId ? (quizNameById[qId] || (currentLang === "tr" ? "Quiz paylaşıldı" : "Quiz shared")) : (currentLang === "tr" ? "Quiz paylaşıldı" : "Quiz shared");
+    const lastDate = lastAt[id] ? new Date(lastAt[id]) : null;
+    const lastTimeStr = lastDate ? formatChatTime(lastDate) : "";
+    const lastDateStr = lastDate ? formatChatDate(lastDate) : "";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "messages-list-item";
-    btn.textContent = prof?.nickname || id.slice(0, 8);
+    btn.innerHTML = "";
+    const avatarWrap = document.createElement("span");
+    avatarWrap.className = "messages-list-item-avatar-wrap";
+    if (avatarUrl) {
+      const img = document.createElement("img");
+      img.className = "messages-list-item-avatar";
+      img.src = avatarUrl;
+      img.alt = "";
+      avatarWrap.appendChild(img);
+    } else {
+      const ph = document.createElement("span");
+      ph.className = "messages-list-item-avatar-placeholder";
+      ph.setAttribute("aria-hidden", "true");
+      avatarWrap.appendChild(ph);
+    }
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "messages-list-item-name";
+    nameSpan.textContent = nick;
+    const rightSpan = document.createElement("span");
+    rightSpan.className = "messages-list-item-right";
+    rightSpan.innerHTML = "<span class=\"messages-list-item-last\">" + escapeHtml(lastMsgText) + "</span><span class=\"messages-list-item-time\">" + escapeHtml(lastDateStr + " " + lastTimeStr) + "</span>";
+    btn.appendChild(avatarWrap);
+    btn.appendChild(nameSpan);
+    btn.appendChild(rightSpan);
     btn.addEventListener("click", () => openChatWith(id));
     container.appendChild(btn);
   }
@@ -3625,7 +3668,7 @@ async function loadChatView() {
   messagesEl.innerHTML = "";
   if (!rows?.length) { messagesEl.innerHTML = "<p class=\"hint\">" + escapeHtml(t("noMessagesYet")) + "</p>"; return; }
   const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
-  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions").in("id", quizIds);
+  const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").in("id", quizIds);
   const quizById = {};
   if (quizData) for (const q of quizData) quizById[q.id] = q;
   for (const r of rows) {
@@ -3634,12 +3677,15 @@ async function loadChatView() {
     const bubble = document.createElement("div");
     bubble.className = "chat-bubble " + (isMe ? "chat-bubble-me" : "chat-bubble-them");
     const name = (quiz && quiz.name) ? escapeHtml(quiz.name) : "—";
-    const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + (quiz.description.length > 80 ? "…" : "") : "";
+    const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + ((quiz.description || "").length > 80 ? "…" : "") : "";
+    const coverUrl = (quiz && quiz.cover_image) ? sanitizeImageSrc(quiz.cover_image) : "";
+    const coverHtml = coverUrl ? `<div class="chat-bubble-cover" style="background-image:url(${escapeHtml(coverUrl)})" role="img" aria-label="Quiz kapağı"></div>` : "";
     const createdAt = r.created_at ? new Date(r.created_at) : null;
     const timeStr = createdAt ? formatChatTime(createdAt) : "";
     const dateStr = createdAt ? formatChatDate(createdAt) : "";
     bubble.innerHTML = `
       <div class="chat-bubble-content">
+        ${coverHtml}
         <div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}
       </div>
       <div class="chat-bubble-time-wrap">
@@ -3665,6 +3711,37 @@ function formatChatDate(d) {
   const months = currentLang === "tr" ? ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"] : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return d.getDate() + " " + (months[d.getMonth()] || "") + " " + d.getFullYear();
 }
+
+function openChatSendQuizModal() {
+  if (!chatWithUserId || !currentAuthUser || !supabaseClient) return;
+  const listEl = document.getElementById("chat-send-quiz-list");
+  const modal = document.getElementById("chat-send-quiz-modal");
+  if (!listEl || !modal) return;
+  listEl.innerHTML = "";
+  if (!quizzes.length) { listEl.innerHTML = "<p class=\"hint\">" + (currentLang === "tr" ? "Henüz quiziniz yok." : "You have no quizzes yet.") + "</p>"; }
+  else {
+    for (const q of quizzes) {
+      const coverUrl = q.cover_image ? sanitizeImageSrc(q.cover_image) : "";
+      const item = document.createElement("div");
+      item.className = "chat-send-quiz-item";
+      item.dataset.quizId = q.id;
+      item.innerHTML = "<div class=\"chat-send-quiz-item-cover\" style=\"" + (coverUrl ? "background-image:url(" + escapeHtml(coverUrl) + ")" : "") + "\"></div><span class=\"chat-send-quiz-item-name\">" + escapeHtml(q.name || "—") + "</span>";
+      item.addEventListener("click", async () => {
+        await supabaseClient.from("quiz_shared_to").insert({ from_user_id: currentAuthUser.id, to_user_id: chatWithUserId, quiz_id: q.id });
+        closeChatSendQuizModal();
+        loadChatView();
+      });
+      listEl.appendChild(item);
+    }
+  }
+  modal.classList.remove("hidden");
+}
+function closeChatSendQuizModal() {
+  document.getElementById("chat-send-quiz-modal")?.classList.add("hidden");
+}
+document.getElementById("chat-send-quiz-fab")?.addEventListener("click", openChatSendQuizModal);
+document.getElementById("chat-send-quiz-modal-close")?.addEventListener("click", closeChatSendQuizModal);
+document.getElementById("chat-send-quiz-modal")?.addEventListener("click", function (e) { if (e.target.id === "chat-send-quiz-modal") closeChatSendQuizModal(); });
 
 // Arkadaşlar: arama, bekleyen istekler, liste
 async function loadFriendsView() {
@@ -4173,7 +4250,7 @@ async function loadDiscoverQuizzes() {
     const categoryLabel = getCategoryLabel(r.category);
     const descShort = ((quiz.description || "").trim() || "—").slice(0, 80);
     const descDisplay = descShort.length >= 80 ? descShort + "…" : descShort;
-    discoverCardCache[quiz.id] = { quiz: quiz, author: author, ratingInfo: ratingInfo, publicRowId: r.id, shortCode: r.short_code || null };
+    discoverCardCache[quiz.id] = { quiz: quiz, author: author, authorUserId: r.user_id, ratingInfo: ratingInfo, publicRowId: r.id, shortCode: r.short_code || null };
     const wrap = document.createElement("div");
     wrap.className = "discover-feed-card-wrap";
     wrap.setAttribute("role", "listitem");
@@ -4209,7 +4286,7 @@ async function loadDiscoverQuizzes() {
     cardBtn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      openDiscoverPreview(quiz, author, ratingInfo, r.id);
+      openDiscoverPreview(quiz, author, ratingInfo, r.id, r.user_id);
     });
     menuBtn.addEventListener("click", function (e) {
       e.preventDefault();
@@ -4257,7 +4334,7 @@ function updateDiscoverPreviewShuffleUi() {
   if (shufOpt) shufOpt.classList.toggle("active", !!shuffleOptionsEnabled);
 }
 
-async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
+async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId, authorUserId) {
   discoverPreviewQuiz = quiz;
   if (publicRowId && supabaseClient) {
     try {
@@ -4267,6 +4344,8 @@ async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   const overlay = document.getElementById("discover-preview-overlay");
   const imgEl = document.getElementById("discover-preview-image");
   const titleEl = document.getElementById("discover-preview-title");
+  const authorWrap = document.getElementById("discover-preview-author-wrap");
+  const authorBtn = document.getElementById("discover-preview-author");
   const descEl = document.getElementById("discover-preview-desc");
   const ratingEl = document.getElementById("discover-preview-rating");
   const startBtn = document.getElementById("discover-preview-start-btn");
@@ -4275,6 +4354,22 @@ async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
     imgEl.style.backgroundImage = "url(\"" + coverUrl.replace(/"/g, "%22").replace(/'/g, "%27") + "\")";
   }
   if (titleEl) titleEl.textContent = quiz.name || "";
+  if (authorWrap && authorBtn) {
+    const showAuthor = (author && author.trim()) || authorUserId;
+    if (showAuthor) {
+      authorWrap.classList.remove("hidden");
+      authorBtn.textContent = (currentLang === "tr" ? "Yapan: " : "By: ") + (author || "—");
+      authorBtn.onclick = authorUserId ? function () {
+        closeDiscoverPreview();
+        viewingProfileUserId = authorUserId;
+        showView("profile");
+        loadProfile(authorUserId);
+      } : null;
+      authorBtn.style.cursor = authorUserId ? "pointer" : "default";
+    } else {
+      authorWrap.classList.add("hidden");
+    }
+  }
   if (descEl) descEl.textContent = (quiz.description || "").trim() || "—";
   const qCount = quiz.questions ? quiz.questions.length : 0;
   const questionCountEl = document.getElementById("discover-preview-question-count");
@@ -4320,7 +4415,7 @@ function openDiscoverByQuizId(quizId) {
   if (!id) return;
   var cached = discoverCardCache[id];
   if (cached && cached.quiz) {
-    openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
+    openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null, cached.authorUserId || null);
     return;
   }
   if (!supabaseClient) return;
@@ -4328,12 +4423,14 @@ function openDiscoverByQuizId(quizId) {
     .then(function (res) {
       var quiz = res && res.data;
       if (!quiz) return;
-      return supabaseClient.from("public_quizzes").select("id").eq("quiz_id", id).limit(1).maybeSingle()
+      return supabaseClient.from("public_quizzes").select("id,user_id").eq("quiz_id", id).limit(1).maybeSingle()
         .then(function (rowRes) {
-          var publicRowId = (rowRes && rowRes.data && rowRes.data.id) || null;
+          var row = rowRes && rowRes.data;
+          var publicRowId = row && row.id || null;
+          var authorUserId = row && row.user_id || null;
           return getQuizRatings([id]).then(function (ratingsMap) {
             var ratingInfo = (ratingsMap && ratingsMap[id]) || null;
-            openDiscoverPreview(quiz, "—", ratingInfo, publicRowId);
+            openDiscoverPreview(quiz, "—", ratingInfo, publicRowId, authorUserId);
           });
         });
     })
@@ -4462,13 +4559,10 @@ var linkPreviewQuiz = null;
 function playDiscoverQuiz(quiz) {
   lastPlayedQuizFromShared = true;
   var id = quiz.id;
-  if (!quizzes.find(function (q) { return q.id === id; })) {
-    quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
-  }
   var cached = discoverCardCache[id];
   var shortCode = cached && cached.shortCode;
   var base = shortCode ? "/play/short/" + shortCode : "/play/" + id;
-  startQuiz(id, { playRouteBase: base });
+  startQuiz(id, { playRouteBase: base, quiz: quiz });
 }
 
 async function copyQuizToMyQuizzes(quiz) {
@@ -4497,7 +4591,7 @@ async function copyQuizToMyQuizzes(quiz) {
       if (!cached || !cached.quiz) return;
       e.preventDefault();
       e.stopPropagation();
-      openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null);
+      openDiscoverPreview(cached.quiz, cached.author || "—", cached.ratingInfo || null, cached.publicRowId || null, cached.authorUserId || null);
     }, true);
   }
   document.addEventListener("click", closeAllDiscoverMenus);
@@ -5523,6 +5617,8 @@ async function initAuthAndQuizzes() {
       if (viewFromPath === "discover") {
         if (supabaseClient) loadDiscoverQuizzes();
         else ensureSupabaseThenRun(function () { loadDiscoverQuizzes(); });
+      } else if (viewFromPath === "profile") {
+        loadProfile(viewingProfileUserId || undefined);
       }
     } else {
       showView("mainMenu", undefined, true);
@@ -5672,9 +5768,6 @@ function handlePlayPath() {
       if (!quiz) {
         alert(currentLang === "tr" ? "Quiz bulunamadı veya erişim yok." : "Quiz not found or access denied.");
         return;
-      }
-      if (!quizzes.find(function (q) { return q.id === quiz.id; })) {
-        quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
       }
       var hasQuestionIndex = (shortWithPage || uuidWithPage) && startAtPage != null && !isNaN(startAtPage);
       if (hasQuestionIndex) {

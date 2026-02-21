@@ -936,6 +936,12 @@ body.standalone .app-logo {
   margin: 0 0 16px 0;
 }
 .discover-preview-title { margin: 0 0 12px 0; font-size: 1.25rem; }
+.discover-preview-author-wrap { margin: 0 0 8px 0; }
+.discover-preview-author-wrap.hidden { display: none; }
+.discover-preview-author {
+  background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline;
+}
+.discover-preview-author:hover { color: var(--accent-hover, #fb923c); }
 .discover-preview-desc { margin: 0 0 8px 0; color: var(--muted); line-height: 1.5; white-space: pre-wrap; }
 .discover-preview-meta { margin: 0 0 16px 0; font-size: 0.95rem; color: var(--muted); }
 .discover-preview-rating { margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
@@ -1102,14 +1108,28 @@ body.standalone .app-logo {
 }
 .notification-all-link:hover { color: var(--text); }
 
-/* Mesajlar listesi */
+/* Mesajlar listesi: sol avatar, ortada isim, sağda son mesaj + tarih/saat */
 .messages-list-container { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
 .messages-list-item {
-  display: block; width: 100%; padding: 14px 16px; text-align: left;
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; text-align: left;
   background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: var(--radius-md);
   color: var(--text); font-size: 1rem; cursor: pointer; transition: background 0.15s;
 }
 .messages-list-item:hover { background: var(--accent-soft); }
+.messages-list-item-avatar-wrap { flex-shrink: 0; }
+.messages-list-item-avatar {
+  width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block;
+}
+.messages-list-item-avatar-placeholder {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); display: block;
+}
+.messages-list-item-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.messages-list-item-right {
+  flex-shrink: 0; text-align: right; max-width: 50%;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+}
+.messages-list-item-last { font-size: 0.85rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.messages-list-item-time { font-size: 0.75rem; color: var(--muted); }
 
 /* Sohbet: üst başlık (avatar + isim + arkadaş ekle) */
 .chat-header {
@@ -1138,6 +1158,10 @@ body.standalone .app-logo {
 .chat-bubble-me { align-self: flex-end; background: var(--accent-soft); border: 1px solid var(--accent); }
 .chat-bubble:hover { filter: brightness(1.05); }
 .chat-bubble-content { cursor: pointer; }
+.chat-bubble-cover {
+  width: 100%; height: 100px; margin: -4px -2px 8px -2px; border-radius: 10px; background-size: cover; background-position: center;
+  background-color: rgba(15,23,42,0.5);
+}
 .chat-bubble-title { font-weight: 600; margin-bottom: 4px; }
 .chat-bubble-desc { font-size: 0.85rem; color: var(--muted); }
 .chat-bubble-time-wrap { display: flex; flex-direction: column; align-items: flex-end; margin-top: 4px; }
@@ -1147,6 +1171,25 @@ body.standalone .app-logo {
 .chat-bubble-time:hover { color: var(--text); }
 .chat-bubble-date { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
 .chat-bubble-date.hidden { display: none; }
+
+/* Sohbet: sağ altta quiz gönder FAB (turuncu, beyaz +) */
+.chat-send-quiz-fab {
+  position: fixed; right: 20px; bottom: 24px; width: 56px; height: 56px;
+  border-radius: 50%; border: none; background: var(--accent); color: #fff;
+  font-size: 28px; line-height: 1; cursor: pointer; box-shadow: 0 4px 12px rgba(249,115,22,0.4);
+  display: flex; align-items: center; justify-content: center; padding: 0; z-index: 10;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.chat-send-quiz-fab:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(249,115,22,0.5); }
+.chat-send-quiz-modal-box { max-width: 360px; }
+.chat-send-quiz-list { max-height: 280px; overflow-y: auto; margin-bottom: 12px; }
+.chat-send-quiz-list .chat-send-quiz-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: var(--radius-md); cursor: pointer; border: 1px solid transparent;
+}
+.chat-send-quiz-list .chat-send-quiz-item:hover { background: var(--accent-soft); border-color: var(--accent); }
+.chat-send-quiz-item-cover { width: 48px; height: 48px; border-radius: 8px; background-size: cover; background-position: center; background-color: rgba(15,23,42,0.5); flex-shrink: 0; }
+.chat-send-quiz-item-name { font-weight: 600; flex: 1; }
 
 /* Quiz bitti: ekstra (Quizlerime ekle, puanla) */
 .quiz-finished-extra { margin: 16px 0; text-align: center; }
