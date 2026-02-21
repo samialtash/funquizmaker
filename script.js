@@ -752,11 +752,18 @@ function setAppPath(path, replace) {
 }
 
 function getViewPath(name) {
+  if (name === "chat" && chatWithUserId) return "/chat/" + chatWithUserId;
   return VIEW_TO_PATH[name] || "/";
+}
+function getChatUserIdFromPath(path) {
+  var p = (path || "").trim().replace(/\/+$/, "");
+  if (p.indexOf("/chat/") === 0 && p.length > 6) return p.slice(6);
+  return null;
 }
 function getViewFromPath(path) {
   var raw = (path || "").trim().replace(/\/+$/, "") || "/";
   if (raw !== "/" && raw.indexOf("/") !== 0) raw = "/" + raw;
+  if (raw.indexOf("/chat/") === 0 && raw.length > 6) return "chat";
   return PATH_TO_VIEW[raw] || null;
 }
 
@@ -945,6 +952,9 @@ function showView(name, direction, noTransition) {
   if (quizBarTitle && !inQuiz) quizBarTitle.textContent = "";
 
   if (name === "mainMenu") viewHistory = [];
+
+  var chatFab = document.getElementById("chat-send-quiz-fab");
+  if (chatFab) chatFab.classList.toggle("hidden", name !== "chat");
 
   var setPath = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
   if (setPath && typeof window !== "undefined" && window.history) {
@@ -4358,7 +4368,7 @@ async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId, author
     const showAuthor = (author && author.trim()) || authorUserId;
     if (showAuthor) {
       authorWrap.classList.remove("hidden");
-      authorBtn.textContent = (currentLang === "tr" ? "Yapan: " : "By: ") + (author || "—");
+      authorBtn.textContent = author || "—";
       authorBtn.onclick = authorUserId ? function () {
         closeDiscoverPreview();
         viewingProfileUserId = authorUserId;
@@ -5613,12 +5623,25 @@ async function initAuthAndQuizzes() {
   } else {
     var viewFromPath = getViewFromPath(path);
     if (viewFromPath && views[viewFromPath]) {
-      showView(viewFromPath, undefined, true);
-      if (viewFromPath === "discover") {
-        if (supabaseClient) loadDiscoverQuizzes();
-        else ensureSupabaseThenRun(function () { loadDiscoverQuizzes(); });
-      } else if (viewFromPath === "profile") {
-        loadProfile(viewingProfileUserId || undefined);
+      if (viewFromPath === "chat") {
+        var chatUserId = getChatUserIdFromPath(path);
+        if (chatUserId) {
+          chatWithUserId = chatUserId;
+          showView("chat", undefined, true);
+          loadChatView();
+        } else {
+          showView("mainMenu", undefined, true);
+        }
+      } else {
+        showView(viewFromPath, undefined, true);
+        if (viewFromPath === "discover") {
+          if (supabaseClient) loadDiscoverQuizzes();
+          else ensureSupabaseThenRun(function () { loadDiscoverQuizzes(); });
+        } else if (viewFromPath === "profile") {
+          loadProfile(viewingProfileUserId || undefined);
+        } else if (viewFromPath === "messagesList") {
+          loadMessagesList(0);
+        }
       }
     } else {
       showView("mainMenu", undefined, true);
@@ -5637,7 +5660,20 @@ function handleViewPath() {
   var path = getAppPath();
   if (/^\/play\//.test(path)) return;
   var viewFromPath = getViewFromPath(path);
-  if (viewFromPath && views[viewFromPath]) showView(viewFromPath);
+  if (!viewFromPath || !views[viewFromPath]) return;
+  if (viewFromPath === "chat") {
+    var uid = getChatUserIdFromPath(path);
+    if (uid) {
+      chatWithUserId = uid;
+      showView("chat");
+      loadChatView();
+    } else {
+      showView("mainMenu");
+    }
+  } else {
+    showView(viewFromPath);
+    if (viewFromPath === "messagesList") loadMessagesList(0);
+  }
 }
 
 function getCookieConsentValue() {

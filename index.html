@@ -457,7 +457,6 @@
           <button type="button" id="chat-add-friend-btn" class="secondary-btn small-btn hidden">Arkadaş ekle</button>
         </div>
         <div id="chat-messages" class="chat-messages"></div>
-        <button type="button" id="chat-send-quiz-fab" class="chat-send-quiz-fab" aria-label="Quiz gönder">+</button>
       </div>
 
       <!-- Modal: sohbette quiz gönder (quizlerimden seç) -->
@@ -701,5 +700,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
     <script src="script.js?v=17"></script>
+    <!-- Sohbet FAB: ekranın sağ altında sabit, sadece sohbet ekranında görünür -->
+    <button type="button" id="chat-send-quiz-fab" class="chat-send-quiz-fab hidden" aria-label="Quiz gönder">+</button>
   </body>
 </html>
