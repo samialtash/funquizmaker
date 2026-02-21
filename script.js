@@ -598,7 +598,7 @@ let currentQuestionOrder = [];
 let currentScore = 0;
 let lastRunQuizId = null;
 let lastPlayedQuizFromShared = false;
-/** Base hash for play URL (her sayfa ayrı URL: playRouteBase + "/" + index) */
+/** Base path for play URL (path-based, no hash: playRouteBase + "/" + index) */
 let playRouteBase = "";
 let chatWithUserId = null;
 let viewingProfileUserId = null;
@@ -653,45 +653,57 @@ const views = {
   quizLinkPreview: document.getElementById("quiz-link-preview-view")
 };
 
-var VIEW_TO_HASH = {
-  mainMenu: "#/",
-  discover: "#/discover",
-  settings: "#/settings",
-  langSelect: "#/lang",
-  profile: "#/profile",
-  profileEdit: "#/profile/edit",
-  friends: "#/friends",
-  messagesList: "#/messages",
-  chat: "#/chat",
-  quizSelect: "#/quiz-select",
-  createQuiz: "#/create",
-  quizEditHub: "#/edit"
+/** Path-based routes (no hash for compatibility with other sites) */
+var VIEW_TO_PATH = {
+  mainMenu: "/",
+  discover: "/discover",
+  settings: "/settings",
+  langSelect: "/lang",
+  profile: "/profile",
+  profileEdit: "/profile/edit",
+  friends: "/friends",
+  messagesList: "/messages",
+  chat: "/chat",
+  quizSelect: "/quiz-select",
+  createQuiz: "/create",
+  quizEditHub: "/edit"
 };
-var HASH_TO_VIEW = {
-  "#/": "mainMenu",
-  "#/discover": "discover",
-  "#/settings": "settings",
-  "#/lang": "langSelect",
-  "#/profile": "profile",
-  "#/profile/edit": "profileEdit",
-  "#/friends": "friends",
-  "#/messages": "messagesList",
-  "#/chat": "chat",
-  "#/quiz-select": "quizSelect",
-  "#/create": "createQuiz",
-  "#/edit": "quizEditHub"
+var PATH_TO_VIEW = {
+  "/": "mainMenu",
+  "/discover": "discover",
+  "/settings": "settings",
+  "/lang": "langSelect",
+  "/profile": "profile",
+  "/profile/edit": "profileEdit",
+  "/friends": "friends",
+  "/messages": "messagesList",
+  "/chat": "chat",
+  "/quiz-select": "quizSelect",
+  "/create": "createQuiz",
+  "/edit": "quizEditHub"
 };
 
-function getViewHash(name) {
-  return VIEW_TO_HASH[name] || "#/";
+function getAppPath() {
+  if (typeof window === "undefined" || !window.location) return "/";
+  var p = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+  return p;
 }
-function getViewFromHash(hash) {
-  var raw = (hash || "").trim();
-  if (!raw || raw === "#" || raw === "#/") return "mainMenu";
-  var normalized = raw.replace(/^#\/?/, "").trim();
-  if (!normalized) return "mainMenu";
-  var withSlash = "#/" + normalized;
-  return HASH_TO_VIEW[withSlash] || null;
+
+function setAppPath(path, replace) {
+  if (typeof window === "undefined" || !window.history) return;
+  var base = window.location.origin;
+  var full = path.indexOf("/") === 0 ? base + path : base + "/" + path;
+  if (replace) window.history.replaceState(null, "", full);
+  else window.history.pushState(null, "", full);
+}
+
+function getViewPath(name) {
+  return VIEW_TO_PATH[name] || "/";
+}
+function getViewFromPath(path) {
+  var raw = (path || "").trim().replace(/\/+$/, "") || "/";
+  if (raw !== "/" && raw.indexOf("/") !== 0) raw = "/" + raw;
+  return PATH_TO_VIEW[raw] || null;
 }
 
 const playQuizBtn = document.getElementById("play-quiz-btn");
@@ -865,8 +877,7 @@ function showView(name, direction, noTransition) {
   // Quiz, bitiş veya link önizlemeden çıkınca ya da ana menüye gelince linki sıfırla (yenileyince quiz tekrar açılmasın)
   const goingToMain = name === "mainMenu";
   if (typeof window !== "undefined" && window.location && goingToMain) {
-    // Ana sayfada URL temiz olsun: .com veya .com/ (hash yok)
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    setAppPath("/", true);
   }
   currentViewKey = name;
 
@@ -881,15 +892,12 @@ function showView(name, direction, noTransition) {
 
   if (name === "mainMenu") viewHistory = [];
 
-  var setHash = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
-  if (setHash && typeof window !== "undefined" && window.history) {
-    var base = window.location.pathname + window.location.search;
-    if (name === "mainMenu") {
-      if (window.location.hash) window.history.replaceState(null, "", base);
-    } else {
-      var h = getViewHash(name);
-      var curHash = (window.location.hash || "").trim() || "#/";
-      if (curHash !== h) window.history.replaceState(null, "", base + h);
+  var setPath = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
+  if (setPath && typeof window !== "undefined" && window.history) {
+    var targetPath = getViewPath(name);
+    if (getAppPath() !== targetPath) {
+      var replace = !!(noTransition || name === "mainMenu");
+      setAppPath(targetPath, replace);
     }
   }
 }
@@ -2245,7 +2253,7 @@ function startQuiz(quizId, options) {
   const quiz = quizzes.find((q) => q.id === quizId);
   if (!quiz || !quiz.questions.length) return;
 
-  playRouteBase = (options && options.playRouteBase) || "#/play/" + quizId;
+  playRouteBase = (options && options.playRouteBase) || "/play/" + quizId;
   currentQuiz = quiz;
   currentQuestionIndex = 0;
   currentQuestionOrder = buildQuestionOrder(quiz);
@@ -2258,7 +2266,7 @@ function startQuiz(quizId, options) {
   updateFullscreenBtnText();
   warmUpAudio();
   renderCurrentQuestion();
-  if (typeof window !== "undefined" && window.location) window.location.hash = playRouteBase + "/0";
+  if (typeof window !== "undefined" && window.history) setAppPath(playRouteBase + "/0", true);
 }
 
 function startQuizAtPage(quiz, pageIndex, routeBase) {
@@ -2266,7 +2274,7 @@ function startQuizAtPage(quiz, pageIndex, routeBase) {
   const total = quiz.questions.length;
   const idx = Math.max(0, Math.min(pageIndex, total - 1));
 
-  playRouteBase = routeBase || "#/play/" + quiz.id;
+  playRouteBase = routeBase || "/play/" + quiz.id;
   currentQuiz = quiz;
   currentQuestionIndex = idx;
   currentQuestionOrder = buildQuestionOrder(quiz);
@@ -2280,7 +2288,7 @@ function startQuizAtPage(quiz, pageIndex, routeBase) {
   updateFullscreenBtnText();
   warmUpAudio();
   renderCurrentQuestion();
-  if (typeof window !== "undefined" && window.location) window.location.hash = playRouteBase + "/" + currentQuestionIndex;
+  if (typeof window !== "undefined" && window.history) setAppPath(playRouteBase + "/" + currentQuestionIndex, true);
 }
 
 function renderCurrentQuestion() {
@@ -2522,8 +2530,8 @@ function nextQuestion() {
   }
   currentQuestionIndex += 1;
   var total = currentQuestionOrder ? currentQuestionOrder.length : (currentQuiz && currentQuiz.questions ? currentQuiz.questions.length : 0);
-  if (currentQuestionIndex < total && typeof window !== "undefined" && window.location && playRouteBase) {
-    window.location.hash = playRouteBase + "/" + currentQuestionIndex;
+  if (currentQuestionIndex < total && typeof window !== "undefined" && window.history && playRouteBase) {
+    setAppPath(playRouteBase + "/" + currentQuestionIndex, true);
   }
   renderCurrentQuestion();
 }
@@ -4395,7 +4403,7 @@ function playDiscoverQuiz(quiz) {
   }
   var cached = discoverCardCache[id];
   var shortCode = cached && cached.shortCode;
-  var base = shortCode ? "#/play/short/" + shortCode : "#/play/" + id;
+  var base = shortCode ? "/play/short/" + shortCode : "/play/" + id;
   startQuiz(id, { playRouteBase: base });
 }
 
@@ -5440,21 +5448,21 @@ async function initAuthAndQuizzes() {
   updateShuffleOptionsToggleUi();
   initStandalone();
   initCookieConsent();
-  var hash = (window.location.hash || "").trim() || "#/";
-  if (/^#\/?play\//.test(hash)) {
+  var path = getAppPath();
+  if (/^\/play\//.test(path)) {
     showView("mainMenu", undefined, true);
   } else {
-    var viewFromHash = getViewFromHash(hash);
-    if (viewFromHash && views[viewFromHash]) showView(viewFromHash, undefined, true);
+    var viewFromPath = getViewFromPath(path);
+    if (viewFromPath && views[viewFromPath]) showView(viewFromPath, undefined, true);
     else showView("mainMenu", undefined, true);
   }
 }
 
-function handleViewHash() {
-  var hash = (window.location.hash || "").trim() || "#/";
-  if (/^#\/?play\//.test(hash)) return;
-  var viewFromHash = getViewFromHash(hash);
-  if (viewFromHash && views[viewFromHash]) showView(viewFromHash);
+function handleViewPath() {
+  var path = getAppPath();
+  if (/^\/play\//.test(path)) return;
+  var viewFromPath = getViewFromPath(path);
+  if (viewFromPath && views[viewFromPath]) showView(viewFromPath);
 }
 
 function getCookieConsentValue() {
@@ -5542,12 +5550,12 @@ function initCookieConsent() {
 
 initAuthAndQuizzes();
 
-function handlePlayHash() {
-  var hash = (window.location.hash || "").replace(/^#\/?/, "");
-  var shortWithPage = /^play\/short\/([a-zA-Z0-9]+)\/(\d+)$/.exec(hash);
-  var uuidWithPage = /^play\/([a-f0-9-]{36})\/(\d+)$/i.exec(hash);
-  var shortMatch = /^play\/short\/([a-zA-Z0-9]+)$/.exec(hash);
-  var uuidMatch = /^play\/([a-f0-9-]{36})$/i.exec(hash);
+function handlePlayPath() {
+  var path = getAppPath().replace(/^\/?/, "");
+  var shortWithPage = /^play\/short\/([a-zA-Z0-9]+)\/(\d+)$/.exec(path);
+  var uuidWithPage = /^play\/([a-f0-9-]{36})\/(\d+)$/i.exec(path);
+  var shortMatch = /^play\/short\/([a-zA-Z0-9]+)$/.exec(path);
+  var uuidMatch = /^play\/([a-f0-9-]{36})$/i.exec(path);
 
   var quizId = null;
   var resolveShort = false;
@@ -5558,16 +5566,18 @@ function handlePlayHash() {
     quizId = shortWithPage[1];
     resolveShort = true;
     startAtPage = parseInt(shortWithPage[2], 10);
-    routeBase = "#/play/short/" + shortWithPage[1];
+    routeBase = "/play/short/" + shortWithPage[1];
   } else if (uuidWithPage) {
     quizId = uuidWithPage[1];
     startAtPage = parseInt(uuidWithPage[2], 10);
-    routeBase = "#/play/" + uuidWithPage[1];
+    routeBase = "/play/" + uuidWithPage[1];
   } else if (shortMatch) {
     resolveShort = true;
     quizId = shortMatch[1];
+    routeBase = "/play/short/" + shortMatch[1];
   } else if (uuidMatch) {
     quizId = uuidMatch[1];
+    routeBase = "/play/" + uuidMatch[1];
   }
 
   if (!quizId) return;
@@ -5584,20 +5594,10 @@ function handlePlayHash() {
         alert(currentLang === "tr" ? "Quiz bulunamadı veya erişim yok." : "Quiz not found or access denied.");
         return;
       }
-      if (startAtPage != null && !isNaN(startAtPage) && routeBase) {
-        if (!quizzes.find(function (q) { return q.id === quiz.id; })) {
-          quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
-        }
-        startQuizAtPage(quiz, startAtPage, routeBase);
-        return;
+      if (!quizzes.find(function (q) { return q.id === quiz.id; })) {
+        quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
       }
-      var publicRowId = publicRow && publicRow.id;
-      getQuizRatings([quiz.id]).then(function (ratingMap) {
-        var ratingInfo = ratingMap && ratingMap[quiz.id] ? ratingMap[quiz.id] : null;
-        openQuizLinkPreview(quiz, publicRow || { id: publicRowId }, ratingInfo);
-      }).catch(function () {
-        openQuizLinkPreview(quiz, publicRow || { id: publicRowId }, null);
-      });
+      startQuizAtPage(quiz, page, routeBase);
     }
     if (resolveShort) {
       function tryOpenByShortCode(attempt) {
@@ -5653,12 +5653,13 @@ function handlePlayHash() {
   if (supabaseClient) setTimeout(openQuizByLink, 150);
   else ensureSupabaseThenRun(function () { setTimeout(openQuizByLink, 400); });
 }
-if (/^#\/?play\//.test(window.location.hash || "")) {
-  setTimeout(handlePlayHash, 200);
+if (/^\/play\//.test(getAppPath())) {
+  setTimeout(handlePlayPath, 200);
 }
-window.addEventListener("hashchange", function () {
-  if (/^#\/?play\//.test(window.location.hash || "")) handlePlayHash();
-  else handleViewHash();
+window.addEventListener("popstate", function () {
+  var path = getAppPath();
+  if (/^\/play\//.test(path)) handlePlayPath();
+  else handleViewPath();
 });
 
 window.addEventListener("load", function () { checkStandaloneAgain(); });

@@ -48,15 +48,14 @@ async function fetchQuizById(supabaseUrl, anonKey, id) {
   return rows && rows.length > 0 ? rows[0] : null;
 }
 
-function html(origin, quiz, hashUrl) {
+function html(origin, quiz, pathUrl) {
   const title = quiz
     ? `${QUIZ_TITLE_PREFIX} - ${quiz.name || "Quiz"}`
     : "QuizaTime - Kendi Quizlerini Yarat";
   const desc = quiz
     ? (quiz.description && quiz.description.trim() ? quiz.description.trim() : APP_DESC)
     : APP_DESC;
-  // Hash içeren URL'de meta refresh # kısmını kaybettirebiliyor; sadece JS ile yönlendir
-  const redirect = origin + "/" + hashUrl;
+  const redirect = pathUrl.indexOf("/") === 0 ? origin + pathUrl : origin + "/" + pathUrl;
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -86,19 +85,17 @@ module.exports = async function handler(req, res) {
   const origin = `${proto}://${host}`;
 
   let quiz = null;
-  let hashUrl = "";
+  let pathUrl = "/";
 
   if (code) {
     if (supabaseUrl && anonKey) quiz = await fetchQuizByCode(supabaseUrl, anonKey, code);
-    hashUrl = "#/play/short/" + encodeURIComponent(code);
+    pathUrl = "/play/short/" + encodeURIComponent(code);
   } else if (id) {
     if (supabaseUrl && anonKey) quiz = await fetchQuizById(supabaseUrl, anonKey, id);
-    hashUrl = "#/play/" + encodeURIComponent(id);
-  } else {
-    hashUrl = "#/";
+    pathUrl = "/play/" + encodeURIComponent(id);
   }
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
-  res.status(200).send(html(origin, quiz, hashUrl));
+  res.status(200).send(html(origin, quiz, pathUrl));
 };
