@@ -1131,24 +1131,23 @@ body.standalone .app-logo {
 .messages-list-item-last { font-size: 0.85rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .messages-list-item-time { font-size: 0.75rem; color: var(--muted); }
 
-/* Sohbet: üst çizgi = üst sınır, yuvarlak butonun az üstü = alt sınır, arada alan max */
+/* Sohbet: üst çizgiden en alta full ekran */
 #chat-view {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px - 32px);
-  max-height: calc(100dvh - 56px - 32px);
-  min-height: 320px;
+  height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
+  min-height: 360px;
   overflow: hidden;
-  padding: 0 8px 0 8px;
+  padding: 0;
   box-sizing: border-box;
 }
-#chat-view .back-btn { flex-shrink: 0; margin-bottom: 2px; }
-/* Üst sınır: bu çizginin altı = mesaj alanı */
+#chat-view .back-btn { flex-shrink: 0; margin: 0 0 4px 0; }
 .chat-header {
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-bottom: 0; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  margin: 0; padding: 0 4px 8px 4px; border-bottom: 1px solid var(--border);
 }
 .chat-header-user {
   display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer;
@@ -1169,7 +1168,6 @@ body.standalone .app-logo {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  margin-bottom: 0;
 }
 .chat-messages {
   flex: 1 1 0;
@@ -1177,7 +1175,7 @@ body.standalone .app-logo {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 4px 12px 4px;
+  padding: 8px 4px 8px 4px;
   display: flex;
   flex-direction: column;
   gap: 12px;
