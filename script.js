@@ -61,7 +61,7 @@ function getEducationSubLabel(id) {
   const s = EDUCATION_SUBS.find((x) => x.id === id);
   return s ? (currentLang === "tr" ? s.labelTr : s.labelEn) : id || "—";
 }
-const DISCOVER_PLACEHOLDER_IMAGE = "empty.png";
+const DISCOVER_PLACEHOLDER_IMAGE = "/empty.png";
 const SOUND_ENABLED_KEY = "quiz_sound_enabled_v1";
 const SHUFFLE_ENABLED_KEY = "quiz_shuffle_enabled_v1";
 const SHUFFLE_OPTIONS_ENABLED_KEY = "quiz_shuffle_options_enabled_v1";
@@ -2221,12 +2221,10 @@ function decodeSound(url, setBuffer) {
 function getAssetBase() {
   if (typeof window === "undefined" || !window.location) return "";
   const loc = window.location;
-  if (loc.origin && loc.origin !== "null" && loc.origin !== "file://") {
-    const path = loc.pathname.replace(/\/[^/]*$/, "/");
-    return loc.origin + path;
-  }
-  const path = loc.pathname.replace(/\/[^/]*$/, "/");
-  return loc.protocol + "//" + (loc.host || "") + path;
+  var origin = loc.origin && loc.origin !== "null" && loc.origin !== "file://"
+    ? loc.origin
+    : loc.protocol + "//" + (loc.host || "");
+  return origin.replace(/\/+$/, "") + "/";
 }
 
 // Pre-warm audio and decode MP3s at quiz start (reliable sound on mobile/iOS).
@@ -5743,7 +5741,7 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   const isSecure = window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   if (!isSecure) return;
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 registerServiceWorker();
 
