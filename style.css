@@ -1131,8 +1131,19 @@ body.standalone .app-logo {
 .messages-list-item-last { font-size: 0.85rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .messages-list-item-time { font-size: 0.75rem; color: var(--muted); }
 
-/* Sohbet: üst başlık (avatar + isim + arkadaş ekle) */
+/* Sohbet: hub sabit yükseklik, mesaj alanı scroll, FAB sağ alt */
+#chat-view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  min-height: 320px;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+#chat-view .back-btn { flex-shrink: 0; }
 .chat-header {
+  flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
 }
@@ -1148,8 +1159,18 @@ body.standalone .app-logo {
 }
 .chat-title-clickable { margin: 0; font-size: 1.1rem; cursor: pointer; }
 
-/* Sohbet: baloncuklar */
-.chat-messages { padding: 16px 0; display: flex; flex-direction: column; gap: 12px; }
+/* Sohbet: mesaj listesi scroll, yeni mesaj altta (WP/Instagram gibi) */
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 0 80px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
 .chat-bubble {
   max-width: 85%; padding: 12px 14px; border-radius: 14px;
   cursor: pointer; transition: background 0.15s;
@@ -1173,7 +1194,6 @@ body.standalone .app-logo {
 .chat-bubble-date.hidden { display: none; }
 
 /* Sohbet: ana hub’ın sağ altı, biraz yukarı/sol – quiz gönder FAB */
-#chat-view { position: relative; }
 .chat-send-quiz-fab {
   position: absolute; right: 24px; bottom: 16px; width: 52px; height: 52px;
   border-radius: 50%; border: none; background: var(--accent); color: #fff;

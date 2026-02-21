@@ -645,6 +645,14 @@ let lastPlayedQuizFromShared = false;
 /** Base path for play URL (path-based, no hash: playRouteBase + "/" + index) */
 let playRouteBase = "";
 let chatWithUserId = null;
+/** Sohbet sayfalama: yukarı kaydırınca eski mesajlar yüklenir */
+const CHAT_PAGE_SIZE = 25;
+let chatOldestCreatedAt = null;
+let chatHasMore = false;
+let chatLoadingMore = false;
+let chatQuizById = {};
+let chatProfCache = null;
+let chatScrollListenerAttached = false;
 let viewingProfileUserId = null;
 const MESSAGES_PER_PAGE = 10;
 let messagesListCurrentPage = 0;
@@ -3671,41 +3679,92 @@ async function loadChatView() {
       };
     }
   }
-  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("id,from_user_id,to_user_id,quiz_id,created_at").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${chatWithUserId}),and(from_user_id.eq.${chatWithUserId},to_user_id.eq.${currentAuthUser.id})`).order("created_at", { ascending: true });
+  chatOldestCreatedAt = null;
+  chatHasMore = false;
+  chatLoadingMore = false;
+  chatQuizById = {};
+  chatProfCache = prof || null;
+
+  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("id,from_user_id,to_user_id,quiz_id,created_at").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${chatWithUserId}),and(from_user_id.eq.${chatWithUserId},to_user_id.eq.${currentAuthUser.id})`).order("created_at", { ascending: false }).limit(CHAT_PAGE_SIZE);
   messagesEl.innerHTML = "";
-  if (!rows?.length) { messagesEl.innerHTML = "<p class=\"hint\">" + escapeHtml(t("noMessagesYet")) + "</p>"; return; }
-  const quizIds = [...new Set(rows.map((r) => r.quiz_id))];
+  if (!rows?.length) { messagesEl.innerHTML = "<p class=\"hint\">" + escapeHtml(t("noMessagesYet")) + "</p>"; attachChatScrollListener(messagesEl); return; }
+  const chronological = rows.slice().reverse();
+  const quizIds = [...new Set(chronological.map((r) => r.quiz_id))];
   const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").in("id", quizIds);
-  const quizById = {};
-  if (quizData) for (const q of quizData) quizById[q.id] = q;
-  for (const r of rows) {
-    const quiz = quizById[r.quiz_id];
-    const isMe = r.from_user_id === currentAuthUser.id;
-    const bubble = document.createElement("div");
-    bubble.className = "chat-bubble " + (isMe ? "chat-bubble-me" : "chat-bubble-them");
-    const name = (quiz && quiz.name) ? escapeHtml(quiz.name) : "—";
-    const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + ((quiz.description || "").length > 80 ? "…" : "") : "";
-    const coverUrl = (quiz && quiz.cover_image && quiz.cover_image.trim()) ? sanitizeImageSrc(quiz.cover_image) : getDiscoverPlaceholderImageUrl();
-    const createdAt = r.created_at ? new Date(r.created_at) : null;
-    const timeStr = createdAt ? formatChatTime(createdAt) : "";
-    const dateStr = createdAt ? formatChatDate(createdAt) : "";
-    bubble.innerHTML = `
-      <div class="chat-bubble-content">
-        <img class="chat-bubble-cover-img" src="${escapeHtml(coverUrl)}" alt="" />
-        <div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}
-      </div>
-      <div class="chat-bubble-time-wrap">
-        <button type="button" class="chat-bubble-time" data-time="${escapeHtml(r.created_at || "")}">${escapeHtml(timeStr)}</button>
-        <div class="chat-bubble-date hidden">${escapeHtml(dateStr)}</div>
-      </div>
-    `;
-    const timeBtn = bubble.querySelector(".chat-bubble-time");
-    const dateEl = bubble.querySelector(".chat-bubble-date");
-    if (timeBtn && dateEl) timeBtn.addEventListener("click", (e) => { e.stopPropagation(); dateEl.classList.toggle("hidden"); });
-    const content = bubble.querySelector(".chat-bubble-content");
-    if (quiz && content) content.addEventListener("click", () => { openDiscoverPreview(quiz, isMe ? "" : (prof?.nickname || ""), null); });
+  if (quizData) for (const q of quizData) chatQuizById[q.id] = q;
+  chatOldestCreatedAt = chronological[0].created_at;
+  chatHasMore = rows.length === CHAT_PAGE_SIZE;
+  for (const r of chronological) {
+    const bubble = buildChatBubble(r, chatQuizById[r.quiz_id], r.from_user_id === currentAuthUser.id, chatProfCache);
     messagesEl.appendChild(bubble);
   }
+  requestAnimationFrame(function () { messagesEl.scrollTop = messagesEl.scrollHeight; });
+  attachChatScrollListener(messagesEl);
+}
+
+function buildChatBubble(r, quiz, isMe, prof) {
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble " + (isMe ? "chat-bubble-me" : "chat-bubble-them");
+  const name = (quiz && quiz.name) ? escapeHtml(quiz.name) : "—";
+  const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + ((quiz.description || "").length > 80 ? "…" : "") : "";
+  const coverUrl = (quiz && quiz.cover_image && quiz.cover_image.trim()) ? sanitizeImageSrc(quiz.cover_image) : getDiscoverPlaceholderImageUrl();
+  const createdAt = r.created_at ? new Date(r.created_at) : null;
+  const timeStr = createdAt ? formatChatTime(createdAt) : "";
+  const dateStr = createdAt ? formatChatDate(createdAt) : "";
+  bubble.innerHTML = `
+    <div class="chat-bubble-content">
+      <img class="chat-bubble-cover-img" src="${escapeHtml(coverUrl)}" alt="" />
+      <div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}
+    </div>
+    <div class="chat-bubble-time-wrap">
+      <button type="button" class="chat-bubble-time" data-time="${escapeHtml(r.created_at || "")}">${escapeHtml(timeStr)}</button>
+      <div class="chat-bubble-date hidden">${escapeHtml(dateStr)}</div>
+    </div>
+  `;
+  const timeBtn = bubble.querySelector(".chat-bubble-time");
+  const dateEl = bubble.querySelector(".chat-bubble-date");
+  if (timeBtn && dateEl) timeBtn.addEventListener("click", (e) => { e.stopPropagation(); dateEl.classList.toggle("hidden"); });
+  const content = bubble.querySelector(".chat-bubble-content");
+  if (quiz && content) content.addEventListener("click", () => { openDiscoverPreview(quiz, isMe ? "" : (prof?.nickname || ""), null); });
+  return bubble;
+}
+
+function attachChatScrollListener(messagesEl) {
+  if (!messagesEl || chatScrollListenerAttached) return;
+  chatScrollListenerAttached = true;
+  messagesEl.addEventListener("scroll", function onChatScroll() {
+    if (chatLoadingMore || !chatHasMore || !chatWithUserId || !supabaseClient || !currentAuthUser) return;
+    if (messagesEl.scrollTop > 120) return;
+    loadMoreChatMessages();
+  });
+}
+
+async function loadMoreChatMessages() {
+  if (!chatWithUserId || !supabaseClient || !currentAuthUser || chatLoadingMore || !chatHasMore) return;
+  const messagesEl = document.getElementById("chat-messages");
+  if (!messagesEl) return;
+  chatLoadingMore = true;
+  const { data: rows } = await supabaseClient.from("quiz_shared_to").select("id,from_user_id,to_user_id,quiz_id,created_at").or(`and(from_user_id.eq.${currentAuthUser.id},to_user_id.eq.${chatWithUserId}),and(from_user_id.eq.${chatWithUserId},to_user_id.eq.${currentAuthUser.id})`).lt("created_at", chatOldestCreatedAt).order("created_at", { ascending: false }).limit(CHAT_PAGE_SIZE);
+  chatLoadingMore = false;
+  if (!rows?.length) { chatHasMore = false; return; }
+  const newQuizIds = rows.map((r) => r.quiz_id).filter((id) => !chatQuizById[id]);
+  if (newQuizIds.length) {
+    const { data: quizData } = await supabaseClient.from("quizzes").select("id,name,description,questions,cover_image").in("id", newQuizIds);
+    if (quizData) for (const q of quizData) chatQuizById[q.id] = q;
+  }
+  const chronological = rows.slice().reverse();
+  const oldScrollHeight = messagesEl.scrollHeight;
+  const oldScrollTop = messagesEl.scrollTop;
+  for (const r of chronological) {
+    const bubble = buildChatBubble(r, chatQuizById[r.quiz_id], r.from_user_id === currentAuthUser.id, chatProfCache);
+    messagesEl.insertBefore(bubble, messagesEl.firstChild);
+  }
+  chatOldestCreatedAt = chronological[0].created_at;
+  chatHasMore = rows.length === CHAT_PAGE_SIZE;
+  requestAnimationFrame(function () {
+    const delta = messagesEl.scrollHeight - oldScrollHeight;
+    messagesEl.scrollTop = oldScrollTop + delta;
+  });
 }
 function formatChatTime(d) {
   const h = d.getHours();
