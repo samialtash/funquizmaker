@@ -1134,20 +1134,26 @@ body.standalone .app-logo {
 /* Sohbet: üst çizgiden en alta full ekran */
 #chat-view {
   position: relative;
-  display: flex;
-  flex-direction: column;
   height: calc(100vh - 56px);
   max-height: calc(100dvh - 56px);
-  min-height: 360px;
+  min-height: 400px;
   overflow: hidden;
   padding: 0;
   box-sizing: border-box;
+  contain: none;
 }
-#chat-view .back-btn { flex-shrink: 0; margin: 0 0 4px 0; }
+#chat-view .back-btn { position: relative; z-index: 2; margin: 0; }
 .chat-header {
-  flex-shrink: 0;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin: 0; padding: 0 4px 8px 4px; border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 8px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-alt);
 }
 .chat-header-user {
   display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer;
@@ -1163,19 +1169,20 @@ body.standalone .app-logo {
 
 /* Mesaj alanı: sadece bu kısım yukarı-aşağı kayar; PC’de sağda scrollbar, mobilde kaydırma */
 .chat-messages-wrap {
-  flex: 1 1 0;
-  min-height: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 90px;
+  min-height: 200px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 .chat-messages {
-  flex: 1 1 0;
-  min-height: 0;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 4px 8px 4px;
+  padding: 10px 8px 10px 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
