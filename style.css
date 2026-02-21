@@ -1164,7 +1164,7 @@ body.standalone .app-logo {
 
 /* Mesaj alanı: sadece bu kısım yukarı-aşağı kayar; PC’de sağda scrollbar, mobilde kaydırma */
 .chat-messages {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1174,11 +1174,16 @@ body.standalone .app-logo {
   gap: 12px;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  scrollbar-color: var(--accent-soft) rgba(15, 23, 42, 0.6);
+  scrollbar-width: thin;
 }
-/* PC’de sağda scrollbar her zaman görünsün (tutup çekmek için) */
 @media (min-width: 768px) {
   .chat-messages { overflow-y: scroll; }
 }
+.chat-messages::-webkit-scrollbar { width: 8px; }
+.chat-messages::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--accent-soft); border-radius: 4px; }
+.chat-messages::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .chat-bubble {
   max-width: 85%; padding: 12px 14px; border-radius: 14px;
   cursor: pointer; transition: background 0.15s;

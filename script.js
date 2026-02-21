@@ -3698,8 +3698,16 @@ async function loadChatView() {
     const bubble = buildChatBubble(r, chatQuizById[r.quiz_id], r.from_user_id === currentAuthUser.id, chatProfCache);
     messagesEl.appendChild(bubble);
   }
-  requestAnimationFrame(function () { messagesEl.scrollTop = messagesEl.scrollHeight; });
+  scrollChatToBottom(messagesEl);
   attachChatScrollListener(messagesEl);
+}
+
+function scrollChatToBottom(messagesEl) {
+  if (!messagesEl) return;
+  function go() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+  requestAnimationFrame(go);
+  requestAnimationFrame(function () { requestAnimationFrame(go); });
+  setTimeout(go, 120);
 }
 
 function buildChatBubble(r, quiz, isMe, prof) {
