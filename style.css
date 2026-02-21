@@ -56,12 +56,74 @@ body {
   justify-content: center;
 }
 
-/* Masaüstü: side rail reklamlar için yan boşluk (içerik ortada, sol/sağda reklam alanı) */
+/* Yan reklam alanları: sadece masaüstünde görünür; mobil/tablet sıkışmasın */
+.ad-sidebar {
+  display: none;
+  flex-shrink: 0;
+  width: 160px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  align-self: stretch;
+  justify-content: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.ad-sidebar .ad-slot-side {
+  width: 160px;
+  height: 600px;
+  margin: 0 auto;
+}
+
+/* Masaüstü: body flex, sol/sağda reklam; içerik ortada */
 @media (min-width: 1280px) {
   body {
-    padding-left: calc(160px + env(safe-area-inset-left, 0));
-    padding-right: calc(160px + env(safe-area-inset-right, 0));
+    padding-left: 0;
+    padding-right: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    gap: 0;
   }
+
+  .ad-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #ad-sidebar-left {
+    order: 0;
+  }
+
+  #fullscreen-logo {
+    order: 1;
+  }
+
+  #app {
+    order: 2;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 1100px;
+  }
+
+  #ad-sidebar-right {
+    order: 3;
+  }
+}
+
+/* Mobil ve tablet: yan reklamları gösterme */
+@media (max-width: 1279px) {
+  .ad-sidebar {
+    display: none !important;
+  }
+}
+
+/* PWA / ana ekrana eklenince: yan reklam yok, uygulama tam genişlik */
+body.standalone .ad-sidebar {
+  display: none !important;
 }
 
 body.standalone .view,
