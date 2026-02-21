@@ -953,9 +953,6 @@ function showView(name, direction, noTransition) {
 
   if (name === "mainMenu") viewHistory = [];
 
-  var chatFab = document.getElementById("chat-send-quiz-fab");
-  if (chatFab) chatFab.classList.toggle("hidden", name !== "chat");
-
   var setPath = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
   if (setPath && typeof window !== "undefined" && window.history) {
     var targetPath = getViewPath(name);
