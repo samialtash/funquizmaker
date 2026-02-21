@@ -1,5 +1,20 @@
 // Basic quiz storage using browser localStorage
 const STORAGE_KEY = "custom_quizzes_v1";
+/** Paylaşım linkleri her zaman bu domain üzerinden (yeni sekme aynı origin = giriş korunur) */
+const CANONICAL_SITE_ORIGIN = "https://quizatime.com";
+function getShareBaseUrl() {
+  return (typeof window !== "undefined" && window.CANONICAL_SITE_ORIGIN) ? window.CANONICAL_SITE_ORIGIN : CANONICAL_SITE_ORIGIN;
+}
+(function redirectToCanonicalIfNeeded() {
+  if (typeof window === "undefined" || !window.location) return;
+  var origin = window.location.origin || "";
+  var canonical = getShareBaseUrl().replace(/\/+$/, "");
+  var canonicalOrigin = canonical.indexOf("://") >= 0 ? canonical.split("/")[0] + "//" + canonical.split("/")[2] : canonical;
+  if (!origin || origin === canonicalOrigin) return;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return;
+  var path = (window.location.pathname || "/") + (window.location.search || "");
+  window.location.replace(canonicalOrigin + path);
+})();
 
 // Keşfet kategorileri (herkese açık paylaşırken zorunlu). Eğitim seçilince bölüm (category_sub) de seçilir.
 const QUIZ_CATEGORIES = [
@@ -3929,7 +3944,7 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var linkBtn = document.getElementById("share-quiz-link-btn");
   var waitText = currentLang === "tr" ? "Lütfen bekleyiniz…" : "Please wait…";
   if (linkBtn) { linkBtn.disabled = true; linkBtn.textContent = waitText; }
-  var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
+  var base = getShareBaseUrl().replace(/\/?$/, "");
   var link = base + "/play/" + shareQuizModalQuizId;
   var shortCode = null;
   var linkWorks = false;
@@ -4158,7 +4173,7 @@ async function loadDiscoverQuizzes() {
         var action = item.dataset.action;
         dropdown.classList.add("hidden");
         if (action === "share") {
-          var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
+          var base = getShareBaseUrl().replace(/\/?$/, "");
           var link = r.short_code ? base + "/play/short/" + r.short_code : base + "/play/" + quiz.id;
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(link).then(function () { alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied."); }).catch(function () { alert(link); });
@@ -4677,13 +4692,15 @@ if (supabaseClient) {
   }
   if (authGoogleLogin) {
     authGoogleLogin.addEventListener("click", () => {
-      supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
+      var redirectTo = getShareBaseUrl() + "/";
+      supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo } }).catch(console.warn);
       closeAuthModal();
     });
   }
   if (authGoogleSignup) {
     authGoogleSignup.addEventListener("click", () => {
-      supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
+      var redirectTo = getShareBaseUrl() + "/";
+      supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo } }).catch(console.warn);
       closeAuthModal();
     });
   }
