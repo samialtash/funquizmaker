@@ -5483,8 +5483,15 @@ async function initAuthAndQuizzes() {
     setTimeout(function () { handlePlayPath(); }, 100);
   } else {
     var viewFromPath = getViewFromPath(path);
-    if (viewFromPath && views[viewFromPath]) showView(viewFromPath, undefined, true);
-    else showView("mainMenu", undefined, true);
+    if (viewFromPath && views[viewFromPath]) {
+      showView(viewFromPath, undefined, true);
+      if (viewFromPath === "discover") {
+        if (supabaseClient) loadDiscoverQuizzes();
+        else ensureSupabaseThenRun(function () { loadDiscoverQuizzes(); });
+      }
+    } else {
+      showView("mainMenu", undefined, true);
+    }
   }
 }
 
