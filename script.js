@@ -865,7 +865,8 @@ function showView(name, direction, noTransition) {
   // Quiz, bitiş veya link önizlemeden çıkınca ya da ana menüye gelince linki sıfırla (yenileyince quiz tekrar açılmasın)
   const goingToMain = name === "mainMenu";
   if (typeof window !== "undefined" && window.location && goingToMain) {
-    window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/");
+    // Ana sayfada URL temiz olsun: .com veya .com/ (hash yok)
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
   }
   currentViewKey = name;
 
@@ -882,10 +883,13 @@ function showView(name, direction, noTransition) {
 
   var setHash = name !== "quizView" && name !== "quizFinished" && name !== "quizLinkPreview";
   if (setHash && typeof window !== "undefined" && window.history) {
-    var h = getViewHash(name);
-    var curHash = (window.location.hash || "").trim() || "#/";
-    if (curHash !== h) {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search + h);
+    var base = window.location.pathname + window.location.search;
+    if (name === "mainMenu") {
+      if (window.location.hash) window.history.replaceState(null, "", base);
+    } else {
+      var h = getViewHash(name);
+      var curHash = (window.location.hash || "").trim() || "#/";
+      if (curHash !== h) window.history.replaceState(null, "", base + h);
     }
   }
 }
