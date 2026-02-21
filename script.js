@@ -667,6 +667,33 @@ let fromCreateQuizPage = false;
 let lastAddedQuestionIndex = -1;
 let mainPageSearchQuery = "";
 
+/** Admin: sadece Sami17 nick'ine sahip kullanıcı admin; keşfette Sil için 6 haneli şifre gerekir */
+let isAdmin = false;
+const ADMIN_NICKNAME = "Sami17";
+const ADMIN_DELETE_PASSWORD = "147147";
+/** Silme seçimi bekleyen: { publicId, quizId, wrap } */
+let adminDeletePending = null;
+/** Rapor nedeni seçimi bekleyen quiz id */
+let pendingReportQuizId = null;
+const REPORT_REASONS = [
+  { id: "violence", tr: "Şiddet", en: "Violence" },
+  { id: "sexual", tr: "Cinsellik", en: "Sexual content" },
+  { id: "politics", tr: "Siyaset", en: "Politics" },
+  { id: "spam", tr: "Spam", en: "Spam" },
+  { id: "misleading", tr: "Yanıltıcı", en: "Misleading" },
+  { id: "other", tr: "Diğer", en: "Other" }
+];
+async function refreshIsAdmin() {
+  if (!currentAuthUser || !supabaseClient) {
+    isAdmin = false;
+    return;
+  }
+  const { data: prof } = await supabaseClient.from("profiles").select("nickname").eq("id", currentAuthUser.id).single();
+  isAdmin = (prof && prof.nickname === ADMIN_NICKNAME);
+  const adminReportsBtn = document.getElementById("admin-reports-btn");
+  if (adminReportsBtn) adminReportsBtn.classList.toggle("hidden", !isAdmin);
+}
+
 const FORMAT_EXAMPLE_PLACEHOLDER = `1) What is 2 + 2?
 A) 3
 B) 4
@@ -702,7 +729,8 @@ const views = {
   createQuiz: document.getElementById("create-quiz-view"),
   quizEditQuestions: document.getElementById("quiz-edit-questions-view"),
   quizEditHub: document.getElementById("quiz-edit-hub-view"),
-  quizLinkPreview: document.getElementById("quiz-link-preview-view")
+  quizLinkPreview: document.getElementById("quiz-link-preview-view"),
+  adminReports: document.getElementById("admin-reports-view")
 };
 
 /** Path-based routes (no hash for compatibility with other sites) */
@@ -718,7 +746,8 @@ var VIEW_TO_PATH = {
   chat: "/chat",
   quizSelect: "/quiz-select",
   createQuiz: "/create",
-  quizEditHub: "/edit"
+  quizEditHub: "/edit",
+  adminReports: "/admin/reports"
 };
 var PATH_TO_VIEW = {
   "/": "mainMenu",
@@ -732,7 +761,8 @@ var PATH_TO_VIEW = {
   "/chat": "chat",
   "/quiz-select": "quizSelect",
   "/create": "createQuiz",
-  "/edit": "quizEditHub"
+  "/edit": "quizEditHub",
+  "/admin/reports": "adminReports"
 };
 
 function getAppPath() {
@@ -947,6 +977,10 @@ function showView(name, direction, noTransition) {
   const goingToMain = name === "mainMenu";
   if (typeof window !== "undefined" && window.location && goingToMain) {
     setAppPath("/", true);
+  }
+  if (goingToMain) {
+    var adminReportsBtnEl = document.getElementById("admin-reports-btn");
+    if (adminReportsBtnEl) adminReportsBtnEl.classList.toggle("hidden", !isAdmin);
   }
   currentViewKey = name;
 
@@ -3243,6 +3277,20 @@ async function loadProfile(optionalUserId) {
   viewingProfileUserId = profileUserId;
   if (otherActions) otherActions.classList.remove("hidden");
   if (addFriendBtn) addFriendBtn.classList.add("hidden");
+  const profileBanBtn = document.getElementById("profile-ban-btn");
+  if (profileBanBtn) {
+    profileBanBtn.classList.toggle("hidden", !isAdmin);
+    if (isAdmin) {
+      profileBanBtn.textContent = currentLang === "tr" ? "Kullanıcıyı banla" : "Ban user";
+      profileBanBtn.onclick = async function () {
+        if (!confirm(currentLang === "tr" ? "Bu kullanıcıyı banlamak istediğinize emin misiniz?" : "Are you sure you want to ban this user?")) return;
+        if (!supabaseClient || !currentAuthUser) return;
+        var { error } = await supabaseClient.from("banned_users").insert({ user_id: profileUserId, banned_by: currentAuthUser.id });
+        if (error) { alert(currentLang === "tr" ? "Ban işlemi yapılamadı." : "Could not ban user."); return; }
+        alert(currentLang === "tr" ? "Kullanıcı banlandı." : "User banned.");
+      };
+    }
+  }
   if (friendStatus) { friendStatus.classList.remove("hidden"); friendStatus.textContent = ""; }
   const [friendRows, reqRows] = await Promise.all([
     supabaseClient.from("friendships").select("friend_id").eq("user_id", currentAuthUser.id).eq("friend_id", profileUserId),
@@ -4349,6 +4397,7 @@ async function loadDiscoverQuizzes() {
         <button type="button" class="discover-dropdown-item" data-action="share">${currentLang === "tr" ? "Quizi paylaş" : "Share quiz"}</button>
         <button type="button" class="discover-dropdown-item" data-action="add">${currentLang === "tr" ? "Kütüphaneme ekle" : "Add to my library"}</button>
         <button type="button" class="discover-dropdown-item" data-action="report">${currentLang === "tr" ? "Quizi rapor et" : "Report quiz"}</button>
+        ${isAdmin ? `<button type="button" class="discover-dropdown-item discover-dropdown-delete" data-action="delete" data-public-id="${escapeHtml(String(r.id))}">Sil</button>` : ""}
       </div>
     `;
     const cardBtn = wrap.querySelector(".discover-feed-card");
@@ -4382,6 +4431,17 @@ async function loadDiscoverQuizzes() {
           copyQuizToMyQuizzes(quiz).then(function (ok) { if (ok) alert(currentLang === "tr" ? "Quizlerinize eklendi." : "Added to your quizzes."); });
         } else if (action === "report") {
           reportDiscoverQuiz(quiz.id);
+        } else if (action === "delete" && isAdmin) {
+          var publicId = item.dataset.publicId;
+          var quizId = wrap.dataset.quizId;
+          if (!publicId || !supabaseClient) return;
+          var pwd = window.prompt(currentLang === "tr" ? "6 haneli admin şifresini girin:" : "Enter 6-digit admin password:");
+          if (pwd !== ADMIN_DELETE_PASSWORD) {
+            alert(currentLang === "tr" ? "Şifre yanlış." : "Wrong password.");
+            return;
+          }
+          adminDeletePending = { publicId: publicId, quizId: quizId, wrap: wrap };
+          document.getElementById("admin-delete-modal").classList.remove("hidden");
         }
       });
     });
@@ -4391,10 +4451,105 @@ async function loadDiscoverQuizzes() {
 function closeAllDiscoverMenus() {
   document.querySelectorAll(".discover-card-dropdown").forEach(function (d) { d.classList.add("hidden"); });
 }
+
+function runAdminDeleteFromDiscover() {
+  if (!adminDeletePending || !supabaseClient) return;
+  var publicId = adminDeletePending.publicId;
+  var wrap = adminDeletePending.wrap;
+  document.getElementById("admin-delete-modal").classList.add("hidden");
+  adminDeletePending = null;
+  supabaseClient.from("public_quizzes").delete().eq("id", publicId).then(function (res) {
+    if (res.error) { alert(currentLang === "tr" ? "Keşfetten kaldırılamadı." : "Could not remove from discover."); return; }
+    if (wrap && wrap.parentNode) wrap.remove();
+  }).catch(function () { alert(currentLang === "tr" ? "Hata oluştu." : "An error occurred."); });
+}
+function runAdminDeletePermanent() {
+  if (!adminDeletePending || !supabaseClient) return;
+  var publicId = adminDeletePending.publicId;
+  var quizId = adminDeletePending.quizId;
+  var wrap = adminDeletePending.wrap;
+  document.getElementById("admin-delete-modal").classList.add("hidden");
+  adminDeletePending = null;
+  supabaseClient.from("public_quizzes").delete().eq("id", publicId).then(function (res) {
+    if (res.error) { alert(currentLang === "tr" ? "Keşfetten kaldırılamadı." : "Could not remove from discover."); return; }
+    return supabaseClient.from("quizzes").delete().eq("id", quizId);
+  }).then(function (res) {
+    if (res && res.error) { alert(currentLang === "tr" ? "Quiz tamamen silinemedi." : "Quiz could not be deleted."); return; }
+    if (wrap && wrap.parentNode) wrap.remove();
+  }).catch(function () { alert(currentLang === "tr" ? "Hata oluştu." : "An error occurred."); });
+}
+document.getElementById("admin-delete-permanent")?.addEventListener("click", runAdminDeletePermanent);
+document.getElementById("admin-delete-from-discover")?.addEventListener("click", runAdminDeleteFromDiscover);
+document.getElementById("admin-delete-cancel")?.addEventListener("click", function () {
+  document.getElementById("admin-delete-modal").classList.add("hidden");
+  adminDeletePending = null;
+});
+document.getElementById("report-reason-cancel")?.addEventListener("click", function () {
+  document.getElementById("report-reason-modal").classList.add("hidden");
+  pendingReportQuizId = null;
+});
+
+async function loadAdminReportsView() {
+  var listEl = document.getElementById("admin-reports-list");
+  var titleEl = document.getElementById("admin-reports-title");
+  if (!listEl || !supabaseClient) return;
+  if (titleEl) titleEl.textContent = currentLang === "tr" ? "Raporlanan quizler" : "Reported quizzes";
+  listEl.innerHTML = currentLang === "tr" ? "Yükleniyor…" : "Loading…";
+  var { data: reports, error: err } = await supabaseClient.from("quiz_reports").select("id, quiz_id, reporter_id, reason, created_at").order("created_at", { ascending: false });
+  if (err || !reports || !reports.length) {
+    listEl.innerHTML = currentLang === "tr" ? "Raporlanan quiz yok." : "No reported quizzes.";
+    return;
+  }
+  var quizIds = [...new Set(reports.map(function (r) { return r.quiz_id; }))];
+  var reporterIds = [...new Set(reports.map(function (r) { return r.reporter_id; }))];
+  var { data: quizzes } = await supabaseClient.from("quizzes").select("id, name").in("id", quizIds);
+  var { data: profs } = await supabaseClient.from("profiles").select("id, nickname").in("id", reporterIds);
+  var quizMap = {}; if (quizzes) quizzes.forEach(function (q) { quizMap[q.id] = q; });
+  var profMap = {}; if (profs) profs.forEach(function (p) { profMap[p.id] = p; });
+  listEl.innerHTML = "";
+  reports.forEach(function (r) {
+    var q = quizMap[r.quiz_id];
+    var reporterNick = (profs && profMap[r.reporter_id]) ? (profMap[r.reporter_id].nickname || r.reporter_id?.slice(0, 8) || "—") : (r.reporter_id?.slice(0, 8) || "—");
+    var quizName = (q && q.name) ? q.name : (r.quiz_id?.slice(0, 8) || "—");
+    var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString(currentLang === "tr" ? "tr-TR" : "en-GB") : "—";
+    var card = document.createElement("div");
+    card.className = "admin-report-card";
+    card.innerHTML = "<strong>" + escapeHtml(quizName) + "</strong><br><span class=\"hint\">" + escapeHtml(r.reason || "—") + " · " + escapeHtml(reporterNick) + " · " + escapeHtml(dateStr) + "</span>";
+    listEl.appendChild(card);
+  });
+}
+document.getElementById("admin-reports-btn")?.addEventListener("click", function () {
+  showView("adminReports");
+  loadAdminReportsView();
+});
+
 function reportDiscoverQuiz(quizId) {
   if (!currentAuthUser || !supabaseClient) { alert(currentLang === "tr" ? "Giriş yapın." : "Please log in."); return; }
-  var reason = window.prompt(currentLang === "tr" ? "Rapor nedeni (isteğe bağlı):" : "Report reason (optional):");
-  supabaseClient.from("quiz_reports").insert({ quiz_id: quizId, reporter_id: currentAuthUser.id, reason: (reason && reason.trim()) || null }).then(function (res) {
+  pendingReportQuizId = quizId;
+  var listEl = document.getElementById("report-reason-list");
+  if (listEl) {
+    listEl.innerHTML = "";
+    REPORT_REASONS.forEach(function (r) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "secondary-btn";
+      btn.style.width = "100%";
+      btn.style.marginBottom = "6px";
+      btn.textContent = currentLang === "tr" ? r.tr : r.en;
+      btn.dataset.reasonId = r.id;
+      btn.addEventListener("click", function () { submitReportWithReason(r.id); });
+      listEl.appendChild(btn);
+    });
+  }
+  document.getElementById("report-reason-modal").classList.remove("hidden");
+}
+function submitReportWithReason(reasonId) {
+  if (!pendingReportQuizId || !currentAuthUser || !supabaseClient) return;
+  var reasonLabel = REPORT_REASONS.find(function (r) { return r.id === reasonId; });
+  var reasonText = reasonLabel ? (currentLang === "tr" ? reasonLabel.tr : reasonLabel.en) : reasonId;
+  supabaseClient.from("quiz_reports").insert({ quiz_id: pendingReportQuizId, reporter_id: currentAuthUser.id, reason: reasonText }).then(function (res) {
+    document.getElementById("report-reason-modal").classList.add("hidden");
+    pendingReportQuizId = null;
     if (res.error) { alert(currentLang === "tr" ? "Rapor gönderilemedi." : "Report could not be sent."); return; }
     alert(currentLang === "tr" ? "Raporunuz alındı." : "Report received.");
   }).catch(function () { alert(currentLang === "tr" ? "Rapor gönderilemedi." : "Report could not be sent."); });
@@ -5003,6 +5158,7 @@ Array.from(document.querySelectorAll(".back-btn")).forEach((btn) => {
       showHubPanel(lastHubPanel);
       renderQuestionsList();
     }
+    if (viewKey === "adminReports") loadAdminReportsView();
   });
 });
 
@@ -5667,7 +5823,12 @@ async function initAuthAndQuizzes() {
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
       currentAuthUser = session?.user ?? null;
-      if (session) await fetchUserQuizzes();
+      if (session) {
+        await fetchUserQuizzes();
+        await refreshIsAdmin();
+      } else {
+        isAdmin = false;
+      }
     } catch (e) {
       // Hata olursa localStorage'daki quizzes zaten yüklü
     }
@@ -5704,12 +5865,16 @@ async function initAuthAndQuizzes() {
           loadProfile(viewingProfileUserId || undefined);
         } else if (viewFromPath === "messagesList") {
           loadMessagesList(0);
+        } else if (viewFromPath === "adminReports") {
+          loadAdminReportsView();
         }
       }
     } else {
       showView("mainMenu", undefined, true);
     }
   }
+  var adminReportsBtn = document.getElementById("admin-reports-btn");
+  if (adminReportsBtn) adminReportsBtn.classList.toggle("hidden", !isAdmin);
 }
 
 function hideAllViews() {

@@ -96,6 +96,7 @@
             <button id="create-quiz-btn" class="secondary-btn main-btn-secondary">Quiz oluştur / düzenle</button>
             <button id="discover-quiz-btn" class="secondary-btn main-btn-secondary">Quizleri keşfet</button>
             <button id="settings-btn" class="secondary-btn main-btn-secondary">Ayarlar</button>
+            <button id="admin-reports-btn" class="secondary-btn main-btn-secondary hidden">Raporlanan quizler</button>
           </div>
           <div class="info-box main-menu-info">
             <h2 id="how-it-works">How it works</h2>
@@ -131,6 +132,13 @@
             <p><strong>8. Değişiklik</strong><br>Sözleşme metni güncellenebilir. Güncel metin uygulama içinden erişilebilir olacaktır. Kullanıma devam etmekle güncel metni kabul etmiş sayılırsınız.</p>
           </div>
         </div>
+      </div>
+
+      <!-- Admin: raporlanan quizler (sadece admin görür) -->
+      <div id="admin-reports-view" class="view">
+        <button id="back-btn-admin-reports" class="back-btn" data-back="main-menu">← Back</button>
+        <h1 id="admin-reports-title" class="main-menu-title">Raporlanan quizler</h1>
+        <div id="admin-reports-list" class="admin-reports-list"></div>
       </div>
 
       <!-- Settings: dil seç menüsüne git + tam ekran -->
@@ -199,6 +207,7 @@
         </div>
         <div class="profile-actions main-menu-buttons hidden" id="profile-other-actions">
           <button type="button" id="profile-add-friend-btn" class="secondary-btn main-btn-secondary">Arkadaş ekle</button>
+          <button type="button" id="profile-ban-btn" class="danger-btn main-btn-secondary hidden">Kullanıcıyı banla</button>
           <span id="profile-friend-status" class="hint hidden"></span>
         </div>
         <h2 id="profile-shared-title" class="profile-section-title hidden">Profilinde paylaşılan quizler</h2>
@@ -468,6 +477,29 @@
           <h2 id="chat-send-quiz-modal-title" class="auth-modal-title">Quizlerimden gönder</h2>
           <div id="chat-send-quiz-list" class="chat-send-quiz-list"></div>
           <button type="button" id="chat-send-quiz-modal-close" class="secondary-btn">İptal</button>
+        </div>
+      </div>
+
+      <!-- Modal: admin sil – temelli mi keşfetten mi -->
+      <div id="admin-delete-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+          <h2 id="admin-delete-modal-title" class="auth-modal-title">Nasıl silinsin?</h2>
+          <p class="hint">Temelli sil: Quiz uygulamadan tamamen kaldırılır. Keşfetten kaldır: Sadece keşfet listesinden çıkar, sahibinde kalır.</p>
+          <div class="modal-actions" style="flex-direction: column; gap: 8px;">
+            <button type="button" id="admin-delete-permanent" class="danger-btn" style="width:100%;">Temelli sil</button>
+            <button type="button" id="admin-delete-from-discover" class="secondary-btn" style="width:100%;">Keşfetten kaldır</button>
+            <button type="button" id="admin-delete-cancel" class="secondary-btn" style="width:100%;">İptal</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: rapor nedeni seç -->
+      <div id="report-reason-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+          <h2 class="auth-modal-title">Rapor nedeni</h2>
+          <p class="hint">Neden raporluyorsunuz?</p>
+          <div id="report-reason-list" class="report-reason-list"></div>
+          <button type="button" id="report-reason-cancel" class="secondary-btn" style="margin-top:12px;">İptal</button>
         </div>
       </div>
 
