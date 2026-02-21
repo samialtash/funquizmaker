@@ -76,16 +76,16 @@ body {
 .ad-rail {
   display: none;
   flex-shrink: 0;
-  width: 160px;
-  min-height: 600px;
+  width: 200px;
+  min-height: 650px;
   justify-content: center;
   align-items: flex-start;
   padding-top: 72px;
 }
 
 .ad-slot-inner {
-  width: 160px;
-  min-height: 600px;
+  width: 200px;
+  min-height: 650px;
 }
 
 @media (min-width: 1280px) {
