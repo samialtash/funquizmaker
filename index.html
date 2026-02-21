@@ -445,7 +445,7 @@
         <div id="messages-list-pagination" class="pagination-row hidden"></div>
       </div>
 
-      <!-- Sohbet (tek kişiyle): üstte avatar + isim (tıklanınca profil) + Arkadaş ekle -->
+      <!-- Sohbet: üstte başlık, altta yuvarlak bar; mesajlar barın hemen üstünden, yukarı kayınca eskiler -->
       <div id="chat-view" class="view">
         <button id="back-btn-chat" class="back-btn" data-back="messages-list">← Back</button>
         <div id="chat-header" class="chat-header">
@@ -456,7 +456,9 @@
           </div>
           <button type="button" id="chat-add-friend-btn" class="secondary-btn small-btn hidden">Arkadaş ekle</button>
         </div>
-        <div id="chat-messages" class="chat-messages"></div>
+        <div id="chat-messages-wrap" class="chat-messages-wrap">
+          <div id="chat-messages" class="chat-messages"></div>
+        </div>
         <button type="button" id="chat-send-quiz-fab" class="chat-send-quiz-fab" aria-label="Quiz gönder">+</button>
       </div>
 

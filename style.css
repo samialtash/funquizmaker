@@ -1163,12 +1163,20 @@ body.standalone .app-logo {
 .chat-title-clickable { margin: 0; font-size: 1.1rem; cursor: pointer; }
 
 /* Mesaj alanı: sadece bu kısım yukarı-aşağı kayar; PC’de sağda scrollbar, mobilde kaydırma */
+.chat-messages-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .chat-messages {
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 4px 80px 0;
+  padding: 12px 4px 80px 4px;
   display: flex;
   flex-direction: column;
   gap: 12px;
