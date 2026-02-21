@@ -25,6 +25,16 @@ function buildPlayShareLink(shortCodeOrNull, quizId) {
   window.location.replace(canonicalOrigin + path);
 })();
 
+var INITIAL_PATH = (function () {
+  try {
+    if (typeof window === "undefined" || !window.location) return "";
+    var p = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+    return p;
+  } catch (e) {
+    return "";
+  }
+})();
+
 // Keşfet kategorileri (herkese açık paylaşırken zorunlu). Eğitim seçilince bölüm (category_sub) de seçilir.
 const QUIZ_CATEGORIES = [
   { id: "genel", labelTr: "Genel", labelEn: "General" },
@@ -5448,6 +5458,7 @@ if (bulkInput) bulkInput.placeholder = FORMAT_EXAMPLE_PLACEHOLDER;
 
 // Initial setup: önce localStorage'dan yükle (ilk kayıt kaybolmasın), sonra ise buluttan güncelle
 async function initAuthAndQuizzes() {
+  var path = (INITIAL_PATH && INITIAL_PATH.length > 0) ? INITIAL_PATH : getAppPath();
   loadSettings();
   loadQuizzes();
   if (supabaseClient) {
@@ -5467,7 +5478,6 @@ async function initAuthAndQuizzes() {
   updateShuffleOptionsToggleUi();
   initStandalone();
   initCookieConsent();
-  var path = getAppPath();
   if (/^\/play\//.test(path)) {
     hideAllViews();
     setTimeout(function () { handlePlayPath(); }, 100);
@@ -5624,7 +5634,18 @@ function handlePlayPath() {
       if (!quizzes.find(function (q) { return q.id === quiz.id; })) {
         quizzes.push({ id: quiz.id, name: quiz.name, description: quiz.description || "", questions: Array.isArray(quiz.questions) ? quiz.questions : [], cover_image: quiz.cover_image || null });
       }
-      startQuizAtPage(quiz, page, routeBase);
+      var hasQuestionIndex = (shortWithPage || uuidWithPage) && startAtPage != null && !isNaN(startAtPage);
+      if (hasQuestionIndex) {
+        startQuizAtPage(quiz, startAtPage, routeBase);
+        return;
+      }
+      var publicRowId = publicRow && publicRow.id;
+      getQuizRatings([quiz.id]).then(function (ratingMap) {
+        var ratingInfo = ratingMap && ratingMap[quiz.id] ? ratingMap[quiz.id] : null;
+        openQuizLinkPreview(quiz, publicRow || { id: publicRowId }, ratingInfo);
+      }).catch(function () {
+        openQuizLinkPreview(quiz, publicRow || { id: publicRowId }, null);
+      });
     }
     if (resolveShort) {
       function tryOpenByShortCode(attempt) {
