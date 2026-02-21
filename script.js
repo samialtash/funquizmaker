@@ -25,9 +25,16 @@ function buildPlayShareLink(shortCodeOrNull, quizId) {
   window.location.replace(canonicalOrigin + path);
 })();
 
+function isFileProtocol() {
+  return typeof window !== "undefined" && window.location && window.location.protocol === "file:";
+}
 var INITIAL_PATH = (function () {
   try {
     if (typeof window === "undefined" || !window.location) return "";
+    if (isFileProtocol() && window.location.hash) {
+      var h = (window.location.hash || "").replace(/^#\/?/, "").trim();
+      return h ? "/" + h : "/";
+    }
     var p = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
     return p;
   } catch (e) {
@@ -71,7 +78,10 @@ function getEducationSubLabel(id) {
   const s = EDUCATION_SUBS.find((x) => x.id === id);
   return s ? (currentLang === "tr" ? s.labelTr : s.labelEn) : id || "—";
 }
-const DISCOVER_PLACEHOLDER_IMAGE = "/empty.png";
+var DISCOVER_PLACEHOLDER_IMAGE = "empty.png";
+function getDiscoverPlaceholderImageUrl() {
+  return (typeof getAssetBase !== "undefined" ? getAssetBase() : "") + "empty.png";
+}
 const SOUND_ENABLED_KEY = "quiz_sound_enabled_v1";
 const SHUFFLE_ENABLED_KEY = "quiz_shuffle_enabled_v1";
 const SHUFFLE_OPTIONS_ENABLED_KEY = "quiz_shuffle_options_enabled_v1";
@@ -719,12 +729,22 @@ var PATH_TO_VIEW = {
 
 function getAppPath() {
   if (typeof window === "undefined" || !window.location) return "/";
+  if (isFileProtocol() && window.location.hash) {
+    var h = (window.location.hash || "").replace(/^#\/?/, "").trim();
+    return h ? "/" + h : "/";
+  }
   var p = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
   return p;
 }
 
 function setAppPath(path, replace) {
-  if (typeof window === "undefined" || !window.history) return;
+  if (typeof window === "undefined") return;
+  var normalized = (path || "").replace(/^\/+/, "") || "";
+  if (isFileProtocol()) {
+    window.location.hash = normalized ? "#/" + normalized : "#/";
+    return;
+  }
+  if (!window.history) return;
   var base = window.location.origin;
   var full = path.indexOf("/") === 0 ? base + path : base + "/" + path;
   if (replace) window.history.replaceState(null, "", full);
@@ -1414,7 +1434,7 @@ function renderQuizSelectList(page, _direction) {
         const item = document.createElement("div");
         item.className = "quiz-list-item quiz-select-item" + (isSelected ? " selected" : "");
         item.dataset.quizId = quiz.id;
-        const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : "empty.png";
+        const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : getDiscoverPlaceholderImageUrl();
         const coverSafe = coverUrl.replace(/"/g, "&quot;");
         const desc = (quiz.description || "").trim().slice(0, 160);
         const descDisplay = desc + ((quiz.description || "").trim().length > 160 ? "…" : "");
@@ -2230,7 +2250,12 @@ function decodeSound(url, setBuffer) {
 
 function getAssetBase() {
   if (typeof window === "undefined" || !window.location) return "";
-  const loc = window.location;
+  var loc = window.location;
+  if (loc.protocol === "file:") {
+    var baseEl = document.querySelector && document.querySelector("base[href]");
+    if (baseEl && baseEl.href) return baseEl.href;
+    return loc.href.replace(/[^/\\]*$/, "");
+  }
   var origin = loc.origin && loc.origin !== "null" && loc.origin !== "file://"
     ? loc.origin
     : loc.protocol + "//" + (loc.host || "");
@@ -3253,7 +3278,7 @@ async function loadProfileSharedQuizzes(optionalUserId) {
     const categoryLabel = getCategoryLabel(r.category);
     const descShort = ((quiz.description || "").trim() || "—").slice(0, 80);
     const descDisplay = descShort.length >= 80 ? descShort + "…" : descShort;
-    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : getDiscoverPlaceholderImageUrl();
     const coverUrlSafe = coverUrl.replace(/"/g, "%22").replace(/'/g, "%27");
     discoverCardCache[quiz.id] = { quiz: quiz, author: authorName, ratingInfo: ri || null, publicRowId: r.id, shortCode: r.short_code || null };
     const wrap = document.createElement("div");
@@ -4133,7 +4158,7 @@ async function loadDiscoverQuizzes() {
     const ratingCount = ratingInfo ? ratingInfo.count : 0;
     const viewCount = r.view_count != null ? r.view_count : 0;
     const viewStr = currentLang === "tr" ? `${viewCount} giriş` : `${viewCount} views`;
-    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : getDiscoverPlaceholderImageUrl();
     const coverUrlSafe = coverUrl.replace(/"/g, "%22").replace(/'/g, "%27");
     const categoryLabel = getCategoryLabel(r.category);
     const descShort = ((quiz.description || "").trim() || "—").slice(0, 80);
@@ -4236,7 +4261,7 @@ async function openDiscoverPreview(quiz, author, ratingInfo, publicRowId) {
   const ratingEl = document.getElementById("discover-preview-rating");
   const startBtn = document.getElementById("discover-preview-start-btn");
   if (imgEl) {
-    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    const coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : getDiscoverPlaceholderImageUrl();
     imgEl.style.backgroundImage = "url(\"" + coverUrl.replace(/"/g, "%22").replace(/'/g, "%27") + "\")";
   }
   if (titleEl) titleEl.textContent = quiz.name || "";
@@ -4389,7 +4414,7 @@ function openQuizLinkPreview(quiz, publicRow, ratingInfo) {
   var viewCount = (publicRow && (publicRow.view_count != null)) ? Number(publicRow.view_count) : 0;
   var qCount = quiz.questions ? quiz.questions.length : 0;
   if (coverEl) {
-    var coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : DISCOVER_PLACEHOLDER_IMAGE;
+    var coverUrl = (quiz.cover_image && quiz.cover_image.trim()) ? quiz.cover_image : getDiscoverPlaceholderImageUrl();
     coverEl.style.backgroundImage = "url(\"" + coverUrl.replace(/"/g, "%22").replace(/'/g, "%27") + "\")";
   }
   if (titleEl) titleEl.textContent = quiz.name || "";
@@ -5708,11 +5733,15 @@ function handlePlayPath() {
   if (supabaseClient) setTimeout(openQuizByLink, 150);
   else ensureSupabaseThenRun(function () { setTimeout(openQuizByLink, 400); });
 }
-window.addEventListener("popstate", function () {
+function onPathChange() {
   var path = getAppPath();
   if (/^\/play\//.test(path)) handlePlayPath();
   else handleViewPath();
-});
+}
+window.addEventListener("popstate", onPathChange);
+if (isFileProtocol()) {
+  window.addEventListener("hashchange", onPathChange);
+}
 
 window.addEventListener("load", function () { checkStandaloneAgain(); });
 setTimeout(checkStandaloneAgain, 500);
@@ -5769,7 +5798,8 @@ function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   const isSecure = window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   if (!isSecure) return;
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  var swPath = (typeof window !== "undefined" && window.location && window.location.protocol === "file:") ? "sw.js" : "/sw.js";
+  navigator.serviceWorker.register(swPath).catch(() => {});
 }
 registerServiceWorker();
 

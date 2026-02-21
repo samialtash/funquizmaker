@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="tr">
   <head>
+    <!-- file:// için . = index.html'in klasörü; http(s) için script aşağıda origin + / yapacak -->
+    <base id="app-base" href="." />
+    <script>
+      (function() {
+        if (location.protocol === 'http:' || location.protocol === 'https:') {
+          document.getElementById('app-base').href = location.origin + '/';
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <title>QuizaTime - Kendi Quizlerini Yarat</title>
     <meta name="description" content="Kendi quizlerinizi oluşturun: toplu soru yapıştırma ile yüzlerce soruyu tek seferde ekleyin, soru ve şıklara fotoğraf ekleyin. Ücretsiz, tarayıcıda çalışır. Create quizzes with bulk paste and photos—free, works in browser." />
@@ -17,27 +26,31 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Quiz" />
     <meta name="google-adsense-account" content="ca-pub-1484572525060728" />
-    <link rel="icon" href="/logoquiz.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/logoquiz.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="logoquiz.png" type="image/png" />
+    <link rel="apple-touch-icon" href="logoquiz.png" />
+    <script>
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        var l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.json'; document.head.appendChild(l);
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/style.css?v=9" />
+    <link rel="stylesheet" href="style.css?v=9" />
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1484572525060728"
          crossorigin="anonymous"></script>
   </head>
   <body>
     <div id="fullscreen-logo" class="fullscreen-logo hidden" aria-hidden="true">
-      <img src="/logoquiz.png" alt="" />
+      <img src="logoquiz.png" alt="" />
     </div>
     <div id="app">
       <!-- Üst bar: quiz dışında logo + arama + giriş; quizde quiz başlığı -->
       <div id="app-top-bars" class="app-top-bars">
         <div id="global-top-bar" class="app-top-bar global-top-bar">
           <button type="button" id="global-bar-logo-btn" class="global-bar-logo-btn" aria-label="Ana sayfaya dön">
-            <img src="/logosol.png" alt="" class="global-bar-logo" />
+            <img src="logosol.png" alt="" class="global-bar-logo" />
           </button>
           <div class="global-bar-search-wrap" id="global-bar-search-wrap">
             <button type="button" id="global-search-toggle-btn" class="global-search-toggle-btn" aria-label="Quiz ara" aria-expanded="false">
@@ -77,7 +90,7 @@
       <div id="main-menu" class="view main-menu-view">
         <header class="main-menu-header main-menu-header-placeholder" aria-hidden="true"></header>
         <div class="main-menu-content">
-          <h1 id="main-title" class="main-menu-title main-menu-logo-wrap"><img src="/anasayfalogo.png" alt="Fun Quiz Maker" id="main-title-logo" class="main-menu-logo-img" /></h1>
+          <h1 id="main-title" class="main-menu-title main-menu-logo-wrap"><img src="anasayfalogo.png" alt="Fun Quiz Maker" id="main-title-logo" class="main-menu-logo-img" /></h1>
           <div class="main-menu-buttons">
             <button id="play-quiz-btn" class="primary-btn main-btn-primary">Quizlerim</button>
             <button id="create-quiz-btn" class="secondary-btn main-btn-secondary">Quiz oluştur / düzenle</button>
@@ -379,14 +392,14 @@
         <!-- Visual effects layer -->
         <div id="vfx-layer"></div>
         <!-- Correct / incorrect answer sound effects (optional). Put mp3 files next to this HTML file. -->
-        <audio id="correct-sound" src="/correct.mp3" preload="auto"></audio>
-        <audio id="incorrect-sound" src="/incorrect.mp3" preload="auto"></audio>
+        <audio id="correct-sound" src="correct.mp3" preload="auto"></audio>
+        <audio id="incorrect-sound" src="incorrect.mp3" preload="auto"></audio>
         <!-- Result screen SFX: fail (≤40), mid (41–59), good (60–79), verygood (80–99), congrats (100). Add fail.mp3, mid.mp3, good.mp3, verygood.mp3, congrats.mp3 -->
-        <audio id="result-fail" src="/fail.mp3" preload="auto"></audio>
-        <audio id="result-mid" src="/mid.mp3" preload="auto"></audio>
-        <audio id="result-good" src="/good.mp3" preload="auto"></audio>
-        <audio id="result-verygood" src="/verygood.mp3" preload="auto"></audio>
-        <audio id="result-congrats" src="/congrats.mp3" preload="auto"></audio>
+        <audio id="result-fail" src="fail.mp3" preload="auto"></audio>
+        <audio id="result-mid" src="mid.mp3" preload="auto"></audio>
+        <audio id="result-good" src="good.mp3" preload="auto"></audio>
+        <audio id="result-verygood" src="verygood.mp3" preload="auto"></audio>
+        <audio id="result-congrats" src="congrats.mp3" preload="auto"></audio>
         <!-- Sound toggle: label shows "Turn off sound" / "Turn on sound" (or TR "Sesi kapat" / "Sesi aç") -->
         <button id="sound-toggle" class="secondary-btn sound-toggle">
           <span class="sound-icon sound-on"></span>
@@ -675,7 +688,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/toxicity@1.2.2/dist/toxicity.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <script src="/supabase-config.js"></script>
-    <script src="/script.js?v=17"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js?v=17"></script>
   </body>
 </html>
