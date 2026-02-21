@@ -136,8 +136,8 @@ body.standalone #app .view.active {
   left: 0;
   right: 0;
   height: 56px;
-  z-index: 20;
-  overflow: hidden;
+  z-index: 100;
+  overflow: visible;
   border-radius: 28px 28px 0 0;
 }
 
@@ -229,11 +229,13 @@ body.standalone #app .view.active {
 
 .global-bar-logo-btn {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 16px;
   margin: 0 8px 0 0;
-  min-width: 80px;
+  min-width: 168px;
+  height: 56px;
+  box-sizing: border-box;
   border: none;
   background: none;
   cursor: pointer;
@@ -256,10 +258,13 @@ body.standalone #app .view.active {
 .global-bar-logo {
   height: 56px;
   width: auto;
-  max-width: 80px;
+  max-width: 160px;
+  max-height: 56px;
   object-fit: contain;
+  object-position: center;
   display: block;
   pointer-events: none;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .global-bar-search-wrap {
@@ -296,7 +301,7 @@ body.standalone #app .view.active {
   padding: 0;
   border: none;
   border-radius: var(--radius-md);
-  background: none;
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   cursor: pointer;
   display: flex;
@@ -304,6 +309,7 @@ body.standalone #app .view.active {
   justify-content: center;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 .global-top-bar .global-search-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.2);
@@ -312,12 +318,11 @@ body.standalone #app .view.active {
   background: rgba(255, 255, 255, 0.08);
 }
 .global-search-icon {
-  font-size: 1.65rem;
-  line-height: 1;
-  display: block;
   width: 24px;
   height: 24px;
-  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 .global-bar-search-inner {
   overflow: hidden;
@@ -1039,7 +1044,6 @@ body.standalone .app-logo {
 .profile-edit-form .profile-avatar-wrap { margin-bottom: 0; }
 
 /* Bildirim: buton, badge, dropdown */
-.header-notif-wrap { position: relative; display: flex; align-items: center; }
 .notification-btn {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1054,9 +1058,10 @@ body.standalone .app-logo {
   justify-content: center;
   cursor: pointer;
   position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 .notification-btn:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
-.notification-icon { line-height: 1; display: block; width: 24px; height: 24px; object-fit: contain; }
+.notification-icon { width: 24px; height: 24px; display: block; flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25)); }
 .notification-badge {
   position: absolute; top: -2px; right: -2px;
   min-width: 14px; height: 14px; padding: 0 3px;
@@ -1069,8 +1074,14 @@ body.standalone .app-logo {
   position: absolute; top: 100%; right: 0; margin-top: 4px;
   width: 280px; max-height: 320px;
   background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft); z-index: 100;
+  box-shadow: var(--shadow-soft); z-index: 1000;
   display: flex; flex-direction: column;
+}
+.header-notif-wrap {
+  position: relative;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
 }
 .notification-dropdown.hidden { display: none; }
 .notification-dropdown-list { overflow-y: auto; flex: 1; padding: 8px 0; }
