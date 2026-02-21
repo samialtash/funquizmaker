@@ -5,13 +5,22 @@ const CANONICAL_SITE_ORIGIN = "https://quizatime.com";
 function getShareBaseUrl() {
   return (typeof window !== "undefined" && window.CANONICAL_SITE_ORIGIN) ? window.CANONICAL_SITE_ORIGIN : CANONICAL_SITE_ORIGIN;
 }
+function buildPlayShareLink(shortCodeOrNull, quizId) {
+  var base = (getShareBaseUrl() || "").replace(/\/+$/, "");
+  if (shortCodeOrNull) return base + "/play/short/" + String(shortCodeOrNull).replace(/^\/+|\/+$/g, "");
+  return base + "/play/" + String(quizId || "").replace(/^\/+|\/+$/g, "");
+}
 (function redirectToCanonicalIfNeeded() {
   if (typeof window === "undefined" || !window.location) return;
+  if (window.SKIP_CANONICAL_REDIRECT === true) return;
+  if (window.location.protocol === "file:") return;
   var origin = window.location.origin || "";
   var canonical = getShareBaseUrl().replace(/\/+$/, "");
   var canonicalOrigin = canonical.indexOf("://") >= 0 ? canonical.split("/")[0] + "//" + canonical.split("/")[2] : canonical;
   if (!origin || origin === canonicalOrigin) return;
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(origin)) return;
+  var host = (window.location.hostname || "").toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local")) return;
   var path = (window.location.pathname || "/") + (window.location.search || "");
   window.location.replace(canonicalOrigin + path);
 })();
@@ -3944,8 +3953,6 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var linkBtn = document.getElementById("share-quiz-link-btn");
   var waitText = currentLang === "tr" ? "Lütfen bekleyiniz…" : "Please wait…";
   if (linkBtn) { linkBtn.disabled = true; linkBtn.textContent = waitText; }
-  var base = getShareBaseUrl().replace(/\/?$/, "");
-  var link = base + "/play/" + shareQuizModalQuizId;
   var shortCode = null;
   var linkWorks = false;
   if (supabaseClient && currentAuthUser) {
@@ -3954,7 +3961,6 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     var result = await ensureLinkShareRow(shareQuizModalQuizId, showInDiscover);
     shortCode = result.shortCode;
     linkWorks = result.linkWorks;
-    if (shortCode) link = base + "/play/short/" + shortCode;
   } else {
     linkWorks = false;
   }
@@ -3964,6 +3970,7 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var hasProfanity = await containsProfanity(fullText);
   var elapsed = Date.now() - waitStart;
   if (elapsed < 600) await new Promise(function (r) { setTimeout(r, 600 - elapsed); });
+  var link = buildPlayShareLink(shortCode, shareQuizModalQuizId);
   if (linkBtn) { linkBtn.disabled = false; linkBtn.textContent = t("shareQuizAsLink"); }
   if (!linkWorks && (!supabaseClient || !currentAuthUser)) {
     alert(currentLang === "tr" ? "Link paylaşmak için giriş yapın." : "Please log in to share a link.");
@@ -4173,8 +4180,7 @@ async function loadDiscoverQuizzes() {
         var action = item.dataset.action;
         dropdown.classList.add("hidden");
         if (action === "share") {
-          var base = getShareBaseUrl().replace(/\/?$/, "");
-          var link = r.short_code ? base + "/play/short/" + r.short_code : base + "/play/" + quiz.id;
+          var link = buildPlayShareLink(r.short_code || null, quiz.id);
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(link).then(function () { alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied."); }).catch(function () { alert(link); });
           } else { alert(link); }
@@ -4692,15 +4698,13 @@ if (supabaseClient) {
   }
   if (authGoogleLogin) {
     authGoogleLogin.addEventListener("click", () => {
-      var redirectTo = getShareBaseUrl() + "/";
-      supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo } }).catch(console.warn);
+      supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
       closeAuthModal();
     });
   }
   if (authGoogleSignup) {
     authGoogleSignup.addEventListener("click", () => {
-      var redirectTo = getShareBaseUrl() + "/";
-      supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo } }).catch(console.warn);
+      supabaseClient.auth.signInWithOAuth({ provider: "google" }).catch(console.warn);
       closeAuthModal();
     });
   }
@@ -5467,12 +5471,20 @@ async function initAuthAndQuizzes() {
   initCookieConsent();
   var path = getAppPath();
   if (/^\/play\//.test(path)) {
-    showView("mainMenu", undefined, true);
+    hideAllViews();
+    setTimeout(function () { handlePlayPath(); }, 100);
   } else {
     var viewFromPath = getViewFromPath(path);
     if (viewFromPath && views[viewFromPath]) showView(viewFromPath, undefined, true);
     else showView("mainMenu", undefined, true);
   }
+}
+
+function hideAllViews() {
+  document.querySelectorAll(".view").forEach(function (el) {
+    el.classList.remove("active");
+    el.style.display = "none";
+  });
 }
 
 function handleViewPath() {
@@ -5669,9 +5681,6 @@ function handlePlayPath() {
   }
   if (supabaseClient) setTimeout(openQuizByLink, 150);
   else ensureSupabaseThenRun(function () { setTimeout(openQuizByLink, 400); });
-}
-if (/^\/play\//.test(getAppPath())) {
-  setTimeout(handlePlayPath, 200);
 }
 window.addEventListener("popstate", function () {
   var path = getAppPath();

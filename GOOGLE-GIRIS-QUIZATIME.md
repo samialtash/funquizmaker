@@ -1,6 +1,10 @@
 # Google ile giriş – quizatime.com’a güncelleme
 
-Kod tarafında Google OAuth artık giriş sonrası **quizatime.com** adresine yönlendiriyor (`redirectTo`). Aşağıdaki iki yerde de domain’i quizatime.com olacak şekilde güncellemeniz gerekiyor.
+Kod tarafında:
+- Eski domain’de “Google ile giriş”e tıklanırsa önce **quizatime.com**’a yönlendiriliyor, orada OAuth başlıyor (eski domain’e hiç dönülmüyor).
+- Giriş sonrası her zaman **quizatime.com** adresine dönüş var (`redirectTo`).
+
+Aşağıdaki iki yerde de domain’i quizatime.com olacak şekilde güncellemeniz gerekiyor.
 
 ---
 
