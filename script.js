@@ -3922,7 +3922,7 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
   var waitText = currentLang === "tr" ? "Lütfen bekleyiniz…" : "Please wait…";
   if (linkBtn) { linkBtn.disabled = true; linkBtn.textContent = waitText; }
   var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
-  var link = base + "#/play/" + shareQuizModalQuizId;
+  var link = base + "/play/" + shareQuizModalQuizId;
   var shortCode = null;
   var linkWorks = false;
   if (supabaseClient && currentAuthUser) {
@@ -3931,7 +3931,7 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     var result = await ensureLinkShareRow(shareQuizModalQuizId, showInDiscover);
     shortCode = result.shortCode;
     linkWorks = result.linkWorks;
-    if (shortCode) link = base + "#/play/short/" + shortCode;
+    if (shortCode) link = base + "/play/short/" + shortCode;
   } else {
     linkWorks = false;
   }
@@ -4151,7 +4151,7 @@ async function loadDiscoverQuizzes() {
         dropdown.classList.add("hidden");
         if (action === "share") {
           var base = window.location.origin + (window.location.pathname || "/").replace(/\/?$/, "");
-          var link = r.short_code ? base + "#/play/short/" + r.short_code : base + "#/play/" + quiz.id;
+          var link = r.short_code ? base + "/play/short/" + r.short_code : base + "/play/" + quiz.id;
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(link).then(function () { alert(currentLang === "tr" ? "Link kopyalandı." : "Link copied."); }).catch(function () { alert(link); });
           } else { alert(link); }
