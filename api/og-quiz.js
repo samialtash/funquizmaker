@@ -1,7 +1,7 @@
 // Quiz link paylaşım önizlemesi: og:title, og:description + SPA'ya yönlendirme
 // Query: code=short_code veya id=quiz_uuid
 const APP_DESC = "Kendi quizlerinizi oluşturun: toplu soru yapıştırma ile yüzlerce soruyu tek seferde ekleyin, soru ve şıklara fotoğraf ekleyin. Ücretsiz, tarayıcıda çalışır.";
-const QUIZ_TITLE_PREFIX = "Bulduğum Quiz'e bir göz at";
+const QUIZ_TITLE_PREFIX = "Bulduğum Quiz'e göz at";
 
 function escapeHtml(s) {
   if (s == null || s === "") return "";
@@ -55,7 +55,8 @@ function html(origin, quiz, hashUrl) {
   const desc = quiz
     ? (quiz.description && quiz.description.trim() ? quiz.description.trim() : APP_DESC)
     : APP_DESC;
-  const redirect = `${origin}/${hashUrl}`;
+  // Hash içeren URL'de meta refresh # kısmını kaybettirebiliyor; sadece JS ile yönlendir
+  const redirect = origin + "/" + hashUrl;
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -69,10 +70,9 @@ function html(origin, quiz, hashUrl) {
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="${escapeHtml(title)}" />
   <meta name="twitter:description" content="${escapeHtml(desc)}" />
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(redirect)}" />
-  <script>window.location.href = ${JSON.stringify(redirect)};</script>
+  <script>window.location.replace(${JSON.stringify(redirect)});</script>
 </head>
-<body><p>Yönlendiriliyorsunuz… <a href="${escapeHtml(redirect)}">Tıkla</a></p></body>
+<body><p>Yönlendiriliyorsunuz… <a href="${escapeHtml(redirect)}">Buradan tıklayın</a></p></body>
 </html>`;
 }
 
@@ -88,17 +88,15 @@ module.exports = async function handler(req, res) {
   let quiz = null;
   let hashUrl = "";
 
-  if (supabaseUrl && anonKey) {
-    if (code) {
-      quiz = await fetchQuizByCode(supabaseUrl, anonKey, code);
-      hashUrl = quiz ? `#/play/short/${encodeURIComponent(code)}` : "#/";
-    } else if (id) {
-      quiz = await fetchQuizById(supabaseUrl, anonKey, id);
-      hashUrl = quiz ? `#/play/${encodeURIComponent(id)}` : "#/";
-    }
+  if (code) {
+    if (supabaseUrl && anonKey) quiz = await fetchQuizByCode(supabaseUrl, anonKey, code);
+    hashUrl = "#/play/short/" + encodeURIComponent(code);
+  } else if (id) {
+    if (supabaseUrl && anonKey) quiz = await fetchQuizById(supabaseUrl, anonKey, id);
+    hashUrl = "#/play/" + encodeURIComponent(id);
+  } else {
+    hashUrl = "#/";
   }
-
-  if (!hashUrl) hashUrl = "#/";
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
