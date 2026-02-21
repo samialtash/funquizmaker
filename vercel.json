@@ -1,20 +1,17 @@
 {
   "rewrites": [
+    { "source": "/ads.txt", "destination": "/api/ads" },
     { "source": "/play/short/:code", "destination": "/api/og-quiz?code=:code" },
     { "source": "/play/:id", "destination": "/api/og-quiz?id=:id" }
   ],
   "headers": [
     {
       "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
     },
     {
       "source": "/ads.txt",
-      "headers": [
-        { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
-      ]
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
     }
   ]
 }

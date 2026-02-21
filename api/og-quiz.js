@@ -51,7 +51,7 @@ async function fetchQuizById(supabaseUrl, anonKey, id) {
 function html(origin, quiz, hashUrl) {
   const title = quiz
     ? `${QUIZ_TITLE_PREFIX} - ${quiz.name || "Quiz"}`
-    : "Quiz Time - Kendi Quizlerini Yarat";
+    : "QuizaTime - Kendi Quizlerini Yarat";
   const desc = quiz
     ? (quiz.description && quiz.description.trim() ? quiz.description.trim() : APP_DESC)
     : APP_DESC;
