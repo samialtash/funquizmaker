@@ -3118,11 +3118,22 @@ if (globalBarLogoBtn) {
 }
 var globalSearchWrap = document.getElementById("global-bar-search-wrap");
 var globalSearchToggleBtn = document.getElementById("global-search-toggle-btn");
+var globalTopBar = document.getElementById("global-top-bar");
+function setSearchExpanded(expanded) {
+  if (expanded) {
+    globalSearchWrap.classList.add("search-expanded");
+    if (globalTopBar) globalTopBar.classList.add("top-bar-search-full");
+  } else {
+    globalSearchWrap.classList.remove("search-expanded");
+    if (globalTopBar) globalTopBar.classList.remove("top-bar-search-full");
+  }
+  globalSearchToggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
 if (globalSearchToggleBtn && globalSearchWrap) {
   globalSearchToggleBtn.addEventListener("click", function (e) {
     e.stopPropagation();
-    var expanded = globalSearchWrap.classList.toggle("search-expanded");
-    globalSearchToggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    var expanded = !globalSearchWrap.classList.contains("search-expanded");
+    setSearchExpanded(expanded);
     if (expanded && mainQuizSearchEl) {
       requestAnimationFrame(function () {
         mainQuizSearchEl.focus();
@@ -3132,8 +3143,7 @@ if (globalSearchToggleBtn && globalSearchWrap) {
   document.addEventListener("click", function closeSearchOnOutside(e) {
     if (!globalSearchWrap.classList.contains("search-expanded")) return;
     if (globalSearchWrap.contains(e.target)) return;
-    globalSearchWrap.classList.remove("search-expanded");
-    globalSearchToggleBtn.setAttribute("aria-expanded", "false");
+    setSearchExpanded(false);
   });
 }
 

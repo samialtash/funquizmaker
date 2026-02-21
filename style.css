@@ -266,13 +266,29 @@ body.standalone #app .view.active {
   display: flex;
   align-items: center;
   min-width: 0;
+  flex: 0 0 auto;
   position: relative;
-  transition: max-width 0.3s ease, width 0.3s ease;
+  transition: flex 0.3s ease, max-width 0.3s ease;
   max-width: 48px;
 }
 .global-bar-search-wrap.search-expanded {
-  max-width: 280px;
-  width: 280px;
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 120px;
+}
+/* Arama açıkken tüm bar arama alanı: logo ve giriş gizlenir, mobilde üst üste binme olmaz */
+.global-top-bar.top-bar-search-full .global-bar-logo-btn,
+.global-top-bar.top-bar-search-full .global-bar-auth {
+  display: none !important;
+}
+.global-top-bar.top-bar-search-full .global-bar-search-wrap {
+  flex: 1 1 100%;
+  max-width: none;
+  width: 100%;
+}
+.global-top-bar.top-bar-search-full .global-bar-search-inner {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .global-search-toggle-btn {
   width: 48px;
@@ -298,17 +314,24 @@ body.standalone #app .view.active {
 .global-search-icon {
   font-size: 1.65rem;
   line-height: 1;
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 .global-bar-search-inner {
   overflow: hidden;
   width: 0;
   opacity: 0;
-  transition: width 0.25s ease, opacity 0.2s ease;
+  flex: 0 0 0;
+  transition: opacity 0.2s ease, flex 0.25s ease;
   margin-left: 0;
+  min-width: 0;
 }
 .global-bar-search-wrap.search-expanded .global-bar-search-inner {
-  width: 220px;
-  min-width: 220px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   opacity: 1;
   margin-left: 8px;
 }
@@ -1033,7 +1056,7 @@ body.standalone .app-logo {
   position: relative;
 }
 .notification-btn:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
-.notification-icon { line-height: 1; }
+.notification-icon { line-height: 1; display: block; width: 24px; height: 24px; object-fit: contain; }
 .notification-badge {
   position: absolute; top: -2px; right: -2px;
   min-width: 14px; height: 14px; padding: 0 3px;
