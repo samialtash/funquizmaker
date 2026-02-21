@@ -3685,14 +3685,13 @@ async function loadChatView() {
     bubble.className = "chat-bubble " + (isMe ? "chat-bubble-me" : "chat-bubble-them");
     const name = (quiz && quiz.name) ? escapeHtml(quiz.name) : "—";
     const desc = (quiz && (quiz.description || "").trim()) ? escapeHtml((quiz.description || "").trim().slice(0, 80)) + ((quiz.description || "").length > 80 ? "…" : "") : "";
-    const coverUrl = (quiz && quiz.cover_image) ? sanitizeImageSrc(quiz.cover_image) : "";
-    const coverHtml = coverUrl ? `<div class="chat-bubble-cover" style="background-image:url(${escapeHtml(coverUrl)})" role="img" aria-label="Quiz kapağı"></div>` : "";
+    const coverUrl = (quiz && quiz.cover_image && quiz.cover_image.trim()) ? sanitizeImageSrc(quiz.cover_image) : getDiscoverPlaceholderImageUrl();
     const createdAt = r.created_at ? new Date(r.created_at) : null;
     const timeStr = createdAt ? formatChatTime(createdAt) : "";
     const dateStr = createdAt ? formatChatDate(createdAt) : "";
     bubble.innerHTML = `
       <div class="chat-bubble-content">
-        ${coverHtml}
+        <img class="chat-bubble-cover-img" src="${escapeHtml(coverUrl)}" alt="" />
         <div class="chat-bubble-title">${name}</div>${desc ? `<div class="chat-bubble-desc">${desc}</div>` : ""}
       </div>
       <div class="chat-bubble-time-wrap">
