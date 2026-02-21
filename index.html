@@ -32,19 +32,6 @@
     <div id="fullscreen-logo" class="fullscreen-logo hidden" aria-hidden="true">
       <img src="/logoquiz.png" alt="" />
     </div>
-    <div class="page-with-ads">
-      <!-- Sol reklam: sadece masaüstü (min-width:1280px). AdSense panelinden iki "Görüntülü reklam" birimi oluşturup data-ad-slot değerlerini buraya yazın. -->
-      <aside class="ad-rail ad-rail-left" id="ad-rail-left" aria-label="Reklam">
-        <div class="ad-slot-inner">
-          <ins class="adsbygoogle ad-slot-side"
-               data-ad-client="ca-pub-1484572525060728"
-               data-ad-slot="0000000000"
-               data-ad-format="rectangle"
-               style="display:block; min-width:160px; min-height:600px;"
-               data-full-width-responsive="false"></ins>
-        </div>
-      </aside>
-      <div class="main-column">
     <div id="app">
       <!-- Üst bar: quiz dışında logo + arama + giriş; quizde quiz başlığı -->
       <div id="app-top-bars" class="app-top-bars">
@@ -670,19 +657,6 @@
         </div>
       </div>
     </div>
-      </div>
-      <!-- Sağ reklam: sadece masaüstü -->
-      <aside class="ad-rail ad-rail-right" id="ad-rail-right" aria-label="Reklam">
-        <div class="ad-slot-inner">
-          <ins class="adsbygoogle ad-slot-side"
-               data-ad-client="ca-pub-1484572525060728"
-               data-ad-slot="0000000001"
-               data-ad-format="rectangle"
-               style="display:block; min-width:160px; min-height:600px;"
-               data-full-width-responsive="false"></ins>
-        </div>
-      </aside>
-    </div>
     <div id="cookie-settings-overlay" class="auth-overlay hidden" aria-hidden="true">
       <div class="auth-modal cookie-settings-modal">
         <button type="button" id="cookie-settings-close" class="auth-modal-close" aria-label="Kapat">×</button>
@@ -703,15 +677,5 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="/supabase-config.js"></script>
     <script src="/script.js?v=17"></script>
-    <script>
-      (function() {
-        try {
-          var slots = document.querySelectorAll(".ad-slot-side");
-          if (slots.length && window.adsbygoogle) {
-            for (var i = 0; i < slots.length; i++) (window.adsbygoogle = window.adsbygoogle || []).push({});
-          }
-        } catch (e) {}
-      })();
-    </script>
   </body>
 </html>

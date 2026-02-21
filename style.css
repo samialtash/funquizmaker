@@ -56,53 +56,12 @@ body {
   justify-content: center;
 }
 
-/* Masaüstü: sol/sağ reklam alanları (sadece tarayıcıda geniş ekran; mobilde gizli) */
-.page-with-ads {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  width: 100%;
-  min-height: 100%;
-}
-
-.page-with-ads .main-column {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.ad-rail {
-  display: none;
-  flex-shrink: 0;
-  width: 160px;
-  min-height: 600px;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 72px;
-}
-
-.ad-slot-inner {
-  width: 160px;
-  min-height: 600px;
-}
-
+/* Masaüstü: side rail reklamlar için yan boşluk (içerik ortada, sol/sağda reklam alanı) */
 @media (min-width: 1280px) {
   body {
-    padding-left: 0;
-    padding-right: 0;
+    padding-left: calc(160px + env(safe-area-inset-left, 0));
+    padding-right: calc(160px + env(safe-area-inset-right, 0));
   }
-  .ad-rail {
-    display: flex;
-  }
-  .page-with-ads .main-column {
-    max-width: 1100px;
-  }
-}
-
-body.standalone .ad-rail {
-  display: none;
 }
 
 body.standalone .view,
