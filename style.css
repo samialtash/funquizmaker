@@ -1134,8 +1134,8 @@ body.standalone .app-logo {
 /* Sohbet: üst çizgiden en alta full ekran */
 #chat-view {
   position: relative;
-  height: calc(100vh - 56px);
-  max-height: calc(100dvh - 56px);
+  height: calc(100vh - 56px - 32px);
+  max-height: calc(100dvh - 56px - 32px);
   min-height: 400px;
   overflow: hidden;
   padding: 0;
