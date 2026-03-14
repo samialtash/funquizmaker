@@ -1991,10 +1991,28 @@ pre.format-example {
   gap: 12px;
 }
 
-.quiz-footer-right {
+.quiz-footer-right,
+.quiz-footer-nav {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+.quiz-question-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.quiz-nav-btn {
+  min-width: 44px;
+}
+.quiz-nav-icon-btn {
+  min-width: 44px;
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 10px 14px;
 }
 
 /* VFX layer */

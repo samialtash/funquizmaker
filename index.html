@@ -391,24 +391,25 @@
         <div id="quiz-content">
           <div id="question-text"></div>
           <div id="options-container"></div>
+          <div class="quiz-question-nav" aria-label="Soru geçişi">
+            <button type="button" id="prev-question-btn" class="secondary-btn quiz-nav-icon-btn" aria-label="Önceki soru" title="Önceki soru">←</button>
+            <button type="button" id="quiz-nav-next-btn" class="secondary-btn quiz-nav-icon-btn" aria-label="Sonraki soruya geç" title="Sonraki soruya geç">→</button>
+          </div>
         </div>
         <div id="quiz-footer">
-          <div class="quiz-footer-right">
-            <button id="next-question-btn" class="primary-btn" disabled>Next</button>
-            <button id="exit-quiz-btn" class="secondary-btn">Leave</button>
-          </div>
+          <button id="exit-quiz-btn" class="secondary-btn">Leave</button>
+          <button type="button" id="next-question-btn" class="primary-btn" disabled>Sonraki soru</button>
         </div>
         <!-- Visual effects layer -->
         <div id="vfx-layer"></div>
-        <!-- Correct / incorrect answer sound effects (optional). Put mp3 files next to this HTML file. -->
-        <audio id="correct-sound" src="correct.mp3" preload="auto"></audio>
-        <audio id="incorrect-sound" src="incorrect.mp3" preload="auto"></audio>
-        <!-- Result screen SFX: fail (≤40), mid (41–59), good (60–79), verygood (80–99), congrats (100). Add fail.mp3, mid.mp3, good.mp3, verygood.mp3, congrats.mp3 -->
-        <audio id="result-fail" src="fail.mp3" preload="auto"></audio>
-        <audio id="result-mid" src="mid.mp3" preload="auto"></audio>
-        <audio id="result-good" src="good.mp3" preload="auto"></audio>
-        <audio id="result-verygood" src="verygood.mp3" preload="auto"></audio>
-        <audio id="result-congrats" src="congrats.mp3" preload="auto"></audio>
+        <!-- Correct / incorrect answer sound effects. src set from JS when served over http(s) to avoid CORS when opening as file:// -->
+        <audio id="correct-sound" data-src="correct.mp3" preload="none"></audio>
+        <audio id="incorrect-sound" data-src="incorrect.mp3" preload="none"></audio>
+        <audio id="result-fail" data-src="fail.mp3" preload="none"></audio>
+        <audio id="result-mid" data-src="mid.mp3" preload="none"></audio>
+        <audio id="result-good" data-src="good.mp3" preload="none"></audio>
+        <audio id="result-verygood" data-src="verygood.mp3" preload="none"></audio>
+        <audio id="result-congrats" data-src="congrats.mp3" preload="none"></audio>
         <!-- Sound toggle: label shows "Turn off sound" / "Turn on sound" (or TR "Sesi kapat" / "Sesi aç") -->
         <button id="sound-toggle" class="secondary-btn sound-toggle">
           <span class="sound-icon sound-on"></span>
@@ -734,6 +735,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/toxicity@1.2.2/dist/toxicity.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="script.js?v=17"></script>
+    <script src="script.js?v=18"></script>
   </body>
 </html>

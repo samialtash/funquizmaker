@@ -110,6 +110,8 @@ const translations = {
     noQuizzes: "No saved quizzes.",
     back: "← Back",
     next: "Next",
+    prevQuestionLabel: "Previous question",
+    nextQuestionLabel: "Next question",
     exit: "Exit",
     leave: "Leave",
     quizFinished: "Quiz Finished!",
@@ -289,6 +291,8 @@ const translations = {
     noQuizzes: "Kayıtlı Quiz Yok",
     back: "← Geri",
     next: "İleri",
+    prevQuestionLabel: "Önceki soru",
+    nextQuestionLabel: "Sonraki soru",
     exit: "Çıkış",
     leave: "Ayrıl",
     quizFinished: "Quiz Bitti!",
@@ -640,6 +644,8 @@ let currentQuiz = null;
 let currentQuestionIndex = 0;
 let currentQuestionOrder = [];
 let currentScore = 0;
+/** order index -> { correct, selectedIndex? } for scoring and prev/next state */
+let userAnswerByOrderIndex = {};
 let lastRunQuizId = null;
 let lastPlayedQuizFromShared = false;
 /** Base path for play URL (path-based, no hash: playRouteBase + "/" + index) */
@@ -829,6 +835,8 @@ const quizProgressEl = document.getElementById("quiz-progress");
 const quizScoreEl = document.getElementById("quiz-score");
 const questionTextEl = document.getElementById("question-text");
 const optionsContainerEl = document.getElementById("options-container");
+const prevQuestionBtn = document.getElementById("prev-question-btn");
+const quizNavNextBtn = document.getElementById("quiz-nav-next-btn");
 const nextQuestionBtn = document.getElementById("next-question-btn");
 const exitQuizBtn = document.getElementById("exit-quiz-btn");
 const vfxLayerEl = document.getElementById("vfx-layer");
@@ -1194,7 +1202,7 @@ function applyTranslations() {
     "shuffle-label": t("randomOrder"),
     "shuffle-options-label": t("shuffleOptions"),
     "no-quiz-msg": t("noQuizzes"),
-    "next-question-btn": t("next"),
+    "next-question-btn": t("nextQuestionLabel") || "Next question",
     "exit-quiz-btn": t("leave"),
     "quiz-finished-title": t("quizFinished"),
     "retry-quiz-btn": t("retryQuiz"),
@@ -2312,7 +2320,16 @@ function getAssetBase() {
 }
 
 // Pre-warm audio and decode MP3s at quiz start (reliable sound on mobile/iOS).
+// Skip loading when page is opened as file:// to avoid CORS errors; use a local server (e.g. npx serve .) for sound.
 function warmUpAudio() {
+  const isFileProtocol = typeof window !== "undefined" && window.location && window.location.protocol === "file:";
+  if (isFileProtocol) return;
+
+  var base = getAssetBase();
+  document.querySelectorAll("audio[data-src]").forEach(function (el) {
+    if (!el.src && el.getAttribute("data-src")) el.src = base + el.getAttribute("data-src");
+  });
+
   const ctx = getAudioContext();
   if (ctx && ctx.state === "suspended") ctx.resume();
   if (ctx) {
@@ -2326,7 +2343,6 @@ function warmUpAudio() {
       // ignore
     }
   }
-  const base = getAssetBase();
   if (correctSoundEl && correctSoundEl.src) decodeSound(correctSoundEl.src, (b) => (correctSoundBuffer = b));
   else decodeSound(base + "correct.mp3", (b) => (correctSoundBuffer = b));
   if (incorrectSoundEl && incorrectSoundEl.src) decodeSound(incorrectSoundEl.src, (b) => (incorrectSoundBuffer = b));
@@ -2364,6 +2380,7 @@ function startQuiz(quizId, options) {
   currentQuestionIndex = 0;
   currentQuestionOrder = buildQuestionOrder(quiz);
   currentScore = 0;
+  userAnswerByOrderIndex = {};
   lastRunQuizId = quiz.id;
 
   quizTitleEl.textContent = quiz.name;
@@ -2385,6 +2402,7 @@ function startQuizAtPage(quiz, pageIndex, routeBase) {
   currentQuestionIndex = idx;
   currentQuestionOrder = buildQuestionOrder(quiz);
   currentScore = 0;
+  userAnswerByOrderIndex = {};
   lastRunQuizId = quiz.id;
   lastPlayedQuizFromShared = true;
 
@@ -2410,6 +2428,14 @@ function renderCurrentQuestion() {
   const q = currentQuiz.questions[qIndex];
   const qType = q.type || "choice";
   quizProgressEl.textContent = `Question ${currentQuestionIndex + 1} / ${total}`;
+  if (prevQuestionBtn) {
+    prevQuestionBtn.disabled = currentQuestionIndex <= 0;
+    prevQuestionBtn.setAttribute("aria-label", currentLang === "tr" ? "Önceki soru" : "Previous question");
+  }
+  if (quizNavNextBtn) {
+    quizNavNextBtn.disabled = currentQuestionIndex >= total - 1;
+    quizNavNextBtn.setAttribute("aria-label", currentLang === "tr" ? "Sonraki soruya geç (cevaplamadan)" : "Go to next question (without answering)");
+  }
 
   questionTextEl.innerHTML = "";
   const safeQImage = sanitizeImageSrc(q.image);
@@ -2442,6 +2468,7 @@ function renderCurrentQuestion() {
       const userAnswer = (input.value || "").trim();
       const expected = (q.expectedAnswer || "").trim();
       const correct = expected && userAnswer && userAnswer.toLowerCase() === expected.toLowerCase();
+      userAnswerByOrderIndex[qIndex] = { correct };
       if (correct) {
         currentScore += 1;
         updateScoreDisplay();
@@ -2514,6 +2541,7 @@ function renderCurrentQuestion() {
     }
   }
 
+  const stored = userAnswerByOrderIndex[qIndex];
   displayOrder.forEach((originalIdx, displayedIdx) => {
     const opt = optsRaw[originalIdx];
     const safeOptImage = sanitizeImageSrc(opt && opt.image);
@@ -2532,9 +2560,25 @@ function renderCurrentQuestion() {
     const textSpan = document.createElement("span");
     textSpan.textContent = opt.text || "";
     btn.appendChild(textSpan);
-    btn.addEventListener("click", () => handleAnswerClick(btn, displayedIdx));
+    if (stored !== undefined) {
+      btn.disabled = true;
+      const correctIdx = q.correctIndex;
+      if (originalIdx === stored.selectedIndex) btn.classList.add(stored.correct ? "correct" : "incorrect");
+      else if (originalIdx === correctIdx && !stored.correct) btn.classList.add("revealed-correct");
+    } else {
+      btn.addEventListener("click", () => handleAnswerClick(btn, displayedIdx));
+    }
     optionsContainerEl.appendChild(btn);
   });
+  if (stored !== undefined) {
+    nextQuestionBtn.disabled = false;
+    const correctIdx = q.correctIndex;
+    if (stored && !stored.correct) {
+      optionsContainerEl.querySelectorAll(".option-btn").forEach((b) => {
+        if (Number(b.dataset.originalIndex) === correctIdx) b.classList.add("revealed-correct");
+      });
+    }
+  }
 }
 
 function attachMatchDragListeners(matchWrap, pairCount, onReorder) {
@@ -2590,24 +2634,21 @@ function handleAnswerClick(btn, idx) {
   const optionButtons = optionsContainerEl.querySelectorAll(".option-btn");
   optionButtons.forEach((b) => b.classList.add("disabled"));
 
-  if (originalIndex === correctIndex) {
+  const correct = originalIndex === correctIndex;
+  userAnswerByOrderIndex[qIndex] = { correct, selectedIndex: originalIndex };
+  if (correct) {
     btn.classList.add("correct");
     currentScore += 1;
     updateScoreDisplay();
     playCorrectVfx(btn);
   } else {
     btn.classList.add("incorrect");
-    // Optional SFX for incorrect answer (only when sound enabled)
     if (soundEnabled) playAnswerSound(false);
-    // Highlight correct one (by original index)
     optionButtons.forEach((b) => {
       const bOriginal = b.dataset.originalIndex != null ? Number(b.dataset.originalIndex) : Number(b.dataset.index);
-      if (bOriginal === correctIndex) {
-        b.classList.add("revealed-correct");
-      }
+      if (bOriginal === correctIndex) b.classList.add("revealed-correct");
     });
   }
-
   nextQuestionBtn.disabled = false;
 }
 
@@ -2632,6 +2673,7 @@ function nextQuestion() {
       });
       currentScore += correct;
       updateScoreDisplay();
+      userAnswerByOrderIndex[qIndex] = { correct: correct === (q.pairs || []).length };
     }
   }
   currentQuestionIndex += 1;
@@ -2642,7 +2684,24 @@ function nextQuestion() {
   renderCurrentQuestion();
 }
 
-function showQuizResult(score, total) {
+function prevQuestion() {
+  if (!currentQuiz || currentQuestionIndex <= 0) return;
+  currentQuestionIndex -= 1;
+  if (typeof window !== "undefined" && window.history && playRouteBase) setAppPath(playRouteBase + "/" + currentQuestionIndex, true);
+  renderCurrentQuestion();
+}
+
+function navigateNextQuestion() {
+  if (!currentQuiz) return;
+  const total = currentQuestionOrder ? currentQuestionOrder.length : 0;
+  if (currentQuestionIndex >= total - 1) return;
+  currentQuestionIndex += 1;
+  if (typeof window !== "undefined" && window.history && playRouteBase) setAppPath(playRouteBase + "/" + currentQuestionIndex, true);
+  renderCurrentQuestion();
+}
+
+function showQuizResult(score, answeredCount, totalQuestions) {
+  const total = answeredCount > 0 ? answeredCount : totalQuestions;
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const circumference = 327;
   const offset = circumference * (1 - percentage / 100);
@@ -2654,7 +2713,11 @@ function showQuizResult(score, total) {
 
   if (scoreValue) scoreValue.textContent = percentage;
   if (scoreOutOf) scoreOutOf.textContent = t("outOf100");
-  if (finalScoreTextEl) finalScoreTextEl.textContent = `${t("youScored")} ${score} ${t("outOf")} ${total}.`;
+  const skipped = totalQuestions - answeredCount;
+  const outOfText = skipped > 0
+    ? (currentLang === "tr" ? `${score} / ${answeredCount} (${skipped} atlandı)` : `${score} / ${answeredCount} (${skipped} skipped)`)
+    : `${t("youScored")} ${score} ${t("outOf")} ${total}.`;
+  if (finalScoreTextEl) finalScoreTextEl.textContent = outOfText;
 
   if (scoreWrap && scoreProgress) {
     scoreProgress.style.strokeDashoffset = "327";
@@ -2740,7 +2803,8 @@ async function updateQuizFinishedExtra() {
 function finishQuiz() {
   if (!currentQuiz) return;
   const total = currentQuiz.questions.length;
-  showQuizResult(currentScore, total);
+  const answeredCount = Object.keys(userAnswerByOrderIndex).length;
+  showQuizResult(currentScore, answeredCount, total);
 }
 
 // Audio: ensure context is ready (fixes inconsistent sound on mobile / iOS)
@@ -3012,13 +3076,6 @@ function handleParseQuestions() {
   const quizId = selectedEditQuizId || editingQuizId;
   if (quizId) {
     const quiz = quizzes.find((q) => q.id === quizId);
-    const isEditingThisQuiz = editingQuizId === quizId;
-    const base = isEditingThisQuiz && draftQuestions.length
-      ? draftQuestions.slice()
-      : (quiz && quiz.questions && quiz.questions.length)
-        ? quiz.questions.slice()
-        : [];
-    draftQuestions = base.concat(parsed);
     if (!editingQuizId) {
       editingQuizId = quizId;
       if (quiz) {
@@ -3026,8 +3083,10 @@ function handleParseQuestions() {
         quizDescriptionInput.value = quiz.description || "";
       }
     }
+    draftQuestions = parsed.slice();
+    if (quiz) quiz.questions = draftQuestions.slice();
   } else {
-    draftQuestions = parsed;
+    draftQuestions = parsed.slice();
   }
 
   const newlyAdded = parsed.length;
@@ -3076,12 +3135,13 @@ async function handleSaveQuiz() {
     return;
   }
 
+  const questionsToSave = draftQuestions.slice();
   if (editingQuizId) {
     const existing = quizzes.find((q) => q.id === editingQuizId);
     if (existing) {
       existing.name = name;
       existing.description = description;
-      existing.questions = draftQuestions;
+      existing.questions = questionsToSave;
       existing.cover_image = currentQuizCoverImage || null;
     }
   } else {
@@ -3089,7 +3149,7 @@ async function handleSaveQuiz() {
       id: `quiz_${Date.now()}`,
       name,
       description,
-      questions: draftQuestions,
+      questions: questionsToSave,
       cover_image: currentQuizCoverImage || null
     };
     quizzes.push(newQuiz);
@@ -5414,6 +5474,8 @@ if (addOptionRowBtn) {
 nextQuestionBtn.addEventListener("click", () => {
   nextQuestion();
 });
+if (prevQuestionBtn) prevQuestionBtn.addEventListener("click", prevQuestion);
+if (quizNavNextBtn) quizNavNextBtn.addEventListener("click", navigateNextQuestion);
 
 exitQuizBtn.addEventListener("click", () => {
   if (!currentQuiz) {
@@ -5427,9 +5489,9 @@ exitQuizBtn.addEventListener("click", () => {
     showView("mainMenu", "back");
     return;
   }
-  /* Skor toplam soru sayısına göre: doğru sayısı / quiz'deki toplam soru */
   const totalQuestions = currentQuiz.questions.length;
-  showQuizResult(currentScore, totalQuestions);
+  const answeredCount = Object.keys(userAnswerByOrderIndex).length;
+  showQuizResult(currentScore, answeredCount, totalQuestions);
 });
 
 document.addEventListener("fullscreenchange", updateFullscreenBtnText);
