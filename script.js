@@ -144,6 +144,8 @@ const translations = {
     pasteBtn: "Paste",
     pasteFailed: "Paste failed (check clipboard permission).",
     copied: "Copied!",
+    linkReadyLabel: "Your link is ready",
+    copyLinkLabel: "Copy",
     fullscreen: "Full screen",
     exitFullscreen: "Exit full screen",
     settings: "Settings",
@@ -325,6 +327,8 @@ const translations = {
     pasteBtn: "Yapıştır",
     pasteFailed: "Yapıştırılamadı (pano iznini kontrol edin).",
     copied: "Kopyalandı!",
+    linkReadyLabel: "Linkiniz hazır",
+    copyLinkLabel: "Kopyala",
     fullscreen: "Tam ekran",
     exitFullscreen: "Tam ekrandan çık",
     settings: "Ayarlar",
@@ -1332,6 +1336,10 @@ function applyTranslations() {
   const shareLinkBtn = document.getElementById("share-quiz-link-btn");
   if (shareLinkBtn) shareLinkBtn.textContent = t("shareQuizAsLink");
   if (sharePublicBtn) sharePublicBtn.textContent = t("shareToProfile");
+  const shareLinkReadyLabel = document.getElementById("share-quiz-link-ready-label");
+  const shareLinkCopyBtn = document.getElementById("share-quiz-link-copy-btn");
+  if (shareLinkReadyLabel) shareLinkReadyLabel.textContent = t("linkReadyLabel");
+  if (shareLinkCopyBtn) shareLinkCopyBtn.textContent = t("copyLinkLabel");
   const authLoginBtn = document.getElementById("auth-login-btn");
   const authSignupBtn = document.getElementById("auth-signup-btn");
   const authLogoutBtn = document.getElementById("auth-logout-btn");
@@ -1497,16 +1505,29 @@ function renderQuizSelectList(page, _direction) {
         const descDisplay = desc + ((quiz.description || "").trim().length > 160 ? "…" : "");
         const qCount = quiz.questions ? quiz.questions.length : 0;
         const qStr = qCount === 1 ? (currentLang === "tr" ? "1 soru" : "1 question") : (currentLang === "tr" ? qCount + " soru" : qCount + " questions");
+        const shareLabel = t("shareQuiz") || "Share quiz";
         item.innerHTML = `
-          <div class="quiz-list-item-head">
-            <span class="quiz-list-name">${escapeHtml(quiz.name)}</span>
-            <span class="quiz-list-meta">${qStr}</span>
+          <div class="quiz-list-item-head quiz-select-item-head">
+            <div class="quiz-list-item-head-left">
+              <span class="quiz-list-name">${escapeHtml(quiz.name)}</span>
+              <span class="quiz-list-meta">${qStr}</span>
+            </div>
+            <button type="button" class="secondary-btn small-btn quiz-select-share-btn" aria-label="${escapeHtml(shareLabel)}">${escapeHtml(shareLabel)}</button>
           </div>
           <div class="quiz-list-item-expand">
             <div class="quiz-list-item-cover" style="background-image:url(${coverSafe})"></div>
             <p class="quiz-list-item-desc">${escapeHtml(descDisplay) || "—"}</p>
           </div>`;
+        const shareBtn = item.querySelector(".quiz-select-share-btn");
+        if (shareBtn) {
+          shareBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            openShareQuizModal(quiz.id);
+          });
+        }
         item.addEventListener("click", (e) => {
+          if (e.target.closest(".quiz-select-share-btn")) return;
           e.stopPropagation();
           if (selectedPlayQuizId === quiz.id) return;
           var prevSelected = quizSelectStripEl.querySelector(".quiz-list-item.quiz-select-item.selected");
@@ -4067,6 +4088,10 @@ function openShareQuizModal(quizId) {
   renderShareQuizFriendsList();
   document.getElementById("share-quiz-search-user").value = "";
   document.getElementById("share-quiz-search-results").classList.add("hidden");
+  var linkReadyWrap = document.getElementById("share-quiz-link-ready-wrap");
+  if (linkReadyWrap) linkReadyWrap.classList.add("hidden");
+  var linkInput = document.getElementById("share-quiz-link-input");
+  if (linkInput) linkInput.value = "";
 }
 function closeShareQuizModal() {
   document.getElementById("share-quiz-modal-overlay")?.classList.add("hidden");
@@ -4277,14 +4302,44 @@ document.getElementById("share-quiz-link-btn")?.addEventListener("click", async 
     alert(currentLang === "tr" ? "Link paylaşmak için giriş yapın." : "Please log in to share a link.");
     return;
   }
+  var linkReadyWrap = document.getElementById("share-quiz-link-ready-wrap");
+  var linkInput = document.getElementById("share-quiz-link-input");
+  var linkReadyLabel = document.getElementById("share-quiz-link-ready-label");
+  var copyBtn = document.getElementById("share-quiz-link-copy-btn");
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({
+        title: (quiz && quiz.name) ? quiz.name : "Quiz",
+        text: currentLang === "tr" ? "Bu quiz'e bir göz at" : "Check out this quiz",
+        url: link
+      });
+      if (linkReadyWrap) linkReadyWrap.classList.add("hidden");
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        if (linkReadyWrap && linkInput) { linkInput.value = link; linkReadyWrap.classList.remove("hidden"); }
+      }
+    }
+  } else {
+    if (linkReadyWrap && linkInput) {
+      linkInput.value = link;
+      linkReadyWrap.classList.remove("hidden");
+      if (linkReadyLabel) linkReadyLabel.textContent = t("linkReadyLabel");
+      if (copyBtn) copyBtn.textContent = t("copyLinkLabel");
+    }
+  }
+});
+document.getElementById("share-quiz-link-copy-btn")?.addEventListener("click", function () {
+  var input = document.getElementById("share-quiz-link-input");
+  var btn = document.getElementById("share-quiz-link-copy-btn");
+  if (!input || !input.value) return;
+  var link = input.value;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(link).then(function () {
-      if (hasProfanity) alert(currentLang === "tr" ? "Link kopyalandı. İçerik uyarısı: Herkese açık paylaşımda bu quiz uygun olmayabilir." : "Link copied. Content warning: this quiz may not be suitable for public sharing.");
-      else if (!linkWorks) alert(currentLang === "tr" ? "Link kopyalandı. Açılmayabilir; Supabase'de 'supabase-rpc-ensure-public-quiz-link.sql' dosyasını çalıştırın." : "Link copied. It may not open; run supabase-rpc-ensure-public-quiz-link.sql in Supabase.");
-      else alert(currentLang === "tr" ? "Link kopyalandı. Linki açan herkes giriş yapmadan quizi görebilir (keşfet listesinde görünmez)." : "Link copied. Anyone with the link can open the quiz (not shown in Discover).");
+      if (btn) { var orig = btn.textContent; btn.textContent = t("copied"); setTimeout(function () { btn.textContent = orig; }, 2000); }
     }).catch(function () { fallbackCopyLink(link); });
   } else {
     fallbackCopyLink(link);
+    if (btn) { var orig = btn.textContent; btn.textContent = t("copied"); setTimeout(function () { btn.textContent = orig; }, 2000); }
   }
 });
 function fallbackCopyLink(link) {
