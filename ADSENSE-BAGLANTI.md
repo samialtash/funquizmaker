@@ -5,6 +5,20 @@
 - **ads.txt** artık **statik dosya** olarak sunuluyor (API route yok).
 - Böylece serverless "cold start" olmuyor; istek doğrudan CDN’den cevaplanıyor ve zaman aşımı riski azalıyor.
 
+## AdSense "ads.txt bulunamadı" diyorsa (dosya açılıyor ama algılamıyor)
+
+1. **Domain eşleşmesi (www / non-www)**  
+   AdSense'te site tam olarak hangi adresle ekli? (`https://quizatime.com` mi, `https://www.quizatime.com` mi?)  
+   - `quizatime.com` ekliyse → `https://quizatime.com/ads.txt` çalışmalı.  
+   - `www.quizatime.com` ekliyse → `https://www.quizatime.com/ads.txt` de aynı içeriği göstermeli.  
+   İkisini de tarayıcıda açıp sadece `google.com, pub-...` satırının göründüğünden emin ol.
+
+2. **Google'ın araçlarıyla kontrol**  
+   [AdSense ads.txt troubleshooter](https://support.google.com/adsense/troubleshooter/9556696) sayfasında domain'i yazıp "Test" et. Sonuç hâlâ "bulunamadı" ise 24–48 saat sonra tekrar dene.
+
+3. **AdSense'te yeniden kontrol**  
+   AdSense → Siteler → ilgili site → ads.txt uyarısının yanında "Yeniden dene" / "Recheck" varsa tıkla.
+
 ## Senin kontrol etmen gerekenler
 
 ### 1. Vercel Firewall (WAF)
