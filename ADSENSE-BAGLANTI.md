@@ -5,6 +5,19 @@
 - **ads.txt** artık **statik dosya** olarak sunuluyor (API route yok).
 - Böylece serverless "cold start" olmuyor; istek doğrudan CDN’den cevaplanıyor ve zaman aşımı riski azalıyor.
 
+## Google AdSense videosundaki 6 madde (crawler ads.txt bulabilsin)
+
+| # | Öneri | Durum |
+|---|--------|--------|
+| 1 | Dosya erişilebilir olmalı (404/500 olmamalı) | OK: Kökte ads.txt + Vercel /api/ads ile 200 OK |
+| 2 | Kök alan adından erişilebilmeli (domain.com/ads.txt) | OK: quizatime.com/ads.txt sunuluyor |
+| 3 | robots.txt taramaya izin vermeli | OK: robots.txt eklendi, Allow: / (ads.txt engellenmiyor) |
+| 4 | HTTP 200 OK dönmeli | OK: API ve statik dosya 200 döndürüyor |
+| 5 | Biçim hatası / geçersiz karakter olmamalı | OK: Tek satır düz metin, UTF-8 |
+| 6 | Hem HTTP hem HTTPS'ten erişilebilmeli | Host'ta HTTP->HTTPS yönlendirmesi olmalı (Vercel varsayılan yapar) |
+
+**Kontrol et:** https://quizatime.com/ads.txt ve https://www.quizatime.com/ads.txt (www kullanıyorsan) 200 ile açılmalı. http://... açıldığında HTTPS'e yönlenmeli.
+
 ## AdSense "ads.txt bulunamadı" diyorsa (dosya açılıyor ama algılamıyor)
 
 1. **Domain eşleşmesi (www / non-www)**  
