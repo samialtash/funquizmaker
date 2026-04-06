@@ -104,8 +104,15 @@ quiz,test,soru,cevap,eğitim,trivia,oyun
 
 ### Gizlilik politikası URL’si
 - Uygulama veri toplamıyorsa bile Apple genelde bir URL ister.  
-- Basit bir sayfa oluşturup “Bu uygulama kişisel veri toplamaz.” yazıp URL’yi buraya ekleyebilirsiniz.  
-- GitHub Pages, kendi siteniz veya bir gizlilik politikası oluşturucu kullanabilirsiniz.
+- QuizaTime için doğrudan kullanılabilir URL: **https://quizatime.com/privacy.html**
+
+### Destek URL’si
+- App Store inceleme sürecinde destek sayfası URL’si de hazır olmalıdır.
+- QuizaTime için doğrudan kullanılabilir URL: **https://quizatime.com/support.html**
+
+### Kullanım koşulları URL’si (önerilen)
+- Bazı incelemelerde kullanım koşulları sayfası da istenebilir.
+- Önerilen URL: **https://quizatime.com/terms.html**
 
 ### Kategori
 Öneri: **Eğitim** veya **Eğlence**.

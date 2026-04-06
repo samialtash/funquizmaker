@@ -244,7 +244,9 @@ const translations = {
     nicknameCooldownReady: "You can change your nickname now.",
     nicknameSave: "Save",
     ratingOutOf5: "{avg}/5",
-    termsLink: "Terms of Service",
+    privacyPolicyLink: "Privacy policy",
+    termsLink: "Terms of use",
+    supportLink: "Support",
     editProfile: "Edit profile",
     profileSharedQuizzes: "Quizzes shared on profile",
     addToMyQuizzes: "Add to my quizzes",
@@ -427,7 +429,9 @@ const translations = {
     nicknameCooldownReady: "Nickname'i şimdi değiştirebilirsiniz.",
     nicknameSave: "Kaydet",
     ratingOutOf5: "{avg}/5",
-    termsLink: "Kullanıcı Sözleşmesi",
+    privacyPolicyLink: "Gizlilik politikası",
+    termsLink: "Kullanım koşulları",
+    supportLink: "Destek",
     editProfile: "Profili düzenle",
     profileSharedQuizzes: "Profilinde paylaşılan quizler",
     addToMyQuizzes: "Quizlerime ekle",
@@ -1350,8 +1354,12 @@ function applyTranslations() {
   if (discoverTitle) discoverTitle.textContent = t("discoverTitle");
   const discoverQuizBtn = document.getElementById("discover-quiz-btn");
   if (discoverQuizBtn) discoverQuizBtn.textContent = t("discoverQuizzes");
+  const privacyLinkBtn = document.getElementById("privacy-link-btn");
+  if (privacyLinkBtn) privacyLinkBtn.textContent = t("privacyPolicyLink");
   const termsLinkBtn = document.getElementById("terms-link-btn");
   if (termsLinkBtn) termsLinkBtn.textContent = t("termsLink");
+  const supportLinkBtn = document.getElementById("support-link-btn");
+  if (supportLinkBtn) supportLinkBtn.textContent = t("supportLink");
   const notificationAllLink = document.getElementById("notification-all-messages");
   if (notificationAllLink) notificationAllLink.textContent = t("allMessages");
   const authEmailLabelLogin = document.getElementById("auth-email-label-login");
@@ -4146,16 +4154,6 @@ document.getElementById("share-quiz-category")?.addEventListener("change", funct
   if (subSelect && val !== "egitim") subSelect.value = "";
 });
 
-// Kullanıcı Sözleşmesi modal
-document.getElementById("terms-link-btn")?.addEventListener("click", () => {
-  document.getElementById("terms-modal-overlay")?.classList.remove("hidden");
-});
-document.getElementById("terms-modal-close")?.addEventListener("click", () => {
-  document.getElementById("terms-modal-overlay")?.classList.add("hidden");
-});
-document.getElementById("terms-modal-overlay")?.addEventListener("click", (e) => {
-  if (e.target.id === "terms-modal-overlay") document.getElementById("terms-modal-overlay")?.classList.add("hidden");
-});
 document.getElementById("share-quiz-send-btn")?.addEventListener("click", async () => {
   if (!shareQuizModalQuizId || !supabaseClient || !currentAuthUser) return;
   for (const toId of shareQuizSelectedUserIds) {

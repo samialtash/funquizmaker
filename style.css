@@ -539,18 +539,96 @@ body.standalone .app-logo {
 
 /* Ana sayfa: Kullanıcı Sözleşmesi linki (en alta, küçük) */
 .main-menu-footer { margin-top: 20px; margin-bottom: 0; text-align: center; }
+.main-menu-footer-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .terms-link {
-  background: none; border: none; color: var(--muted); font-size: 0.75rem; text-decoration: underline;
-  cursor: pointer; padding: 4px 8px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
 }
 .terms-link:hover { color: var(--text); }
-.terms-modal { max-width: 520px; max-height: 85vh; display: flex; flex-direction: column; }
-.terms-modal .terms-modal-title { margin: 0 0 12px; font-size: 1.1rem; }
-.terms-modal-body {
-  overflow-y: auto; font-size: 0.8rem; line-height: 1.5; color: var(--muted);
-  padding-right: 8px; margin-bottom: 12px;
+/* Statik legal sayfalar */
+body.legal-static-page {
+  display: block;
+  margin: 0;
+  padding: 24px 16px;
+  background-image: url("background.png");
+  background-repeat: repeat;
+  background-color: #050816;
+  color: var(--text);
 }
-.terms-modal-body p { margin: 0 0 10px; }
+
+.legal-static-nav {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto 14px;
+}
+
+.legal-static-main {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+  padding: 22px 20px;
+}
+
+.legal-static-main h1 {
+  margin: 0 0 14px;
+  font-size: 1.45rem;
+}
+
+.legal-static-main p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.legal-static-note {
+  color: var(--muted) !important;
+  font-size: 0.95rem;
+}
+
+.legal-static-note a,
+.legal-static-cross a {
+  color: var(--accent);
+}
+
+.legal-static-cross {
+  margin-top: 18px !important;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted) !important;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  body.legal-static-page {
+    padding: 16px 10px;
+  }
+
+  .legal-static-main {
+    padding: 18px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .legal-static-main h1 {
+    font-size: 1.25rem;
+  }
+}
 
 .auth-modal-title {
   margin: 0 0 20px;
