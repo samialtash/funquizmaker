@@ -202,6 +202,10 @@ const translations = {
     matchAddPair: "Add pair",
     matchPairHint: "Up to 10 pairs. Fill left and right columns in order.",
     manualAddIntro: "Choose the type of question to add:",
+    manualPreviewChoice: "Classic multiple-choice question with one correct option.",
+    manualPreviewMulti: "Question type where more than one option can be correct.",
+    manualPreviewOpen: "Question where the player types a text answer.",
+    manualPreviewMatch: "Question type based on matching two columns.",
     chooseImage: "Choose image",
     addOptionRow: "Add option",
     duplicateQuizName: "A quiz with this name already exists. Please use a different name.",
@@ -252,6 +256,7 @@ const translations = {
     privacyPolicyLink: "Privacy policy",
     termsLink: "Terms of use",
     supportLink: "Support",
+    quickStartQuiz: "Start quiz",
     editProfile: "Edit profile",
     profileSharedQuizzes: "Quizzes shared on profile",
     addToMyQuizzes: "Add to my quizzes",
@@ -392,6 +397,10 @@ const translations = {
     matchAddPair: "Çift ekle",
     matchPairHint: "En fazla 10 eşleştirme. Sol ve sağ sütunu sırayla doldurun.",
     manualAddIntro: "Eklemek istediğiniz soru tipini seçin:",
+    manualPreviewChoice: "Tek doğru şıklı klasik test sorusu.",
+    manualPreviewMulti: "Birden fazla doğru seçeneğin işaretlendiği soru tipi.",
+    manualPreviewOpen: "Kullanıcının metin yazarak cevap verdiği soru.",
+    manualPreviewMatch: "İki sütunu eşleştirme mantığıyla çözülen soru tipi.",
     chooseImage: "Dosya seç",
     addOptionRow: "Şık ekle",
     duplicateQuizName: "Bu isimde bir quiz zaten var. Lütfen farklı bir isim kullanın.",
@@ -442,6 +451,7 @@ const translations = {
     privacyPolicyLink: "Gizlilik politikası",
     termsLink: "Kullanım koşulları",
     supportLink: "Destek",
+    quickStartQuiz: "Quiz'i Başlat",
     editProfile: "Profili düzenle",
     profileSharedQuizzes: "Profilinde paylaşılan quizler",
     addToMyQuizzes: "Quizlerime ekle",
@@ -1287,6 +1297,10 @@ function applyTranslations() {
     "match-question-text-label": t("matchQuestionTextLabel"),
     "match-add-pair-btn": t("matchAddPair"),
     "manual-add-intro": t("manualAddIntro"),
+    "manual-preview-choice": t("manualPreviewChoice"),
+    "manual-preview-multi": t("manualPreviewMulti"),
+    "manual-preview-open": t("manualPreviewOpen"),
+    "manual-preview-match": t("manualPreviewMatch"),
   };
   const matchPairHintEl = document.querySelector(".match-pairs-container + .field .hint");
   if (matchPairHintEl) matchPairHintEl.textContent = t("matchPairHint");
@@ -1528,6 +1542,7 @@ function renderQuizSelectList(page, _direction) {
         const qCount = quiz.questions ? quiz.questions.length : 0;
         const qStr = qCount === 1 ? (currentLang === "tr" ? "1 soru" : "1 question") : (currentLang === "tr" ? qCount + " soru" : qCount + " questions");
         const shareLabel = t("shareQuiz") || "Share quiz";
+        const quickStartLabel = t("quickStartQuiz") || "Start quiz";
         item.innerHTML = `
           <div class="quiz-list-item-head quiz-select-item-head">
             <div class="quiz-list-item-head-left">
@@ -1538,9 +1553,13 @@ function renderQuizSelectList(page, _direction) {
           </div>
           <div class="quiz-list-item-expand">
             <div class="quiz-list-item-cover" style="background-image:url(${coverSafe})"></div>
-            <p class="quiz-list-item-desc">${escapeHtml(descDisplay) || "—"}</p>
+            <div class="quiz-list-item-expand-right">
+              <p class="quiz-list-item-desc">${escapeHtml(descDisplay) || "—"}</p>
+              <button type="button" class="primary-btn quiz-select-start-large-btn">${escapeHtml(quickStartLabel)}</button>
+            </div>
           </div>`;
         const shareBtn = item.querySelector(".quiz-select-share-btn");
+        const quickStartBtn = item.querySelector(".quiz-select-start-large-btn");
         if (shareBtn) {
           shareBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -1548,8 +1567,17 @@ function renderQuizSelectList(page, _direction) {
             openShareQuizModal(quiz.id);
           });
         }
+        if (quickStartBtn) {
+          quickStartBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            selectedPlayQuizId = quiz.id;
+            startQuizBtn.disabled = false;
+            startQuiz(quiz.id);
+          });
+        }
         item.addEventListener("click", (e) => {
-          if (e.target.closest(".quiz-select-share-btn")) return;
+          if (e.target.closest(".quiz-select-share-btn") || e.target.closest(".quiz-select-start-large-btn")) return;
           e.stopPropagation();
           if (selectedPlayQuizId === quiz.id) return;
           var prevSelected = quizSelectStripEl.querySelector(".quiz-list-item.quiz-select-item.selected");

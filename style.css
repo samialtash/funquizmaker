@@ -2649,6 +2649,43 @@ pre.format-example {
   flex: 1;
   min-width: 120px;
 }
+.manual-add-type-previews {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.manual-type-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.7);
+  padding: 10px;
+}
+.manual-type-preview-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 30px;
+  border-radius: 999px;
+  background: rgba(238, 134, 48, 0.2);
+  border: 1px solid rgba(238, 134, 48, 0.45);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+}
+.manual-type-preview-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+@media (max-width: 640px) {
+  .manual-add-type-previews {
+    grid-template-columns: 1fr;
+  }
+}
 
 .multi-correct-answer-list {
   display: flex;
@@ -3038,6 +3075,37 @@ pre.format-example {
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+#quiz-select-view .quiz-list-item-expand-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#quiz-select-view .quiz-select-start-large-btn {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  border: 2px solid #000;
+  box-shadow: 0 0 0 0 rgba(238, 134, 48, 0.5), 3px 5px 0 rgba(0, 0, 0, 0.35);
+  animation: quiz-start-glow 2.2s ease-in-out infinite;
+}
+#quiz-select-view .quiz-select-start-large-btn:hover {
+  box-shadow: 0 0 14px 2px rgba(238, 134, 48, 0.55), 4px 6px 0 rgba(0, 0, 0, 0.4);
+}
+@keyframes quiz-start-glow {
+  0%, 100% {
+    opacity: 0.92;
+    box-shadow: 0 0 0 0 rgba(238, 134, 48, 0.45), 3px 5px 0 rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 14px 2px rgba(238, 134, 48, 0.55), 3px 5px 0 rgba(0, 0, 0, 0.35);
+  }
 }
 
 /* Boş slot: her sayfada her zaman 5 satır */
