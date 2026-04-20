@@ -190,8 +190,13 @@ const translations = {
     removeImage: "Remove image",
     addPhoto: "Add photo",
     questionTypeChoice: "Multiple choice",
+    questionTypeMulti: "Multiple correct",
     questionTypeOpen: "Open answer",
     questionTypeMatch: "Matching",
+    multiCorrectAnswerLabel: "Correct options",
+    multiCheckAnswer: "Check selections",
+    alertMultiCorrectEmpty: "Select at least one correct option.",
+    alertSelectAtLeastOneOption: "Select at least one option.",
     openExpectedAnswerLabel: "Correct answer (user will type this)",
     matchQuestionTextLabel: "Question / title (optional)",
     matchAddPair: "Add pair",
@@ -375,8 +380,13 @@ const translations = {
     removeImage: "Fotoğrafı kaldır",
     addPhoto: "Fotoğraf ekle",
     questionTypeChoice: "Çoktan seçmeli",
+    questionTypeMulti: "Birden fazla doğru",
     questionTypeOpen: "Açık cevap",
     questionTypeMatch: "Eşleştirme",
+    multiCorrectAnswerLabel: "Doğru seçenekler",
+    multiCheckAnswer: "Seçimleri kontrol et",
+    alertMultiCorrectEmpty: "En az bir doğru seçenek seçin.",
+    alertSelectAtLeastOneOption: "En az bir seçenek seçin.",
     openExpectedAnswerLabel: "Doğru cevap (kullanıcı bunu yazacak)",
     matchQuestionTextLabel: "Soru / başlık (isteğe bağlı)",
     matchAddPair: "Çift ekle",
@@ -640,12 +650,13 @@ const MAX_OPTIONS = 5;
 
 let editFormQuestionImage = null;
 let editFormOptionImages = [null, null];
-/** "choice" | "open" | "match" */
+/** "choice" | "multi" | "open" | "match" */
 let currentQuestionType = "choice";
 let openEditFormQuestionImage = null;
 /** Match type: [{ left: string, right: string }, ...] max 10 */
 let editFormMatchPairs = [];
 const MAX_MATCH_PAIRS = 10;
+let editFormMultiCorrectIndices = [0];
 
 let quizzes = [];
 let currentQuiz = null;
@@ -1243,9 +1254,11 @@ function applyTranslations() {
     "option-d-label": t("optionD"),
     "option-e-label": t("optionE"),
     "correct-answer-label": t("correctAnswer"),
+    "multi-correct-answer-label": t("multiCorrectAnswerLabel"),
     "save-single-question-btn": t("saveQuestion"),
     "cancel-question-edit-btn": t("cancel"),
     "manual-add-choice-btn": t("questionTypeChoice"),
+    "manual-add-multi-btn": t("questionTypeMulti"),
     "manual-add-open-btn": t("questionTypeOpen"),
     "manual-add-match-btn": t("questionTypeMatch"),
     "new-quiz-name-modal-title": t("giveQuizName"),
@@ -1267,6 +1280,7 @@ function applyTranslations() {
     "single-question-image-remove": t("removeImage"),
     "single-question-image-add": t("addPhoto"),
     "qtype-tab-choice": t("questionTypeChoice"),
+    "qtype-tab-multi": t("questionTypeMulti"),
     "qtype-tab-open": t("questionTypeOpen"),
     "qtype-tab-match": t("questionTypeMatch"),
     "open-expected-answer-label": t("openExpectedAnswerLabel"),
@@ -1742,7 +1756,13 @@ function renderQuestionsList() {
 
       const textSpan = document.createElement("span");
       textSpan.className = "question-list-text";
-      const typeLabel = q.type === "open" ? " (" + t("questionTypeOpen") + ")" : q.type === "match" ? " (" + t("questionTypeMatch") + ")" : "";
+      const typeLabel = q.type === "open"
+        ? " (" + t("questionTypeOpen") + ")"
+        : q.type === "match"
+          ? " (" + t("questionTypeMatch") + ")"
+          : q.type === "multi"
+            ? " (" + t("questionTypeMulti") + ")"
+            : "";
       textSpan.textContent = (q.text || "").trim().slice(0, 60) + (typeLabel || "") + ((q.text || "").trim().length > 60 ? "…" : "");
       const delBtn = document.createElement("button");
       delBtn.type = "button";
@@ -1780,6 +1800,53 @@ function updateCorrectAnswerSelect() {
   }
   const val = Math.min(Number(prevVal) || 0, n - 1);
   correctEl.value = String(Math.max(0, val));
+}
+
+function normalizeMultiCorrectIndices(indices, optionCount) {
+  const unique = [...new Set((indices || []).map((v) => Number(v)).filter((v) => Number.isInteger(v) && v >= 0 && v < optionCount))];
+  if (!unique.length && optionCount > 0) unique.push(0);
+  return unique.sort((a, b) => a - b);
+}
+
+function updateMultiCorrectAnswerList() {
+  const wrap = document.getElementById("multi-correct-answer-wrap");
+  const list = document.getElementById("multi-correct-answer-list");
+  if (!wrap || !list) return;
+  wrap.classList.toggle("hidden", currentQuestionType !== "multi");
+  if (currentQuestionType !== "multi") return;
+
+  const n = editFormOptionImages.length;
+  editFormMultiCorrectIndices = normalizeMultiCorrectIndices(editFormMultiCorrectIndices, n);
+  list.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const letterLabel = String.fromCharCode(65 + i);
+    const label = document.createElement("label");
+    label.className = "multi-correct-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = String(i);
+    input.checked = editFormMultiCorrectIndices.includes(i);
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        editFormMultiCorrectIndices = normalizeMultiCorrectIndices([...editFormMultiCorrectIndices, i], n);
+      } else {
+        editFormMultiCorrectIndices = normalizeMultiCorrectIndices(editFormMultiCorrectIndices.filter((idx) => idx !== i), n);
+        input.checked = editFormMultiCorrectIndices.includes(i);
+      }
+    });
+    const text = document.createElement("span");
+    text.textContent = letterLabel;
+    label.appendChild(input);
+    label.appendChild(text);
+    list.appendChild(label);
+  }
+}
+
+function updateChoiceAnswerModeUi() {
+  const singleWrap = document.getElementById("correct-answer-label")?.closest(".field");
+  const multiWrap = document.getElementById("multi-correct-answer-wrap");
+  if (singleWrap) singleWrap.classList.toggle("hidden", currentQuestionType === "multi");
+  if (multiWrap) multiWrap.classList.toggle("hidden", currentQuestionType !== "multi");
 }
 
 function renderOptionRows() {
@@ -1843,6 +1910,8 @@ function renderOptionRows() {
   }
   updateOptionImagePreviewsAll();
   updateCorrectAnswerSelect();
+  updateMultiCorrectAnswerList();
+  updateChoiceAnswerModeUi();
   const addBtnEl = document.getElementById("add-option-row-btn");
   if (addBtnEl) addBtnEl.classList.toggle("hidden", editFormOptionImages.length >= MAX_OPTIONS);
 }
@@ -1895,18 +1964,31 @@ function removeOptionRow(index) {
 
 function showQuestionTypePanel(type) {
   currentQuestionType = type;
-  ["choice", "open", "match"].forEach((t) => {
+  ["choice", "multi", "open", "match"].forEach((t) => {
     const tab = document.getElementById("qtype-tab-" + t);
-    const panel = document.getElementById("qtype-panel-" + t);
     if (tab) {
       tab.classList.toggle("active", t === type);
       tab.setAttribute("aria-selected", t === type ? "true" : "false");
     }
-    if (panel) {
-      panel.classList.toggle("question-type-panel-active", t === type);
-      panel.hidden = t !== type;
-    }
   });
+  const choicePanel = document.getElementById("qtype-panel-choice");
+  const openPanel = document.getElementById("qtype-panel-open");
+  const matchPanel = document.getElementById("qtype-panel-match");
+  if (choicePanel) {
+    const isChoiceLike = type === "choice" || type === "multi";
+    choicePanel.classList.toggle("question-type-panel-active", isChoiceLike);
+    choicePanel.hidden = !isChoiceLike;
+  }
+  if (openPanel) {
+    openPanel.classList.toggle("question-type-panel-active", type === "open");
+    openPanel.hidden = type !== "open";
+  }
+  if (matchPanel) {
+    matchPanel.classList.toggle("question-type-panel-active", type === "match");
+    matchPanel.hidden = type !== "match";
+  }
+  updateChoiceAnswerModeUi();
+  updateMultiCorrectAnswerList();
 }
 
 function loadQuestionIntoForm(index) {
@@ -1915,7 +1997,7 @@ function loadQuestionIntoForm(index) {
   const q = quiz.questions[index];
   const type = q.type || "choice";
   showQuestionTypePanel(type);
-  if (type === "choice") {
+  if (type === "choice" || type === "multi") {
     const textEl = document.getElementById("single-question-text");
     const correctEl = document.getElementById("single-correct-answer");
     if (textEl) textEl.value = q.text || "";
@@ -1935,7 +2017,13 @@ function loadQuestionIntoForm(index) {
       const el = document.getElementById(`single-option-${letter}`);
       if (el) el.value = getOptionText(opt) || "";
     });
-    if (correctEl) correctEl.value = String(Math.min(q.correctIndex ?? 0, editFormOptionImages.length - 1));
+    if (type === "multi") {
+      const fallbackIndexes = Array.isArray(q.correctIndexes) ? q.correctIndexes : [q.correctIndex ?? 0];
+      editFormMultiCorrectIndices = normalizeMultiCorrectIndices(fallbackIndexes, editFormOptionImages.length);
+    } else if (correctEl) {
+      correctEl.value = String(Math.min(q.correctIndex ?? 0, editFormOptionImages.length - 1));
+      editFormMultiCorrectIndices = [Math.min(q.correctIndex ?? 0, editFormOptionImages.length - 1)];
+    }
     editFormQuestionImage = q.image || null;
     updateQuestionImagePreview();
   } else if (type === "open") {
@@ -2059,6 +2147,9 @@ function clearQuestionForm() {
   updateQuestionImagePreview();
   renderOptionRows();
   if (correctEl) correctEl.value = "0";
+  editFormMultiCorrectIndices = [0];
+  updateMultiCorrectAnswerList();
+  updateChoiceAnswerModeUi();
   const openTextEl = document.getElementById("open-question-text");
   const openAnsEl = document.getElementById("open-expected-answer");
   if (openTextEl) openTextEl.value = "";
@@ -2561,6 +2652,60 @@ function renderCurrentQuestion() {
     return;
   }
 
+  if (qType === "multi") {
+    const optsRaw = (q.options || []).map((o) => (typeof o === "string" ? { text: o } : o));
+    const stored = userAnswerByOrderIndex[qIndex];
+    const selectedSet = new Set(stored && Array.isArray(stored.selectedIndexes) ? stored.selectedIndexes : []);
+    const fallbackIndexes = Array.isArray(q.correctIndexes) ? q.correctIndexes : [q.correctIndex ?? 0];
+    const correctSet = new Set(normalizeMultiCorrectIndices(fallbackIndexes, optsRaw.length));
+    optsRaw.forEach((opt, originalIdx) => {
+      const safeOptImage = sanitizeImageSrc(opt && opt.image);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "option-btn" + (safeOptImage ? " has-image" : "") + (selectedSet.has(originalIdx) ? " selected" : "");
+      btn.dataset.originalIndex = String(originalIdx);
+      btn.dataset.label = String.fromCharCode(65 + originalIdx);
+      if (safeOptImage) {
+        const img = document.createElement("img");
+        img.className = "option-image-inline";
+        img.src = safeOptImage;
+        img.alt = "";
+        btn.appendChild(img);
+      }
+      const textSpan = document.createElement("span");
+      textSpan.textContent = opt.text || "";
+      btn.appendChild(textSpan);
+      if (stored !== undefined) {
+        btn.disabled = true;
+        if (correctSet.has(originalIdx)) btn.classList.add("correct");
+        else if (selectedSet.has(originalIdx)) btn.classList.add("incorrect");
+      } else {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.dataset.originalIndex);
+          if (selectedSet.has(idx)) {
+            selectedSet.delete(idx);
+            btn.classList.remove("selected");
+          } else {
+            selectedSet.add(idx);
+            btn.classList.add("selected");
+          }
+        });
+      }
+      optionsContainerEl.appendChild(btn);
+    });
+    if (stored !== undefined) {
+      nextQuestionBtn.disabled = false;
+    } else {
+      const checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "secondary-btn multi-check-btn";
+      checkBtn.textContent = t("multiCheckAnswer");
+      checkBtn.addEventListener("click", () => handleMultiAnswerCheck(qIndex, q, selectedSet));
+      optionsContainerEl.appendChild(checkBtn);
+    }
+    return;
+  }
+
   const optsRaw = (q.options || []).map((o) => (typeof o === "string" ? { text: o } : o));
   let displayOrder = optsRaw.map((_, i) => i);
   if (shuffleOptionsEnabled && optsRaw.length > 1) {
@@ -2679,6 +2824,28 @@ function handleAnswerClick(btn, idx) {
     });
   }
   nextQuestionBtn.disabled = false;
+}
+
+function handleMultiAnswerCheck(qIndex, q, selectedSet) {
+  const selectedIndexes = [...selectedSet].sort((a, b) => a - b);
+  if (!selectedIndexes.length) {
+    alert(t("alertSelectAtLeastOneOption"));
+    return;
+  }
+  const fallbackIndexes = Array.isArray(q.correctIndexes) ? q.correctIndexes : [q.correctIndex ?? 0];
+  const correctIndexes = normalizeMultiCorrectIndices(fallbackIndexes, (q.options || []).length);
+  const isExact =
+    selectedIndexes.length === correctIndexes.length &&
+    selectedIndexes.every((val, i) => val === correctIndexes[i]);
+  userAnswerByOrderIndex[qIndex] = { correct: isExact, selectedIndexes };
+  if (isExact) {
+    currentScore += 1;
+    updateScoreDisplay();
+    playCorrectVfx(optionsContainerEl);
+  } else if (soundEnabled) {
+    playAnswerSound(false);
+  }
+  renderCurrentQuestion();
 }
 
 function updateScoreDisplay() {
@@ -3149,6 +3316,9 @@ function handleParseQuestions() {
 async function handleSaveQuiz() {
   const name = quizNameInput.value.trim();
   const description = quizDescriptionInput.value.trim();
+  const existingQuiz = editingQuizId ? quizzes.find((q) => q.id === editingQuizId) : null;
+  const questionsSource = existingQuiz && Array.isArray(existingQuiz.questions) ? existingQuiz.questions : draftQuestions;
+  const questionsToSave = Array.isArray(questionsSource) ? questionsSource.slice() : [];
 
   if (!name) {
     alert("Please enter a quiz name.");
@@ -3159,14 +3329,13 @@ async function handleSaveQuiz() {
     return;
   }
 
-  if (!draftQuestions.length) {
+  if (!questionsToSave.length) {
     alert(t("saveQuizNoQuestions"));
     return;
   }
 
-  const questionsToSave = draftQuestions.slice();
   if (editingQuizId) {
-    const existing = quizzes.find((q) => q.id === editingQuizId);
+    const existing = existingQuiz;
     if (existing) {
       existing.name = name;
       existing.description = description;
@@ -3213,7 +3382,8 @@ async function handleSaveQuiz() {
   }
   refreshQuizSelect();
 
-  const count = draftQuestions.length;
+  draftQuestions = questionsToSave.slice();
+  const count = questionsToSave.length;
   const msg = (t("saveQuizSuccess") || "Quiz saved with {count} question(s).").replace("{count}", String(count));
   alert(msg);
   resetCreateQuizForm();
@@ -5414,7 +5584,16 @@ if (saveSingleQuestionBtn) {
         alert(t("alertOptionsEmpty"));
         return;
       }
-      q = { text, image: editFormQuestionImage || undefined, options, correctIndex };
+      if (currentQuestionType === "multi") {
+        const correctIndexes = normalizeMultiCorrectIndices(editFormMultiCorrectIndices, options.length);
+        if (!correctIndexes.length) {
+          alert(t("alertMultiCorrectEmpty"));
+          return;
+        }
+        q = { type: "multi", text, image: editFormQuestionImage || undefined, options, correctIndexes };
+      } else {
+        q = { text, image: editFormQuestionImage || undefined, options, correctIndex };
+      }
     }
     if (currentQuestionEditIndex >= 0 && quiz.questions[currentQuestionEditIndex] !== undefined) {
       quiz.questions[currentQuestionEditIndex] = q;

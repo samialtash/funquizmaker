@@ -111,11 +111,11 @@
             </ul>
           </div>
           <div class="main-menu-footer main-menu-footer-legal">
-            <a id="privacy-link-btn" class="terms-link" href="privacy.html">Gizlilik politikası</a>
+            <a id="privacy-link-btn" class="terms-link" href="https://quizatime.com/privacy.html">Gizlilik politikası</a>
             <span class="auth-sep" aria-hidden="true">|</span>
-            <a id="terms-link-btn" class="terms-link" href="terms.html">Kullanım koşulları</a>
+            <a id="terms-link-btn" class="terms-link" href="https://quizatime.com/terms.html">Kullanım koşulları</a>
             <span class="auth-sep" aria-hidden="true">|</span>
-            <a id="support-link-btn" class="terms-link" href="support.html">Destek</a>
+            <a id="support-link-btn" class="terms-link" href="https://quizatime.com/support.html">Destek</a>
           </div>
         </div>
       </div>
@@ -312,6 +312,7 @@
         <div class="question-type-tabs-wrap">
           <div class="question-type-tabs" role="tablist">
             <button type="button" id="qtype-tab-choice" class="question-type-tab active" role="tab" aria-selected="true" data-type="choice">Çoktan seçmeli</button>
+            <button type="button" id="qtype-tab-multi" class="question-type-tab" role="tab" aria-selected="false" data-type="multi">Birden fazla doğru</button>
             <button type="button" id="qtype-tab-open" class="question-type-tab" role="tab" aria-selected="false" data-type="open">Açık cevap</button>
             <button type="button" id="qtype-tab-match" class="question-type-tab" role="tab" aria-selected="false" data-type="match">Eşleştirme</button>
           </div>
@@ -337,6 +338,10 @@
           <div class="field">
             <label id="correct-answer-label" for="single-correct-answer">Correct answer</label>
             <select id="single-correct-answer"></select>
+          </div>
+          <div id="multi-correct-answer-wrap" class="field hidden">
+            <label id="multi-correct-answer-label">Doğru seçenekler</label>
+            <div id="multi-correct-answer-list" class="multi-correct-answer-list"></div>
           </div>
         </div>
         <div id="qtype-panel-open" class="question-type-panel" role="tabpanel" hidden>
@@ -614,6 +619,7 @@
             <p id="manual-add-intro" class="manual-add-intro hint">Eklemek istediğiniz soru tipini seçin:</p>
             <div class="manual-add-type-buttons">
               <button type="button" id="manual-add-choice-btn" class="secondary-btn manual-add-type-btn" data-type="choice">Çoktan seçmeli</button>
+              <button type="button" id="manual-add-multi-btn" class="secondary-btn manual-add-type-btn" data-type="multi">Birden fazla doğru</button>
               <button type="button" id="manual-add-open-btn" class="secondary-btn manual-add-type-btn" data-type="open">Açık cevap</button>
               <button type="button" id="manual-add-match-btn" class="secondary-btn manual-add-type-btn" data-type="match">Eşleştirme</button>
             </div>

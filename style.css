@@ -2014,6 +2014,11 @@ pre.format-example {
   box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.35);
 }
 
+.option-btn.selected {
+  border-color: rgba(238, 134, 48, 0.9);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(238, 134, 48, 0.6);
+}
+
 .option-btn::before {
   content: attr(data-label);
   position: absolute;
@@ -2060,6 +2065,12 @@ pre.format-example {
 .option-btn.revealed-correct:not(.correct) {
   border: 2px solid rgba(34, 197, 94, 0.9);
   box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(74, 222, 128, 0.9);
+}
+
+.multi-check-btn {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 4px;
 }
 
 .option-btn.disabled {
@@ -2637,6 +2648,23 @@ pre.format-example {
 .manual-add-type-buttons .manual-add-type-btn {
   flex: 1;
   min-width: 120px;
+}
+
+.multi-correct-answer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.multi-correct-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.65);
 }
 
 /* Açık cevap formu */
