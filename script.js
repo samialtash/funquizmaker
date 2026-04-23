@@ -3277,6 +3277,10 @@ function resetCreateQuizForm() {
   updateEditQuestionsBtn();
 }
 
+function getActiveEditQuizId() {
+  return editingQuizId || selectedEditQuizId || currentQuizForEdit || "";
+}
+
 function handleParseQuestions() {
   const raw = bulkInput.value;
   parseStatusEl.className = "hint";
@@ -3344,7 +3348,9 @@ function handleParseQuestions() {
 async function handleSaveQuiz() {
   const name = quizNameInput.value.trim();
   const description = quizDescriptionInput.value.trim();
-  const existingQuiz = editingQuizId ? quizzes.find((q) => q.id === editingQuizId) : null;
+  const activeQuizId = getActiveEditQuizId();
+  if (!editingQuizId && activeQuizId) editingQuizId = activeQuizId;
+  const existingQuiz = activeQuizId ? quizzes.find((q) => q.id === activeQuizId) : null;
   const questionsSource = existingQuiz && Array.isArray(existingQuiz.questions) ? existingQuiz.questions : draftQuestions;
   const questionsToSave = Array.isArray(questionsSource) ? questionsSource.slice() : [];
 
@@ -3352,7 +3358,7 @@ async function handleSaveQuiz() {
     alert("Please enter a quiz name.");
     return;
   }
-  if (isQuizNameDuplicate(name, editingQuizId || undefined)) {
+  if (isQuizNameDuplicate(name, activeQuizId || undefined)) {
     alert(t("duplicateQuizName"));
     return;
   }
@@ -3362,7 +3368,7 @@ async function handleSaveQuiz() {
     return;
   }
 
-  if (editingQuizId) {
+  if (activeQuizId) {
     const existing = existingQuiz;
     if (existing) {
       existing.name = name;
@@ -3381,7 +3387,7 @@ async function handleSaveQuiz() {
     quizzes.push(newQuiz);
   }
 
-  const quiz = editingQuizId ? quizzes.find((q) => q.id === editingQuizId) : quizzes[quizzes.length - 1];
+  const quiz = activeQuizId ? quizzes.find((q) => q.id === activeQuizId) : quizzes[quizzes.length - 1];
   saveQuizzes();
   if (!supabaseClient && typeof window !== "undefined") {
     await new Promise(function (resolve) {
@@ -5542,6 +5548,7 @@ function openAddQuestionWithType(type) {
   }
   if (manualAddHintEl) manualAddHintEl.classList.add("hidden");
   fromCreateQuizPage = true;
+  if (!editingQuizId) editingQuizId = quizId;
   if (backBtnQuestionEdit) backBtnQuestionEdit.dataset.back = "quiz-edit-hub-view";
   currentQuizForEdit = quizId;
   currentQuestionEditIndex = -1;
@@ -5628,6 +5635,7 @@ if (saveSingleQuestionBtn) {
     } else {
       quiz.questions.push(q);
     }
+    draftQuestions = Array.isArray(quiz.questions) ? quiz.questions.slice() : [];
     saveQuizzes();
     if (fromCreateQuizPage) {
       fromCreateQuizPage = false;
