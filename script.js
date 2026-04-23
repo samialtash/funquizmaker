@@ -3242,6 +3242,7 @@ function parseBulkQuestions(raw) {
 // Create / edit quiz flow
 let draftQuestions = [];
 let currentQuizCoverImage = null;
+let isSavingQuiz = false;
 
 function updateQuizCoverPreview() {
   const preview = document.getElementById("quiz-cover-preview");
@@ -3346,12 +3347,17 @@ function handleParseQuestions() {
 }
 
 async function handleSaveQuiz() {
+  if (isSavingQuiz) return;
+  isSavingQuiz = true;
+  try {
   const name = quizNameInput.value.trim();
   const description = quizDescriptionInput.value.trim();
   const activeQuizId = getActiveEditQuizId();
   if (!editingQuizId && activeQuizId) editingQuizId = activeQuizId;
-  const existingQuiz = activeQuizId ? quizzes.find((q) => q.id === activeQuizId) : null;
-  const questionsSource = existingQuiz && Array.isArray(existingQuiz.questions) ? existingQuiz.questions : draftQuestions;
+  let existingQuiz = activeQuizId ? quizzes.find((q) => q.id === activeQuizId) : null;
+  const questionsSource = draftQuestions.length
+    ? draftQuestions
+    : (existingQuiz && Array.isArray(existingQuiz.questions) ? existingQuiz.questions : []);
   const questionsToSave = Array.isArray(questionsSource) ? questionsSource.slice() : [];
 
   if (!name) {
@@ -3368,26 +3374,27 @@ async function handleSaveQuiz() {
     return;
   }
 
-  if (activeQuizId) {
-    const existing = existingQuiz;
-    if (existing) {
-      existing.name = name;
-      existing.description = description;
-      existing.questions = questionsToSave;
-      existing.cover_image = currentQuizCoverImage || null;
-    }
+  if (activeQuizId && existingQuiz) {
+    existingQuiz.name = name;
+    existingQuiz.description = description;
+    existingQuiz.questions = questionsToSave;
+    existingQuiz.cover_image = currentQuizCoverImage || null;
   } else {
     const newQuiz = {
-      id: `quiz_${Date.now()}`,
+      id: `quiz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       name,
       description,
       questions: questionsToSave,
       cover_image: currentQuizCoverImage || null
     };
     quizzes.push(newQuiz);
+    existingQuiz = newQuiz;
+    editingQuizId = newQuiz.id;
+    selectedEditQuizId = newQuiz.id;
+    currentQuizForEdit = newQuiz.id;
   }
 
-  const quiz = activeQuizId ? quizzes.find((q) => q.id === activeQuizId) : quizzes[quizzes.length - 1];
+  const quiz = existingQuiz || (activeQuizId ? quizzes.find((q) => q.id === activeQuizId) : quizzes[quizzes.length - 1]);
   saveQuizzes();
   if (!supabaseClient && typeof window !== "undefined") {
     await new Promise(function (resolve) {
@@ -3415,6 +3422,7 @@ async function handleSaveQuiz() {
     }
   }
   refreshQuizSelect();
+  refreshEditQuizSelect();
 
   draftQuestions = questionsToSave.slice();
   const count = questionsToSave.length;
@@ -3427,6 +3435,9 @@ async function handleSaveQuiz() {
       refreshEditQuizSelect();
     });
   });
+  } finally {
+    isSavingQuiz = false;
+  }
 }
 
 // iOS Safari: touch events for buttons (click sometimes not firing)
